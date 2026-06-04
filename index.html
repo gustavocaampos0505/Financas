@@ -1680,7 +1680,8 @@ function rParcelas(){
     var feitas=(p.tp||1)-cpAdj;var prog=Math.round(Math.max(0,feitas/(p.tp||1))*100);
     var r=18,circ=Math.PI*2*r;var dash=Math.round(prog/100*circ);
     var ring='<svg width="48" height="48" viewBox="0 0 48 48" style="flex-shrink:0"><circle cx="24" cy="24" r="'+r+'" fill="none" stroke="var(--s3)" stroke-width="4"/><circle cx="24" cy="24" r="'+r+'" fill="none" stroke="var(--green)" stroke-width="4" stroke-dasharray="'+dash+' '+Math.round(circ)+'" stroke-dashoffset="'+Math.round(circ/4)+'" stroke-linecap="round"/><text x="24" y="28" text-anchor="middle" font-size="9" fill="var(--green)" font-family="DM Mono,monospace">'+prog+'%</text></svg>';
-    if(cpAdj>0)hAtiv+='<div class="card mb8"><div style="display:flex;gap:10px;align-items:center">'+ring+'<div style="flex:1"><div class="fsb"><div style="font-size:.84rem;font-weight:500">'+p.n+'</div>'+(ciclo===0?'<button class="fix-del" onclick="delParcExtra('+i+')">🗑</button>':'')+'</div><div style="font-size:.65rem;color:var(--muted);margin-top:2px">'+p.b+' · '+fmtd(vp)+'/mês</div></div></div></div>';
+    var isFutura=cpAdj===0&&p.mesInicio&&(new Date(p.mesInicio+'-01')>new Date(NOW.getFullYear(),NOW.getMonth()+ciclo,1));
+    if(cpAdj>0||isFutura)hAtiv+='<div class="card mb8" style="'+(isFutura?'opacity:.55':'')+'"><div style="display:flex;gap:10px;align-items:center">'+ring+'<div style="flex:1"><div class="fsb"><div style="font-size:.84rem;font-weight:500">'+p.n+(isFutura?'<span style="font-size:.6rem;color:var(--blue);margin-left:6px">● começa '+p.mesInicio.slice(0,7)+'</span>':'')+'</div>'+(ciclo===0?'<button class="fix-del" onclick="delParcExtra(\''+p.id+'\')">🗑</button>':'')+'</div><div style="font-size:.65rem;color:var(--muted);margin-top:2px">'+p.b+' · '+fmtd(vp)+'/mês</div></div></div></div>';
   });
 
   // Totalizador
@@ -1810,7 +1811,7 @@ function restauraParc(k){
   if(p.s==='quitada')delete p.s;
   save();rParcelas();
 }
-function delParcExtra(i){S.parcExtras?.splice(i,1);save();rParcelas();}
+function delParcExtra(id){if(!S.parcExtras)return;S.parcExtras=S.parcExtras.filter(function(p){return p.id!==id;});save();rParcelas();}
 function npPreview(){var v=+Q('np-v')?.value||0,t=+Q('np-t')?.value||1;if(Q('np-prev'))Q('np-prev').textContent=t>1?t+'× de '+fmtd(v/t):'À vista';}
 function regNovaParc(){
   var d=Q('np-d')?.value||'',c=Q('np-c')?.value||'NU',v=+Q('np-v')?.value||0,t=+Q('np-t')?.value||1,a=+Q('np-a')?.value||1;
