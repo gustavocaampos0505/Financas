@@ -203,6 +203,7 @@ body.desktop .desk-fab svg{width:15px;height:15px;stroke-width:2.5}
 
     <button class="sb-item" id="sb-regras" onclick="go('regras')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Regras</button>
     <button class="sb-item" id="sb-insights" onclick="go('insights')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Insights</button>
+    <button class="sb-item" id="sb-timeline" onclick="go('timeline')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="2" x2="12" y2="22"/><polyline points="17 7 12 2 7 7"/><polyline points="7 17 12 22 17 17"/></svg>Timeline</button>
     <button class="sb-item" id="sb-invest" onclick="go('invest')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>Investimentos</button>
     <button class="sb-item" id="sb-config" onclick="go('config')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Config</button>
     <div class="sb-foot"><button class="sb-out" onclick="doLogout()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="15" height="15"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Sair</button></div>
@@ -379,7 +380,7 @@ body.desktop .desk-fab svg{width:15px;height:15px;stroke-width:2.5}
       <!-- CAIXINHAS -->
       <div id="s-caixinhas" class="screen">
         <div class="sh fsb" style="align-items:flex-start">
-          <div><h2>Caixinhas MP</h2><p>105% CDI · Meli+ ativo</p></div>
+          <div><h2>Caixinhas MP</h2><p>120% CDI · Meli+ ativo</p></div>
           <div style="text-align:right"><div style="font-size:.68rem;color:var(--muted)">Total acumulado</div><div class="val vlg tg" id="cx-total">—</div></div>
         </div>
         <div class="p">
@@ -418,7 +419,7 @@ body.desktop .desk-fab svg{width:15px;height:15px;stroke-width:2.5}
 
       <!-- DÍVIDAS -->
       <div id="s-dividas" class="screen">
-        <div class="sh"><h2>Dívidas</h2><p id="div-sub">Score Serasa: 445</p></div>
+        <div class="sh"><h2>Dívidas</h2><p id="div-sub">—</p></div>
         <div class="p">
           <div class="card mb8" id="div-resumo"></div>
           <div id="div-c6"></div>
@@ -493,6 +494,18 @@ body.desktop .desk-fab svg{width:15px;height:15px;stroke-width:2.5}
         <div class="p" id="invest-lista"></div>
       </div>
 
+      <!-- TIMELINE -->
+      <div id="s-timeline" class="screen">
+        <div class="sh fsb" style="align-items:flex-start">
+          <div><h2>Linha do Tempo</h2><p>Marcos da sua recuperação financeira</p></div>
+          <button class="btn bg bsm mt8" onclick="openOvl('ovl-nova-tl')">+ Marco</button>
+        </div>
+        <div class="p">
+          <div class="card mb8" id="tl-resumo"></div>
+          <div id="tl-lista"></div>
+        </div>
+      </div>
+
       <!-- CONFIG -->
       <div id="s-config" class="screen">
         <div class="sh"><h2>Configurações</h2><p>Personalize o sistema</p></div>
@@ -519,7 +532,7 @@ body.desktop .desk-fab svg{width:15px;height:15px;stroke-width:2.5}
           <div id="cfg-metas" class="hidden">
             <div class="card mb8">
               <div class="ctitle">Metas configuráveis</div>
-              <label>Meta reserva emergência (R$)</label><input type="number" class="inp inp-mono" id="c-mres" placeholder="40000">
+              <label>Meta reserva emergência (R$)</label><input type="number" class="inp inp-mono" id="c-mres" placeholder="51472">
               <label>Meta viagem (R$)</label><input type="number" class="inp inp-mono" id="c-mviag" placeholder="14200">
               <label>Meta score Serasa</label><input type="number" class="inp inp-mono" id="c-mscore" placeholder="600">
               <label>Score atual Serasa</label><input type="number" class="inp inp-mono" id="c-serasa" placeholder="550">
@@ -779,6 +792,25 @@ body.desktop .desk-fab svg{width:15px;height:15px;stroke-width:2.5}
     </div>
   </div>
 
+  <div class="ovl" id="ovl-nova-tl" onclick="closeOvl('ovl-nova-tl')">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="mhdl"></div><div class="mtitle">📌 Novo marco</div>
+      <label>Emoji</label><input type="text" class="inp" id="ntl-e" placeholder="🎉" maxlength="2">
+      <label>Título</label><input type="text" class="inp" id="ntl-t" placeholder="ex: C6 quitado!">
+      <label>Descrição</label><input type="text" class="inp" id="ntl-d" placeholder="ex: 88% de desconto, R$2.437">
+      <label>Data</label><input type="date" class="inp" id="ntl-data">
+      <label>Tipo</label>
+      <select class="sel" id="ntl-tipo">
+        <option value="quitacao">🏆 Quitação de dívida</option>
+        <option value="receita">💰 Receita extra</option>
+        <option value="meta">🎯 Meta batida</option>
+        <option value="score">📈 Score subiu</option>
+        <option value="outro">📌 Outro</option>
+      </select>
+      <div class="g2 mt16"><button class="btn bg" onclick="closeOvl('ovl-nova-tl')">Cancelar</button><button class="btn bp" onclick="regNovoMarco()">Salvar</button></div>
+    </div>
+  </div>
+
 </div><!-- /app -->
 <script>
 // ═══════════════════════════════════════════════
@@ -848,7 +880,7 @@ async function loadData(){
   initDefaults();renderAll();
 }
 function initDefaults(){
-  if(!S.cfg)S.cfg={sal15:16000,sal30:13432,va:400,flash_c:400,flash_i:180,lim_nu:3500,lim_br:2000,m_res:40000,m_viag:14200,m_score:600,a_nu:2800,a_res:10000,a_days:3,nome:'Gustavo',inicio:'2026-05-08',bruto:40000};
+  if(!S.cfg)S.cfg={sal15:16200,sal30:13006,va:400,flash_c:400,flash_i:180,lim_nu:3500,lim_br:2000,m_res:51472,m_viag:14200,m_score:735,a_nu:2800,a_res:5000,a_days:3,nome:'Gustavo',inicio:'2026-05-08',bruto:40000,serasa_score:735};
   if(!S.cx)S.cx={};
   if(!S.cxDef)S.cxDef={fixas:dfCxFixas(),uso:dfCxUso()};
   // DÍVIDAS: migrate object→array if needed
@@ -923,7 +955,7 @@ async function save(){
 
 // DEFAULTS
 function dfCxFixas(){return[
-  {id:'reserva',e:'🔒',n:'Reserva Emergência',m:40000,ap:4000,fim:'',r:'Usar só para emergências reais.',o:'meta R$40k dez/2026',tipo:'fixa'},
+  {id:'reserva',e:'🔒',n:'Reserva Emergência',m:51472,ap:5000,fim:'2026-12',r:'Usar só para emergências reais.',o:'meta R$51.472 · dez/2026',tipo:'fixa'},
   {id:'viagem',e:'✈️',n:'Viagem Portugal+Grécia',m:14200,ap:2500,fim:'2026-09',r:'Pagar tudo à vista. Não parcelar nada na viagem.',o:'set/2026',tipo:'fixa'},
   {id:'obrigacao',e:'⚱️',n:'Obrigação 3 anos',m:7000,ap:400,fim:'2027-06',r:'Usar somente em jun/2027.',o:'a partir jun/26',tipo:'fixa'},
 ];}
@@ -934,7 +966,7 @@ function dfCxUso(){return[
 ];}
 function dfDividas(){return[
   {id:'c6',n:'C6 Bank',v:0,m:0,obs:'QUITADO jun/2026 · R$15.692,48 · desconto ~85%',urgencia:0,pags:[]},
-  {id:'itau1',n:'Itaú Renegociação 1',v:0,m:0,obs:'QUITADO jun/2026',urgencia:0,pags:[]},
+  {id:'itau1',n:'Itaú Renegociação 1',v:8113,m:510.23,obs:'1,29%/mês · quitar quando reserva > R$20k',urgencia:2,pags:[]},
   {id:'itau2',n:'Itaú Boleto 2',v:3877,m:423,obs:'Quitar quando possível',urgencia:2,pags:[]},
   {id:'santander',n:'Santander',v:77845,m:972,obs:'R$972/mês · 0,49%/mês · Set/2034',urgencia:1,pags:[]},
 ];}
@@ -977,7 +1009,7 @@ function dfFixosPix(){return[
   {id:'rose2',e:'💆',n:'Rose diarista 2ª',v:1000,dia:'30',obs:'2ª parcela mensal',enc:''},
   {id:'personal',e:'🏋️',n:'Personal Rafael',v:2720,dia:'30',obs:'',enc:''},
   {id:'itau2',e:'🏦',n:'Itaú 2',v:423,dia:'22',obs:'Quitar quando possível',enc:''},
-  {id:'itau1',e:'🏦',n:'Itaú 1',v:510.23,dia:'30',obs:'Quitar quando reserva permitir',enc:''},
+  {id:'itau1',e:'🏦',n:'Itaú 1',v:510.23,dia:'30',obs:'Quitar quando reserva > R$20k · 1,29%/mês',enc:''},
   {id:'spotify',e:'🎵',n:'Spotify Obatobi',v:14,dia:'15',obs:'',enc:''},
   {id:'seg_res',e:'🏠',n:'Seguro Residencial',v:162.90,dia:'15',obs:'Bradesco',enc:''},
 ];}
@@ -1001,7 +1033,7 @@ function dfEntradas(){return[
   {id:'everton1',d:'Éverton',v:1200,m:'2026-06',o:'1ª parcela',s:'pendente'},
   {id:'everton2',d:'Éverton',v:1000,m:'2026-07',o:'2ª parcela',s:'pendente'},
   {id:'everton3',d:'Éverton',v:1000,m:'2026-08',o:'3ª parcela',s:'pendente'},
-  {id:'honorarios',d:'Honorários',v:2369,m:'2026-06',o:'Junho/2026',s:'pendente'},
+  {id:'honorarios',d:'Honorários Monique',v:2369,m:'2026-08',o:'Previsto ago/2026',s:'pendente'},
   {id:'ir2025',d:'IR 2025 restituição',v:10362,m:'2026-06',o:'Recebido 01/jun/2026',s:'recebido'},
   {id:'decimo',d:'13º salário',v:26488,m:'2026-12',o:'Proporcional 2026',s:'pendente'},
   {id:'ir2026',d:'IR 2026 restituição',v:6400,m:'2027-09',o:'Projeção',s:'pendente'},
@@ -1038,7 +1070,7 @@ function openOvl(id){var el=Q(id);if(el)el.classList.add('on');}
 function closeOvl(id){var el=Q(id);if(el)el.classList.remove('on');}
 function renderAll(){go(_screen);}
 function renderScreen(id){
-  var r={home:rHome,envelopes:rEnvelopes,pix:rPix,extras:rExtras,agora:rAgora,fixos:rFixos,caixinhas:rCaixinhas,parcelas:rParcelas,dividas:rDividas,entradas:rEntradas,progresso:rProgresso,regras:rRegras,insights:rInsights,invest:rInvest,config:rConfig};
+  var r={home:rHome,envelopes:rEnvelopes,pix:rPix,extras:rExtras,agora:rAgora,fixos:rFixos,caixinhas:rCaixinhas,parcelas:rParcelas,dividas:rDividas,entradas:rEntradas,progresso:rProgresso,regras:rRegras,insights:rInsights,invest:rInvest,timeline:rTimeline,config:rConfig};
   if(r[id])r[id]();
 }
 
@@ -1054,10 +1086,10 @@ function rHome(){
   if(Q('home-date'))Q('home-date').textContent=MESES[NOW.getMonth()]+' '+NOW.getFullYear()+' · dia '+DIA;
 
   // Badges de pendência nas abas
-  var c6Pend=(S.dividas||[]).find(function(d){return d.id==='c6'&&d.v>0;});
   var envsPend=(S.envDef||[]).filter(function(e){return e.tipo==='envelope'&&e.lim&&(e.usado||0)/e.lim>0.9;});
+  var itau1Pend=(S.dividas||[]).find(function(d){return d.id==='itau1'&&d.v>0&&+(( S.cx||{}).reserva||0)>20000;});
   document.querySelectorAll('.ni,.sb-item').forEach(function(b){var old=b.querySelector('.badge');if(old)old.remove();});
-  if(c6Pend){var nb=document.createElement('span');nb.className='badge';nb.textContent='!';var nd=Q('ni-envelopes')||Q('sb-dividas');if(nd)nd.appendChild(nb);}
+  if(itau1Pend){var nb=document.createElement('span');nb.className='badge';nb.textContent='!';var nd=Q('sb-dividas');if(nd)nd.appendChild(nb);}
   if(envsPend.length){var nb2=document.createElement('span');nb2.className='badge';nb2.textContent=envsPend.length;var nd2=Q('ni-envelopes')||Q('sb-envelopes');if(nd2)nd2.appendChild(nb2);}
   // Score saúde
   var score=calcHealthScore();
@@ -1090,9 +1122,19 @@ function rHome(){
 
   // Próxima ação
   var c6=(S.dividas||[]).find(function(d){return d.id==='c6';});
+  var itau1h=(S.dividas||[]).find(function(d){return d.id==='itau1';});
+  var res_h=+(S.cx||{}).reserva||0;
+  var mRes_h=+((S.cfg||{}).m_res||51472);
   var acaoTxt='';
-  if(c6&&c6.v>0)acaoTxt='<div class="ctitle">🎯 Próxima ação prioritária</div><div style="font-size:.82rem;font-weight:500">Aguardar oferta C6 via Consumidor.gov</div><div style="font-size:.7rem;color:var(--muted);margin-top:4px">Meta: ≤ R$27.000 para quitar e sair do Serasa</div><div class="mt8"><button class="btn bp bsm" onclick="go(\'agora\')">Ver protocolo →</button></div>';
-  else acaoTxt='<div class="ctitle">🎯 Próxima ação</div><div style="font-size:.82rem">Construir reserva de emergência</div><div class="mt8"><button class="btn bp bsm" onclick="go(\'caixinhas\')">Ver caixinhas →</button></div>';
+  if(c6&&c6.v>0){
+    acaoTxt='<div class="ctitle">🎯 Próxima ação prioritária</div><div style="font-size:.82rem;font-weight:500">Aguardar oferta C6 via Consumidor.gov</div><div style="font-size:.7rem;color:var(--muted);margin-top:4px">Meta: ≤ R$27.000 para quitar e sair do Serasa</div><div class="mt8"><button class="btn bp bsm" onclick="go(\'agora\')">Ver protocolo →</button></div>';
+  } else if(itau1h&&itau1h.v>0&&res_h>20000){
+    acaoTxt='<div class="ctitle">🎯 Próxima ação</div><div style="font-size:.82rem;font-weight:500">Quitar Itaú 1 — '+fmt(itau1h.v)+'</div><div style="font-size:.7rem;color:var(--muted);margin-top:4px">Reserva acima de R$20k. Libera R$510/mês.</div><div class="mt8"><button class="btn bp bsm" onclick="go(\'dividas\')">Ver dívidas →</button></div>';
+  } else if(res_h<mRes_h){
+    acaoTxt='<div class="ctitle">🎯 Próxima ação</div><div style="font-size:.82rem;font-weight:500">Construir reserva — '+Math.round(res_h/mRes_h*100)+'% de '+fmt(mRes_h)+'</div><div style="font-size:.7rem;color:var(--muted);margin-top:4px">Meta: dez/2026 via aportes mensais.</div><div class="mt8"><button class="btn bp bsm" onclick="go(\'caixinhas\')">Ver caixinhas →</button></div>';
+  } else {
+    acaoTxt='<div class="ctitle">🎯 Próxima ação</div><div style="font-size:.82rem">Reserva completa! Partir para investimentos.</div><div class="mt8"><button class="btn bp bsm" onclick="go(\'invest\')">Ver investimentos →</button></div>';
+  }
   if(Q('home-acao'))Q('home-acao').innerHTML=acaoTxt;
 }
 
@@ -1105,15 +1147,16 @@ function calcHealthScore(){
   // Comprometimento (0-30)
   if(pct<0.5)score+=30;else if(pct<0.65)score+=22;else if(pct<0.75)score+=14;else if(pct<0.85)score+=6;
   // Reserva (0-25)
-  var res=+(S.cx||{}).reserva||0;var mRes=+cfg.m_res||40000;
+  var res=+(S.cx||{}).reserva||0;var mRes=+cfg.m_res||51472;
   score+=Math.round(clamp(res/mRes,0,1)*25);
   // Dívidas (0-25)
   var c6v=(S.dividas||[]).find(function(d){return d.id==='c6';});
   if(!c6v||c6v.v===0)score+=15;
   var otherDiv=(S.dividas||[]).filter(function(d){return d.id!=='c6'&&d.id!=='santander';}).reduce(function(a,d){return a+(+d.v||0);},0);
   if(otherDiv===0)score+=10;else if(otherDiv<5000)score+=5;
-  // Sem novas parcelas (0-10)
-  if((S.parcExtras||[]).length===0)score+=10;else if((S.parcExtras||[]).length<3)score+=5;
+  // Parcelas extras controladas (0-10)
+  var nExtras=(S.parcExtras||[]).filter(function(p){return p.s==='ativa';}).length;
+  if(nExtras<=2)score+=10;else if(nExtras<=5)score+=5;
   // Entradas extras (0-10)
   var ent=(S.entradas||[]).filter(function(e){return e.s==='pendente';}).length;
   if(ent>0)score+=10;
@@ -1461,19 +1504,12 @@ var AGORA_EVENTOS=[
     {t:'PIX Itaú 1 R$510,23',s:'Enquanto não quitado. Ver aba PIX.',a:'pix'},
     {t:'Recarregar Alimentação fora 2ª quinzena',s:'R$350 no envelope.',a:'envelopes'},
   ]},
-  {id:'c6',lbl:'📱 C6 respondeu',passos:[
-    {t:'Avaliar oferta — meta ≤ R$27.000',s:'Comparar com saldo disponível.',a:'dividas'},
-    {t:'Se ≤ R$27k: pagar imediatamente via PIX',s:'Não esperar. Quanto antes sai do Serasa.',a:'dividas'},
-    {t:'Zerar C6 na aba Dívidas',s:'Atualizar saldo para R$0.',a:'dividas'},
-    {t:'Registrar na Linha do Tempo',s:'Marco histórico — nome limpo!',a:'timeline'},
-    {t:'Aguardar 30-90 dias para sair do Serasa',s:'Score começa a subir automaticamente.',a:'progresso'},
-  ]},
-  {id:'ir',lbl:'🎉 IR Restituição chegou',passos:[
-    {t:'Quitar Itaú 1 — R$9.406',s:'Prioridade 1. Libera R$510/mês.',a:'dividas'},
-    {t:'Quitar Itaú 2 — R$3.877',s:'Prioridade 2. Libera R$423/mês.',a:'dividas'},
-    {t:'Sobra vai para Reserva',s:'Restante da restituição direto na caixinha.',a:'caixinhas'},
-    {t:'Atualizar dívidas para R$0',s:'Aba Dívidas → botão Quitei.',a:'dividas'},
-    {t:'Registrar na Linha do Tempo',s:'Itaú quitado! Mais R$933/mês livre.',a:'timeline'},
+  {id:'itau1',lbl:'🏦 Quitar Itaú 1',passos:[
+    {t:'Verificar saldo atual na aba Dívidas',s:'Taxa 1,29%/mês. Quitar quando reserva > R$20k.',a:'dividas'},
+    {t:'Transferir valor exato via PIX',s:'Pegar saldo devedor atualizado no app do Itaú.',a:'pix'},
+    {t:'Zerar Itaú 1 na aba Dívidas',s:'Atualizar saldo para R$0. Libera R$510/mês.',a:'dividas'},
+    {t:'Registrar na Linha do Tempo',s:'Marco: +R$510/mês de folga!',a:'timeline'},
+    {t:'Redirecionar os R$510 para Reserva',s:'Aumentar aporte mensal na caixinha.',a:'caixinhas'},
   ]},
   {id:'extra',lbl:'💸 Entrada extra chegou',passos:[
     {t:'Protocolo 50/50',s:'50% → dívidas/reserva · 50% → livre.',a:'entradas'},
@@ -1664,24 +1700,27 @@ function rParcelas(){
   extras.forEach(function(p,i){
     if(p.s!=='ativa')return;
     var vp=+(p.vp||0);
-    // calcular offset considerando mesInicio
-    var cpAdj=0;
+    // mês do ciclo visualizado
+    var cicloDate=new Date(NOW.getFullYear(),NOW.getMonth()+ciclo,1);
+    // mês em que a 1ª parcela cai — parse manual para evitar bug de fuso UTC
+    var iniDate;
     if(p.mesInicio){
-      var cicloDate=new Date(NOW.getFullYear(),NOW.getMonth()+ciclo,1);
-      var iniDate=new Date(p.mesInicio+'-01');
-      if(cicloDate>=iniDate){
-        var mesesDesdeInicio=(cicloDate.getFullYear()-iniDate.getFullYear())*12+(cicloDate.getMonth()-iniDate.getMonth());
-        cpAdj=Math.max(0,(+p.cp||0)-mesesDesdeInicio);
-      }
+      var partes=p.mesInicio.split('-');
+      iniDate=new Date(+partes[0],+partes[1]-1,1);
     } else {
-      cpAdj=Math.max(0,(+p.cp||0)-adj);
+      iniDate=new Date(NOW.getFullYear(),NOW.getMonth(),1);
+    }
+    var cpAdj=0;
+    if(cicloDate>=iniDate){
+      var mesesDesdeInicio=(cicloDate.getFullYear()-iniDate.getFullYear())*12+(cicloDate.getMonth()-iniDate.getMonth());
+      cpAdj=Math.max(0,(+p.cp||0)-mesesDesdeInicio);
     }
     if(cpAdj>0){if(p.b==='Nubank CC')nuMes+=vp;else if(p.b==='Bradesco CC')brMes+=vp;else piMes+=vp;}
     var feitas=(p.tp||1)-cpAdj;var prog=Math.round(Math.max(0,feitas/(p.tp||1))*100);
     var r=18,circ=Math.PI*2*r;var dash=Math.round(prog/100*circ);
     var ring='<svg width="48" height="48" viewBox="0 0 48 48" style="flex-shrink:0"><circle cx="24" cy="24" r="'+r+'" fill="none" stroke="var(--s3)" stroke-width="4"/><circle cx="24" cy="24" r="'+r+'" fill="none" stroke="var(--green)" stroke-width="4" stroke-dasharray="'+dash+' '+Math.round(circ)+'" stroke-dashoffset="'+Math.round(circ/4)+'" stroke-linecap="round"/><text x="24" y="28" text-anchor="middle" font-size="9" fill="var(--green)" font-family="DM Mono,monospace">'+prog+'%</text></svg>';
-    var isFutura=cpAdj===0&&p.mesInicio&&(new Date(p.mesInicio+'-01')>new Date(NOW.getFullYear(),NOW.getMonth()+ciclo,1));
-    if(cpAdj>0||isFutura)hAtiv+='<div class="card mb8" style="'+(isFutura?'opacity:.55':'')+'"><div style="display:flex;gap:10px;align-items:center">'+ring+'<div style="flex:1"><div class="fsb"><div style="font-size:.84rem;font-weight:500">'+p.n+(isFutura?'<span style="font-size:.6rem;color:var(--blue);margin-left:6px">● começa '+p.mesInicio.slice(0,7)+'</span>':'')+'</div>'+(ciclo===0?'<button class="fix-del" onclick="delParcExtra(\''+p.id+'\')">🗑</button>':'')+'</div><div style="font-size:.65rem;color:var(--muted);margin-top:2px">'+p.b+' · '+fmtd(vp)+'/mês</div></div></div></div>';
+    var isFutura=cpAdj===0&&p.mesInicio&&(iniDate>cicloDate);
+    if(cpAdj>0||isFutura)hAtiv+='<div class="card mb8" style="'+(isFutura?'opacity:.55':'')+'"><div style="display:flex;gap:10px;align-items:center">'+ring+'<div style="flex:1"><div class="fsb"><div style="font-size:.84rem;font-weight:500">'+p.n+(isFutura?'<span style="font-size:.6rem;color:var(--blue);margin-left:6px">● começa '+p.mesInicio.slice(0,7)+'</span>':'')+'</div>'+'<button class="fix-del" onclick="delParcExtra(\''+p.id+'\')">🗑</button>'+'</div><div style="font-size:.65rem;color:var(--muted);margin-top:2px">'+p.b+' · '+fmtd(vp)+'/mês</div></div></div></div>';
   });
 
   // Totalizador
@@ -1711,7 +1750,8 @@ function rParcGrafico(parc, extras){
       var c=0;
       if(p.mesInicio){
         var cicloGraf=new Date(hoje.getFullYear(),hoje.getMonth()+m,1);
-        var iniGraf=new Date(p.mesInicio+'-01');
+        var partesG=p.mesInicio.split('-');
+        var iniGraf=new Date(+partesG[0],+partesG[1]-1,1);
         if(cicloGraf>=iniGraf){
           var mdInicio=(cicloGraf.getFullYear()-iniGraf.getFullYear())*12+(cicloGraf.getMonth()-iniGraf.getMonth());
           c=Math.max(0,(+p.cp||0)-mdInicio);
@@ -1784,6 +1824,15 @@ function aplicarCiclo(){
     S.parc[k].cur_p=S.parc[k].cp;
   });
   (S.parcExtras||[]).forEach(function(p){
+    var hoje=new Date(NOW.getFullYear(),NOW.getMonth(),1);
+    var iniDate;
+    if(p.mesInicio){
+      var partes=p.mesInicio.split('-');
+      iniDate=new Date(+partes[0],+partes[1]-1,1);
+    } else {
+      iniDate=hoje;
+    }
+    if(iniDate>hoje)return; // parcela futura: não decrementar ainda
     p.cp=Math.max(0,(+p.cp||1)-1);
     if(p.cp===0)p.s='quitada';
   });
@@ -1836,7 +1885,8 @@ function rDividas(){
   var diasSerasa=c6v>0?Math.round((Date.now()-new Date(c6Neg.abertura||'2026-05-08').getTime())/(1000*60*60*24)):0;
 
   // Resumo topo
-  var scoreTxt=c6v===0?'<span style="color:var(--green)">Score subindo 📈</span>':'<span style="color:var(--yellow)">'+(+(S.cfg&&S.cfg.serasa_score||445))+' · Serasa</span>';
+  var serasaAtual=+(S.cfg&&S.cfg.serasa_score||735);if(Q('div-sub'))Q('div-sub').textContent='Serasa: '+serasaAtual+(serasaAtual>=700?' 🟢':serasaAtual>=600?' 🟡':' 🔴');
+  var scoreTxt=c6v===0?'<span style="color:var(--green)">'+serasaAtual+' · Score subindo 📈</span>':'<span style="color:var(--yellow)">'+serasaAtual+' · Serasa</span>';
   if(Q('div-resumo'))Q('div-resumo').innerHTML='<div class="fsb mb8"><div><div class="ctitle" style="margin:0">Total em dívidas</div><div class="val vxl tr">'+fmt(tot)+'</div></div><div style="text-align:right"><div style="font-size:.72rem;color:var(--muted)">Score Serasa</div><div style="font-size:1rem;font-weight:700">'+scoreTxt+'</div></div></div>';
 
   // C6 card especial
@@ -2050,8 +2100,8 @@ function rProgresso(){
   var liquido=ativos-passivos;var score=calcHealthScore();
   var scoreCor=score>=70?'var(--green)':score>=50?'var(--yellow)':'var(--red)';
   if(Q('prog-score'))Q('prog-score').innerHTML='<div class="fsb mb8"><div><div class="ctitle" style="margin:0">Score de saúde financeira</div><div style="font-size:.68rem;color:var(--muted)">0 = caótico · 100 = exemplar</div></div><div class="val vxl" style="color:'+scoreCor+'">'+score+'<span style="font-size:.8rem">/100</span></div></div><div class="health-bar"><div class="health-fill" style="width:'+score+'%;background:'+scoreCor+'"></div></div><div class="fsb mt4"><div style="font-size:.68rem;color:var(--muted)">Patrimônio líquido</div><div class="val vsm '+(liquido>=0?'tg':'tr')+'">'+fmt(liquido)+'</div></div>';
-  var res=+(cx.reserva||0);var mRes=+cfg.m_res||40000;var viag=+(cx.viagem||0);var mViag=+cfg.m_viag||14200;
-  var serasaScore=+(cfg.serasa_score||445);
+  var res=+(cx.reserva||0);var mRes=+cfg.m_res||51472;var viag=+(cx.viagem||0);var mViag=+cfg.m_viag||14200;
+  var serasaScore=+(cfg.serasa_score||735);
   if(Q('prog-grid'))Q('prog-grid').innerHTML='<div class="card" style="margin:0"><div class="ctitle">🛡️ Reserva</div><div class="val vlg tg">'+fmt(res)+'</div><div class="pt"><div class="pf" style="width:'+Math.min(res/mRes*100,100)+'%;background:var(--blue)"></div></div><div style="font-size:.62rem;color:var(--muted)">'+Math.round(res/mRes*100)+'% de '+fmt(mRes)+'</div></div><div class="card" style="margin:0"><div class="ctitle">✈️ Viagem</div><div class="val vlg tg">'+fmt(viag)+'</div><div class="pt"><div class="pf" style="width:'+Math.min(viag/mViag*100,100)+'%;background:var(--purple)"></div></div><div style="font-size:.62rem;color:var(--muted)">'+Math.round(viag/mViag*100)+'% de '+fmt(mViag)+'</div></div><div class="card" style="margin:0"><div class="ctitle">🏦 Dívidas</div><div class="val vlg tr">'+fmt(passivos)+'</div><div style="font-size:.68rem;color:var(--muted);margin-top:4px">'+('Serasa: '+serasaScore)+' · meta: '+(cfg.m_score||600)+'</div></div><div class="card" style="margin:0"><div class="ctitle">💰 Caixinhas total</div><div class="val vlg tg">'+fmt(ativos)+'</div><div style="font-size:.68rem;color:var(--muted);margin-top:4px">Líquido: '+fmt(liquido)+'</div></div>';
   // Fidelity
   var bruto=+cfg.bruto||40000;var fid37=Math.round(2.4*bruto);
@@ -2072,30 +2122,59 @@ function rProgresso(){
   } else {
     if(Q('prog-comparativo'))Q('prog-comparativo').innerHTML='<div style="font-size:.74rem;color:var(--muted);padding:8px">Registre 2+ snapshots para ver comparativo</div>';
   }
-  // Snapshots — gráfico SVG de barras
+  // Snapshots — explicação + gráfico + lista
   var hs='';
-  if(snaps.length){
-    var maxV=Math.max.apply(null,snaps.map(function(s){return s.ativos||0;}));
-    if(maxV===0)maxV=1;
-    var H2=60,W2=Math.min(snaps.length*40,320);
-    var svgBars=snaps.slice(-8).map(function(s,i,arr){
-      var bh=Math.max(2,Math.round((s.ativos||0)/maxV*H2));
-      var x=i*Math.floor(W2/arr.length);
-      return'<rect x="'+x+'" y="'+(H2-bh)+'" width="'+(Math.floor(W2/arr.length)-4)+'" height="'+bh+'" fill="var(--green)" rx="2"/>'
-        +'<text x="'+(x+Math.floor(W2/arr.length/2))+'" y="'+(H2+12)+'" text-anchor="middle" font-size="7" fill="var(--muted)" font-family="DM Mono,monospace">'+ml(s.d)+'</text>';
-    }).join('');
-    hs='<svg viewBox="0 0 '+W2+' '+(H2+20)+'" style="width:100%;max-height:80px;display:block;margin-bottom:12px">'+svgBars+'</svg>';
-    snaps.slice(-5).reverse().forEach(function(s){hs+='<div class="row" style="padding:4px 0"><div><div style="font-size:.75rem">'+ml(s.d)+'</div><div style="font-size:.6rem;color:var(--muted)">score '+s.score+'</div></div><div style="text-align:right"><div class="val vsm tg">'+fmt(s.ativos)+'</div><div style="font-size:.6rem;color:var(--red)">dív: '+fmt(s.passivos)+'</div></div></div>';});
+  if(!snaps.length){
+    hs='<div class="alert ab mb8"><span>📸</span><div style="font-size:.72rem"><strong>O que é um snapshot?</strong><br>É uma foto do seu patrimônio neste momento: quanto você tem nas caixinhas vs quanto deve. Registre um por mês para ver sua evolução.</div></div>'
+      +'<div style="font-size:.74rem;color:var(--muted);padding:4px">Nenhum snapshot ainda. Clique no botão abaixo para registrar o primeiro.</div>';
+  } else {
+    // Gráfico de patrimônio líquido
+    var maxLiq=Math.max.apply(null,snaps.map(function(s){return Math.abs(s.liquido||s.ativos-s.passivos||0);}));
+    if(maxLiq===0)maxLiq=1;
+    var H2=50,BW=28,GAP=6;
+    var svgBars='';
+    snaps.slice(-8).forEach(function(s,i){
+      var liq=s.liquido!==undefined?s.liquido:(s.ativos-s.passivos);
+      var bh=Math.max(2,Math.round(Math.abs(liq)/maxLiq*H2));
+      var x=i*(BW+GAP);
+      var cor=liq>=0?'var(--green)':'var(--red)';
+      svgBars+='<rect x="'+x+'" y="'+(H2-bh)+'" width="'+BW+'" height="'+bh+'" fill="'+cor+'" rx="2"/>'
+        +'<text x="'+(x+BW/2)+'" y="'+(H2+10)+'" text-anchor="middle" font-size="6" fill="var(--muted)" font-family="DM Mono,monospace">'+ml(s.d)+'</text>';
+    });
+    var VW=snaps.slice(-8).length*(BW+GAP);
+    hs='<div class="ctitle">📊 Patrimônio líquido (caixinhas − dívidas)</div>'
+      +'<svg viewBox="0 0 '+VW+' '+(H2+14)+'" style="width:100%;max-height:80px;display:block;margin-bottom:12px">'+svgBars+'</svg>';
+    // Lista detalhada
+    snaps.slice(-6).reverse().forEach(function(s,i){
+      var liq=s.liquido!==undefined?s.liquido:(s.ativos-s.passivos);
+      var isLatest=i===0;
+      hs+='<div class="row" style="padding:6px 0'+(isLatest?';background:rgba(40,212,120,.04);border-radius:6px;padding:6px 8px;margin:0 -8px':'')+'"><div>'
+        +'<div style="font-size:.78rem;font-weight:'+(isLatest?'600':'400')+'">'+ml(s.d)+(isLatest?' <span style="font-size:.6rem;color:var(--green)">← atual</span>':'')+'</div>'
+        +'<div style="font-size:.62rem;color:var(--muted)">saúde: '+s.score+'/100'+(s.serasa?' · Serasa: '+s.serasa:'')+'</div>'
+        +'</div><div style="text-align:right">'
+        +'<div class="val vsm '+(liq>=0?'tg':'tr')+'">'+fmt(liq)+'</div>'
+        +'<div style="font-size:.6rem;color:var(--muted)">'+fmt(s.ativos)+' − '+fmt(s.passivos)+'</div>'
+        +'</div></div>';
+    });
   }
-  if(Q('prog-snapshots'))Q('prog-snapshots').innerHTML=hs||'<div style="font-size:.74rem;color:var(--muted);padding:8px">Nenhum snapshot registrado</div>';
+  if(Q('prog-snapshots'))Q('prog-snapshots').innerHTML=hs;
 }
 function addSnapshot(){
   var cx=S.cx||{};var divs=S.dividas||[];
   var ativos=Object.values(cx).reduce(function(a,v){return a+(+v||0);},0);
   var passivos=divs.reduce(function(a,d){return a+(+d.v||0);},0);
+  var liquido=ativos-passivos;
+  // verificar se já existe snapshot deste mês
   if(!S.snapshots)S.snapshots=[];
-  S.snapshots.push({d:MES,ativos,passivos,score:calcHealthScore(),ts:Date.now()});
+  var jaExiste=S.snapshots.find(function(s){return s.d===MES;});
+  if(jaExiste){
+    if(!confirm('Já existe um snapshot de '+ml(MES)+'. Substituir?'))return;
+    S.snapshots=S.snapshots.filter(function(s){return s.d!==MES;});
+  }
+  var serasa=+(( S.cfg||{}).serasa_score||735);
+  S.snapshots.push({d:MES,ativos,passivos,liquido,score:calcHealthScore(),serasa,ts:Date.now()});
   save();rProgresso();
+  alert('📸 Snapshot de '+ml(MES)+' salvo!\nAtivos: '+fmt(ativos)+'\nDívidas: '+fmt(passivos)+'\nLíquido: '+fmt(liquido));
 }
 
 // ═══════════════════════════════════════════════
@@ -2110,7 +2189,7 @@ var REGRAS=[
   {id:'lazer',e:'🎉',t:'Lazer — R$500/mês',d:'Shows, bares, saídas',r:'Comprou ingresso? Desconta. Quando zera, acabou.',get s(){var env=(S.envDef||[]).find(function(e){return e.id==='lazer';});var u=+(env&&env.usado||0),l=+(env&&env.lim||500);return u/l<0.7?'verde':u/l<0.9?'amarelo':'vermelho';},get info(){var env=(S.envDef||[]).find(function(e){return e.id==='lazer';});return fmt(+(env&&env.usado||0))+' de '+fmt(+(env&&env.lim||500));}},
   {id:'fatura',e:'📊',t:'Indicador de fatura',d:'Nubank CC',r:'🟢 <R$2k: pode comprar · 🟡 R$2k–2.8k: normal · 🔴 >R$2.8k: congela',get s(){var nu=+(S.faturas&&S.faturas.nu||0);return nu<2000?'verde':nu<2800?'amarelo':'vermelho';},get info(){return 'Fatura: '+fmt(+(S.faturas&&S.faturas.nu||0));}},
   {id:'50_50',e:'💸',t:'Protocolo 50/50',d:'Para dinheiro extra',r:'Everton, honorários, IR: 50% → dívidas/reserva · 50% → livre.',s:'azul',info:'Regra preventiva'},
-  {id:'meta',e:'🎯',t:'Foco 2026 — nome limpo',d:'C6 quitado → Serasa → Score 600+',r:'Reserva R$40k até dezembro. Investimentos a partir de outubro.',get s(){var c6=(S.dividas||[]).find(function(d){return d.id==='c6';});return (!c6||c6.v===0)?'verde':'amarelo';},get info(){var c6=(S.dividas||[]).find(function(d){return d.id==='c6';});return (!c6||c6.v===0)?'C6 quitado ✅':'C6 pendente';}},
+  {id:'meta',e:'🎯',t:'Foco 2026 — crescimento',d:'Reserva R$51.472 · Score 800 · Viagem set',r:'C6 quitado ✅ · Nome limpo ✅ · Próximo: fechar reserva em dez/2026 e estrear investimentos.',get s(){var res=+((S.cx||{}).reserva||0);var itau1=(S.dividas||[]).find(function(d){return d.id==='itau1';});return res>30000&&(!itau1||itau1.v===0)?'verde':res>15000?'amarelo':'vermelho';},get info(){var res=+((S.cx||{}).reserva||0);var pct=Math.round(res/51472*100);return 'Reserva '+pct+'% · Serasa '+(+((S.cfg||{}).serasa_score||735));}},
 ];
 function rRegras(){
   var verde=REGRAS.filter(function(r){return r.s==='verde';}).length;
@@ -2154,45 +2233,96 @@ function delRegraCustom(i){S.regrasCustom?.splice(i,1);save();rRegras();}
 function rInsights(){
   var cfg=S.cfg||{};var mes=MESES[NOW.getMonth()]+' '+NOW.getFullYear();
   if(Q('ins-mes'))Q('ins-mes').textContent=mes;
-  var renda=(+(cfg.sal15||16000))+(+(cfg.sal30||13432));
+  var renda=(+(cfg.sal15||16200))+(+(cfg.sal30||13432));
   var fp=getTotFixosPix(),fa=getTotAss(),fv=getTotVar();
   var tot=fp+fa+fv;var sobra=renda-tot;var pct=Math.round(tot/renda*100);
   var score=calcHealthScore();
+  var serasaScore=+(cfg.serasa_score||735);
+
+  // Headline
   var headline=score>=70?'📈 Você está no caminho certo em '+mes:score>=50?'⚠️ Atenção necessária em '+mes:'🚨 Situação crítica em '+mes;
-  var headlineDesc=pct<60?'Você está comprometendo '+pct+'% da renda — abaixo de 70%, zona saudável.':pct<75?'Comprometendo '+pct+'% da renda. Atenção ao limite de 70%.':'Comprometendo '+pct+'% da renda. Acima do limite recomendado de 70%.';
-  if(Q('ins-headline'))Q('ins-headline').innerHTML='<div style="font-size:.9rem;font-weight:600;margin-bottom:6px">'+headline+'</div><div style="font-size:.78rem;color:var(--muted)">'+headlineDesc+'</div>';
+  var headlineDesc=pct<60?'Comprometendo '+pct+'% da renda — dentro da zona saudável (abaixo de 70%).':pct<75?'Comprometendo '+pct+'% da renda. Atenção ao limite de 70%.':'Comprometendo '+pct+'% da renda. Acima do limite recomendado.';
+  if(Q('ins-headline'))Q('ins-headline').innerHTML='<div style="font-size:.9rem;font-weight:600;margin-bottom:6px">'+headline+'</div><div style="font-size:.78rem;color:var(--muted)">'+headlineDesc+'</div>'
+    +'<div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">'
+    +'<div style="text-align:center"><div class="val vmd tg">'+serasaScore+'</div><div style="font-size:.6rem;color:var(--muted)">Serasa</div></div>'
+    +'<div style="text-align:center"><div class="val vmd tb">'+score+'/100</div><div style="font-size:.6rem;color:var(--muted)">Saúde financeira</div></div>'
+    +'<div style="text-align:center"><div class="val vmd ty">'+pct+'%</div><div style="font-size:.6rem;color:var(--muted)">Renda comprometida</div></div>'
+    +'</div>';
+
   // Descobertas automáticas
   var descs=[];
+  var divs=S.dividas||[];
+  var itau1=divs.find(function(d){return d.id==='itau1';});
+  var itau2=divs.find(function(d){return d.id==='itau2';});
+  var santander=divs.find(function(d){return d.id==='santander';});
+  var c6=divs.find(function(d){return d.id==='c6';});
+
+  // Score Serasa
+  if(serasaScore>=700)descs.push({e:'📈',t:'Serasa '+serasaScore+' — categoria BOA! Score subiu significativamente desde mai/2026.',c:'ag'});
+  else if(serasaScore>=600)descs.push({e:'📊',t:'Serasa '+serasaScore+' — em evolução. Continue quitando.',c:'ay'});
+
+  // C6 status
+  if(!c6||c6.v===0)descs.push({e:'🏆',t:'C6 quitado com ~85% de desconto via Consumidor.gov. Marco histórico.',c:'ag'});
+
+  // Itaú 1
+  if(itau1&&itau1.v>0)descs.push({e:'🏦',t:'Itaú 1: '+fmt(itau1.v)+' restantes a 1,29%/mês. Quitar quando reserva permitir.',c:'ay'});
+  else if(itau1&&itau1.v===0)descs.push({e:'✅',t:'Itaú 1 quitado! +R$510/mês liberado.',c:'ag'});
+
+  // Santander — manter
+  if(santander&&santander.v>0)descs.push({e:'🟢',t:'Santander: '+fmt(santander.v)+' a 0,49%/mês — abaixo do CDI. Manter rodando conforme plano.',c:'ab'});
+
+  // Parcelas encerrando
+  var parc=S.parc||{};var parcEnd=Object.values(parc).filter(function(p){return p.cp>0&&p.cp<=2;});
+  if(parcEnd.length)descs.push({e:'✅',t:parcEnd.length+' parcela(s) encerrando em breve: '+parcEnd.map(function(p){return p.n;}).join(', ')+'.',c:'ag'});
+
+  // Envelope delivery
   var envsData=S.envDef||[];var delEnv=envsData.find(function(e){return e.id==='delivery';});
   if(delEnv&&delEnv.usado>0)descs.push({e:'🍽️',t:'Alimentação fora: '+fmt(delEnv.usado)+' usados de '+fmt(delEnv.lim)+' ('+Math.round(delEnv.usado/delEnv.lim*100)+'%)',c:delEnv.usado/delEnv.lim>0.9?'ar':'ag'});
-  var divs=S.dividas||[];var c6=divs.find(function(d){return d.id==='c6';});
-  if(c6&&c6.v>0)descs.push({e:'🏦',t:'C6 ainda pendente — '+fmt(c6.v)+'. Cada dia sem quitar é juros acumulando.',c:'ar'});
-  var parc=S.parc||{};var parcEnd=Object.values(parc).filter(function(p){return p.cp<=2;});
-  if(parcEnd.length)descs.push({e:'✅',t:parcEnd.length+' parcela(s) encerrando em breve: '+parcEnd.map(function(p){return p.n;}).join(', ')+'.',c:'ag'});
-  var cx=S.cx||{};var res=+(cx.reserva||0);var mRes=+(cfg.m_res||40000);
-  if(res<mRes*0.1)descs.push({e:'🛡️',t:'Reserva em '+Math.round(res/mRes*100)+'% da meta. Priorize aportes mensais.',c:'ay'});
-  var hd='';descs.forEach(function(d){hd+='<div class="alert '+d.c+' mb4"><span>'+d.e+'</span><div style="font-size:.72rem">'+d.t+'</div></div>';});
-  if(Q('ins-descobertas'))Q('ins-descobertas').innerHTML=hd;
-  // Breakdown
-  if(Q('ins-breakdown'))Q('ins-breakdown').innerHTML='<div class="ctitle">Distribuição dos gastos</div>'+[['💸 PIX/Boletos',fp,'var(--red)',pct>0?Math.round(fp/renda*100):0],['📱 Assinaturas',fa,'var(--blue)',Math.round(fa/renda*100)],['📋 Contas variáveis',fv,'var(--yellow)',Math.round(fv/renda*100)],['✅ Sobra potencial',sobra,'var(--green)',Math.round(sobra/renda*100)]].map(function(x){return'<div class="row" style="padding:5px 0"><span style="font-size:.78rem">'+x[0]+'</span><div style="text-align:right"><span class="val vsm" style="color:'+x[2]+'">'+fmt(x[1])+'</span><span style="font-size:.62rem;color:var(--muted);margin-left:4px">'+x[3]+'%</span></div></div>';}).join('');
-  // Comparativo mês anterior (via snapshots)
+
+  // Reserva
+  var cx=S.cx||{};var res=+(cx.reserva||0);var mRes=+(cfg.m_res||51472);
+  if(res>0)descs.push({e:'🛡️',t:'Reserva: '+fmt(res)+' ('+Math.round(res/mRes*100)+'% de '+fmt(mRes)+' — meta dez/2026).',c:res/mRes<0.3?'ay':'ag'});
+
+  // Viagem
+  var viag=+(cx.viagem||0);
+  if(viag>0)descs.push({e:'✈️',t:'Fundo viagem: '+fmt(viag)+'. Portugal + Grécia em setembro.',c:'ab'});
+
+  // Comparativo via snapshots
   var snaps=S.snapshots||[];
   if(snaps.length>=2){
     var curr=snaps[snaps.length-1];var prev=snaps[snaps.length-2];
     var diffLiq=(curr.ativos-curr.passivos)-(prev.ativos-prev.passivos);
-    var compTxt=diffLiq>=0?'Patrimônio líquido cresceu '+fmt(diffLiq)+' vs '+ml(prev.d)+' 📈':'Patrimônio líquido caiu '+fmt(Math.abs(diffLiq))+' vs '+ml(prev.d)+' 📉. Atenção.';
-    descs.push({e:'📊',t:compTxt,c:diffLiq>=0?'ag':'ar'});
+    descs.push({e:'📊',t:'Patrimônio líquido '+(diffLiq>=0?'cresceu '+fmt(diffLiq):'caiu '+fmt(Math.abs(diffLiq)))+' vs '+ml(prev.d)+'.',c:diffLiq>=0?'ag':'ar'});
   }
-  // Alerta de tendência — fatura crescendo
-  if(snaps.length>=3){
-    var faturas=snaps.slice(-3).map(function(s){return s.fatNu||0;}).filter(function(v){return v>0;});
-    if(faturas.length===3&&faturas[1]>faturas[0]&&faturas[2]>faturas[1]){
-      descs.push({e:'📈',t:'Fatura Nubank cresceu 3 meses seguidos. Revise os gastos no cartão.',c:'ar'});
-    }
-  }
+
+  var hd='';descs.forEach(function(d){hd+='<div class="alert '+d.c+' mb4"><span>'+d.e+'</span><div style="font-size:.72rem">'+d.t+'</div></div>';});
+  if(Q('ins-descobertas'))Q('ins-descobertas').innerHTML=hd;
+
+  // Breakdown
+  if(Q('ins-breakdown'))Q('ins-breakdown').innerHTML='<div class="ctitle">Distribuição da renda</div>'
+    +[['💸 PIX/Boletos',fp,'var(--red)',Math.round(fp/renda*100)],
+      ['📱 Assinaturas',fa,'var(--blue)',Math.round(fa/renda*100)],
+      ['📋 Contas variáveis',fv,'var(--yellow)',Math.round(fv/renda*100)],
+      ['✅ Sobra potencial',sobra,'var(--green)',Math.round(sobra/renda*100)]]
+    .map(function(x){return'<div class="row" style="padding:5px 0"><div style="display:flex;align-items:center;gap:6px"><div style="width:8px;height:8px;border-radius:2px;background:'+x[2]+';flex-shrink:0"></div><span style="font-size:.78rem">'+x[0]+'</span></div><div style="text-align:right"><span class="val vsm" style="color:'+x[2]+'">'+fmt(x[1])+'</span><span style="font-size:.62rem;color:var(--muted);margin-left:4px">'+x[3]+'%</span></div></div>';}).join('');
+
+  // Tendências
+  var tendH='<div class="ctitle">📅 Próximos 3 meses</div>';
+  var proximosMarcos=[
+    itau1&&itau1.v>0?'Quitar Itaú 1 ('+fmt(itau1.v)+') quando reserva permitir':null,
+    '✈️ Viagem Portugal + Grécia — setembro/2026',
+    'Reserva: meta R$51.472 até dez/2026',
+    '🎄 13º salário ~R$25.450 em dezembro',
+  ].filter(Boolean);
+  tendH+=proximosMarcos.map(function(m){return'<div style="font-size:.76rem;padding:5px 0;border-bottom:1px solid var(--border)">→ '+m+'</div>';}).join('');
+  if(Q('ins-tendencias'))Q('ins-tendencias').innerHTML=tendH;
+
   // Próxima ação
-  var acao=c6&&c6.v>0?'Aguardar C6 Consumidor.gov. Quando responder: pagar imediatamente.':res<mRes*0.5?'Prioridade: encher caixinha Reserva. Meta R$40k até dezembro.':'Continue no ritmo. Parcelas somindo, reserva crescendo.';
-  if(Q('ins-acao'))Q('ins-acao').innerHTML='<div class="ctitle">🎯 Próxima ação recomendada</div><div style="font-size:.82rem">'+acao+'</div>';
+  var acao='';
+  if(itau1&&itau1.v>0)acao='Itaú 1 ('+fmt(itau1.v)+') — quitar quando reserva atingir R$20k+. Taxa 1,29%/mês.';
+  else if(res<mRes*0.5)acao='Prioridade: encher caixinha Reserva. Meta R$51.472 até dezembro.';
+  else acao='Continue no ritmo. Parcelas somindo, reserva crescendo. Viagem em setembro!';
+  if(Q('ins-acao'))Q('ins-acao').innerHTML='<div class="ctitle">🎯 Próxima ação recomendada</div><div style="font-size:.82rem;line-height:1.6">'+acao+'</div>';
 }
 
 // ═══════════════════════════════════════════════
@@ -2220,7 +2350,7 @@ function cfgTab(t,btn){
   if(t==='renda')rCfgRenda();if(t==='metas')rCfgMetas();if(t==='alertas')rCfgAlertas();if(t==='perfil')rCfgPerfil();
 }
 function rCfgRenda(){var c=S.cfg||{};if(Q('c-sal15'))Q('c-sal15').value=c.sal15||16000;if(Q('c-sal30'))Q('c-sal30').value=c.sal30||13432;if(Q('c-va'))Q('c-va').value=c.va||400;if(Q('c-fc'))Q('c-fc').value=c.flash_c||400;if(Q('c-fi'))Q('c-fi').value=c.flash_i||180;if(Q('c-lnu'))Q('c-lnu').value=c.lim_nu||3500;if(Q('c-lbr'))Q('c-lbr').value=c.lim_br||2000;if(Q('c-renda-tot'))Q('c-renda-tot').textContent=fmt((+(Q('c-sal15')?.value||0))+(+(Q('c-sal30')?.value||0)));['c-sal15','c-sal30'].forEach(function(id){var el=Q(id);if(el)el.addEventListener('input',function(){if(Q('c-renda-tot'))Q('c-renda-tot').textContent=fmt((+(Q('c-sal15')?.value||0))+(+(Q('c-sal30')?.value||0)));});});}
-function rCfgMetas(){var c=S.cfg||{};if(Q('c-mres'))Q('c-mres').value=c.m_res||40000;if(Q('c-mviag'))Q('c-mviag').value=c.m_viag||14200;if(Q('c-mscore'))Q('c-mscore').value=c.m_score||600;if(Q('c-serasa'))Q('c-serasa').value=c.serasa_score||550;var envs=S.envDef||[];var h='';envs.filter(function(e){return e.tipo==='envelope';}).forEach(function(e,i){h+='<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)"><span>'+e.e+'</span><div style="flex:1;font-size:.8rem">'+e.n+'</div><input type="number" class="inp-sm inp-mono" style="width:80px;background:var(--s3);border:1px solid var(--border);border-radius:7px;color:var(--text);text-align:right" value="'+e.lim+'" onchange="S.envDef['+i+'].lim=+this.value"></div>';});if(Q('cfg-env-lista'))Q('cfg-env-lista').innerHTML=h;}
+function rCfgMetas(){var c=S.cfg||{};if(Q('c-mres'))Q('c-mres').value=c.m_res||51472;if(Q('c-mviag'))Q('c-mviag').value=c.m_viag||14200;if(Q('c-mscore'))Q('c-mscore').value=c.m_score||600;if(Q('c-serasa'))Q('c-serasa').value=c.serasa_score||735;var envs=S.envDef||[];var h='';envs.filter(function(e){return e.tipo==='envelope';}).forEach(function(e,i){h+='<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)"><span>'+e.e+'</span><div style="flex:1;font-size:.8rem">'+e.n+'</div><input type="number" class="inp-sm inp-mono" style="width:80px;background:var(--s3);border:1px solid var(--border);border-radius:7px;color:var(--text);text-align:right" value="'+e.lim+'" onchange="S.envDef['+i+'].lim=+this.value"></div>';});if(Q('cfg-env-lista'))Q('cfg-env-lista').innerHTML=h;}
 function rCfgAlertas(){var c=S.cfg||{};if(Q('c-anu'))Q('c-anu').value=c.a_nu||2800;if(Q('c-ares'))Q('c-ares').value=c.a_res||10000;if(Q('c-adays'))Q('c-adays').value=c.a_days||3;}
 function rCfgPerfil(){var c=S.cfg||{};if(Q('c-nome'))Q('c-nome').value=c.nome||'Gustavo';if(Q('c-inicio'))Q('c-inicio').value=c.inicio||'2026-05-08';if(Q('c-bruto'))Q('c-bruto').value=c.bruto||40000;}
 function rConfig(){cfgTab(_cfgTab);}
@@ -2336,6 +2466,83 @@ function resetTudo(){if(!confirm('RESET COMPLETO? Isso apaga TUDO.'))return;if(!
 // ═══════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════
+// TIMELINE
+// ═══════════════════════════════════════════════
+var TL_MARCOS_AUTO=[
+  {id:'aumento',e:'💼',t:'Aumento de 60%',d:'Salário R$25k → R$40k bruto. Retroativo abril/2026.',data:'2026-05-01',tipo:'meta'},
+  {id:'pgbl',e:'📦',t:'PGBL resgatado',d:'R$19k usado para iniciar plano de quitação.',data:'2026-05-08',tipo:'receita'},
+  {id:'bradesco_quit',e:'🏆',t:'Bradesco cheque quitado',d:'Cheque especial zerado no dia 8.',data:'2026-05-08',tipo:'quitacao'},
+  {id:'c6_cheque',e:'🏆',t:'C6 cheque quitado',d:'R$20.308 → R$2.437. Desconto de 88%.',data:'2026-05-08',tipo:'quitacao'},
+  {id:'nubank_quit',e:'✅',t:'Nubank fatura zerada',d:'R$8.857 pagos. Fatura limpa.',data:'2026-05-08',tipo:'quitacao'},
+  {id:'consumidor_gov',e:'⚖️',t:'Consumidor.gov aberto vs C6',d:'Protocolo RDR2026/718532. Argumento: publicidade enganosa (CDC art. 30/37).',data:'2026-05-08',tipo:'outro'},
+  {id:'ir2025',e:'💰',t:'IR 2025 restituído',d:'R$10.362,45 recebidos no Bradesco.',data:'2026-06-01',tipo:'receita'},
+  {id:'c6_cartao',e:'🎉',t:'C6 cartão QUITADO',d:'R$107.446 → R$15.692,48. Desconto de ~85% via Consumidor.gov.',data:'2026-06-01',tipo:'quitacao'},
+  {id:'score735',e:'📈',t:'Serasa 735!',d:'Score saltou para 735 — categoria BOA. Resultado direto das quitações.',data:'2026-06-04',tipo:'score'},
+  {id:'passagem',e:'✈️',t:'Passagem Lisboa comprada',d:'R$6.767,63 em 10x no Bradesco. Viagem set/2026.',data:'2026-06-04',tipo:'meta'},
+];
+
+function getTLMarcos(){
+  var auto=TL_MARCOS_AUTO.slice();
+  var custom=S.tlMarcos||[];
+  var todos=auto.concat(custom);
+  todos.sort(function(a,b){return (a.data||'').localeCompare(b.data||'');});
+  return todos;
+}
+
+function rTimeline(){
+  var marcos=getTLMarcos();
+  var cfg=S.cfg||{};
+  // Resumo
+  var quitacoes=marcos.filter(function(m){return m.tipo==='quitacao';}).length;
+  var receitas=marcos.filter(function(m){return m.tipo==='receita';}).length;
+  var scores=marcos.filter(function(m){return m.tipo==='score';}).length;
+  if(Q('tl-resumo'))Q('tl-resumo').innerHTML=
+    '<div class="ctitle">Desde mai/2026</div>'
+    +'<div style="display:flex;gap:16px;flex-wrap:wrap">'
+    +'<div><div class="val vlg tg">'+quitacoes+'</div><div style="font-size:.62rem;color:var(--muted)">dívidas quitadas</div></div>'
+    +'<div><div class="val vlg tb">'+receitas+'</div><div style="font-size:.62rem;color:var(--muted)">receitas extras</div></div>'
+    +'<div><div class="val vlg tp">'+scores+'</div><div style="font-size:.62rem;color:var(--muted)">marcos de score</div></div>'
+    +'<div><div class="val vlg ty">'+(cfg.serasa_score||735)+'</div><div style="font-size:.62rem;color:var(--muted)">Serasa atual</div></div>'
+    +'</div>';
+
+  var h='';
+  var tiposCor={quitacao:'var(--green)',receita:'var(--blue)',meta:'var(--purple)',score:'var(--teal)',outro:'var(--yellow)'};
+  marcos.slice().reverse().forEach(function(m){
+    var cor=tiposCor[m.tipo]||'var(--muted)';
+    var isCustom=!!(S.tlMarcos||[]).find(function(x){return x.id===m.id;});
+    h+='<div class="timeline-item">'
+      +'<div class="tl-dot" style="background:'+cor+';margin-top:8px"></div>'
+      +'<div class="tl-content">'
+      +'<div class="tl-date">'+fmtDataBR(m.data)+(isCustom?'<button class="fix-del" style="margin-left:8px" onclick="delMarco(\"'+m.id+'\")">🗑</button>':'')+'</div>'
+      +'<div class="tl-title">'+m.e+' '+m.t+'</div>'
+      +'<div style="font-size:.72rem;color:var(--muted);margin-top:2px;line-height:1.5">'+m.d+'</div>'
+      +'</div></div>';
+  });
+  if(Q('tl-lista'))Q('tl-lista').innerHTML=h||'<div style="font-size:.74rem;color:var(--muted);padding:10px">Nenhum marco registrado</div>';
+}
+
+function fmtDataBR(str){
+  if(!str)return'—';
+  var p=str.split('-');if(p.length<3)return str;
+  var meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  return p[2]+' '+meses[+p[1]-1]+' '+p[0];
+}
+
+function regNovoMarco(){
+  var e=Q('ntl-e')?.value||'📌',t=Q('ntl-t')?.value||'',d=Q('ntl-d')?.value||'',data=Q('ntl-data')?.value||hoje(),tipo=Q('ntl-tipo')?.value||'outro';
+  if(!t)return;
+  if(!S.tlMarcos)S.tlMarcos=[];
+  S.tlMarcos.push({id:uid(),e,t,d,data,tipo});
+  save();closeOvl('ovl-nova-tl');rTimeline();
+}
+function delMarco(id){
+  if(!S.tlMarcos)return;
+  S.tlMarcos=S.tlMarcos.filter(function(m){return m.id!==id;});
+  save();rTimeline();
+}
+
 window.addEventListener('resize',function(){document.body.classList.toggle('desktop',window.innerWidth>=768);});
 </script>
 </body>
