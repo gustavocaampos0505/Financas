@@ -881,7 +881,7 @@ async function loadData(){
   initDefaults();renderAll();
 }
 function initDefaults(){
-  if(!S.cfg)S.cfg={sal15:16000,sal30:13432,va:3193,flash_c:400,flash_i:180,lim_nu:3500,lim_br:2000,m_res:51472,m_viag:14200,m_score:735,a_nu:2800,a_res:5000,a_days:3,nome:'Gustavo',inicio:'2026-05-08',bruto:40000,serasa_score:735};
+  if(!S.cfg)S.cfg={sal15:16000,sal30:13432,va:3193,flash_c:400,flash_i:180,lim_nu:3500,lim_br:2000,m_res:51472,m_viag:20000,m_score:800,a_nu:2800,a_res:5000,a_days:3,nome:'Gustavo',inicio:'2026-05-08',bruto:40000,serasa_score:735};
   if(!S.cx)S.cx={};
   if(!S.cxDef)S.cxDef={fixas:dfCxFixas(),uso:dfCxUso()};
   // DÍVIDAS: migrate object→array if needed
@@ -934,8 +934,26 @@ function initDefaults(){
   })();
     if(!S.parcExtras)S.parcExtras=[];
   if(S.parcCiclo===undefined)S.parcCiclo=0;
-  if(!S.fixosPix)S.fixosPix=dfFixosPix();
-  if(!S.fixosAss)S.fixosAss=dfFixosAss();
+  // Merge fixosPix — preserva valores editados, adiciona novos
+  (function(){
+    var def=dfFixosPix();
+    if(!S.fixosPix){S.fixosPix=def;return;}
+    def.forEach(function(d){
+      var ex=S.fixosPix.find(function(x){return x.id===d.id;});
+      if(!ex)S.fixosPix.push(Object.assign({},d));
+      else{Object.assign(ex,{e:d.e,n:d.n,dia:d.dia,obs:d.obs,enc:d.enc!==undefined?d.enc:ex.enc});}
+    });
+  })();
+  // Merge fixosAss — preserva valores editados, adiciona novos itens do dfFixosAss
+  (function(){
+    var def=dfFixosAss();
+    if(!S.fixosAss){S.fixosAss=def;return;}
+    def.forEach(function(d){
+      var ex=S.fixosAss.find(function(x){return x.id===d.id;});
+      if(!ex)S.fixosAss.push(Object.assign({},d));
+      else{Object.assign(ex,{e:d.e,n:d.n,cartao:d.cartao,obs:d.obs});}
+    });
+  })();
   if(!S.fixosVar)S.fixosVar={luz:0,agua:0,gas:0};
   if(!S.entradas)S.entradas=dfEntradas();
   if(!S.snapshots)S.snapshots=[];
@@ -1352,7 +1370,7 @@ function buildPix15(){
   var h='',tot=0;
   var fat=S.faturas||{};
   var cfg=S.cfg||{};
-  h+='<div class="row" style="padding:5px 0"><span style="font-size:.78rem;color:var(--green)">💰 Salário (60%)</span><span class="val vsm tg">+'+fmt(+cfg.sal15||16000)+'</span></div>';
+  h+='<div class="row" style="padding:5px 0"><span style="font-size:.78rem;color:var(--green)">💰 Salário (adiantamento)</span><span class="val vsm tg">+'+fmt(+cfg.sal15||16000)+'</span></div>';
   if(fat.nu){h+=pixRow('💜','Fatura Nubank CC',fat.nu,'fechada');tot+=+fat.nu;}
   if(fat.br){h+=pixRow('❤️','Fatura Bradesco CC',fat.br,'fechada');tot+=+fat.br;}
   (S.fixosPix||[]).filter(function(f){return String(f.dia).includes('15');}).forEach(function(f,i){h+=pixRow(f.e,f.n,f.v,f.obs,f.enc,i,'pix');tot+=+(f.v||0);});
@@ -1367,7 +1385,7 @@ function buildPix22(){
 function buildPix30(){
   var h='',tot=0;
   var cfg=S.cfg||{};
-  h+='<div class="row" style="padding:5px 0"><span style="font-size:.78rem;color:var(--green)">💰 Salário (40%)</span><span class="val vsm tg">+'+fmt(+cfg.sal30||13432)+'</span></div>';
+  h+='<div class="row" style="padding:5px 0"><span style="font-size:.78rem;color:var(--green)">💰 Salário (complemento)</span><span class="val vsm tg">+'+fmt(+cfg.sal30||13432)+'</span></div>';
   (S.fixosPix||[]).filter(function(f){return String(f.dia)==='30'||String(f.dia)==='4';}).forEach(function(f,i){h+=pixRow(f.e,f.n,f.v,f.obs,f.enc,i,'pix');tot+=+(f.v||0);});
   return{html:h,tot};
 }
@@ -1560,18 +1578,20 @@ var AGORA_EVENTOS=[
   {id:'sal15',lbl:'💰 Salário Dia 15',passos:[
     {t:'Pagar fatura Nubank total',s:'Sem parcelar. Aba PIX → valor exato.',a:'pix'},
     {t:'Pagar fatura Bradesco total',s:'Sem parcelar. Aba PIX → valor exato.',a:'pix'},
-    {t:'PIX: Psicóloga R$823,50',s:'Dia 15. Ver aba PIX.',a:'pix'},
+    {t:'PIX: Psicóloga R$600',s:'2 sessões · Alessandra Christina. Dia 15.',a:'pix'},
     {t:'PIX: Rose 1ª parcela R$1.000',s:'Dia 15. Ver aba PIX.',a:'pix'},
-    {t:'PIX: Sabesp + Spotify',s:'Dia 15. Ver aba PIX.',a:'pix'},
+    {t:'PIX: Dentista R$481',s:'Dia 22. Ver aba PIX.',a:'pix'},
+    {t:'PIX: Seguro Residencial R$162,90 + Spotify R$14',s:'Dia 15. Ver aba PIX.',a:'pix'},
     {t:'Encher caixinhas MP',s:'Reserva + Viagem + Estética + Imprevistos + Psiquiatra.',a:'caixinhas'},
     {t:'Encher envelopes MP',s:'Alimentação fora R$700 + Lazer R$500 + Compras + Roupas + Supermercado.',a:'envelopes'},
-    {t:'Conferir Consumidor.gov',s:'Verificar se C6 respondeu.',a:'dividas'},
+    {t:'Conferir reserva de emergência',s:'Verificar saldo na caixinha MP. Meta R$51.472.',a:'caixinhas'},
   ]},
   {id:'sal30',lbl:'💰 Salário Dia 30',passos:[
-    {t:'PIX Personal Rafael R$2.720',s:'Dia 30. Ver aba PIX.',a:'pix'},
+    {t:'PIX Personal Rafael R$2.720 (vira R$2.000 em set)',s:'Dia 30. Ver aba PIX.',a:'pix'},
     {t:'PIX Rose 2ª parcela R$1.000',s:'Dia 30. Ver aba PIX.',a:'pix'},
-    {t:'PIX Santander R$972',s:'Vence dia 4. Pagar com antecedência.',a:'pix'},
+    {t:'PIX Localiza R$2.980',s:'Boleto dia 1. Pagar com antecedência.',a:'pix'},
     {t:'PIX Itaú 1 R$510,23',s:'Enquanto não quitado. Ver aba PIX.',a:'pix'},
+    {t:'PIX Santander R$972',s:'Vence dia 4. Pagar junto com o dia 30.',a:'pix'},
     {t:'Recarregar Alimentação fora 2ª quinzena',s:'R$350 no envelope.',a:'envelopes'},
   ]},
   {id:'itau1',lbl:'🏦 Quitar Itaú 1',passos:[
@@ -2174,12 +2194,18 @@ function rProgresso(){
   var serasaScore=+(cfg.serasa_score||735);
   if(Q('prog-grid'))Q('prog-grid').innerHTML='<div class="card" style="margin:0"><div class="ctitle">🛡️ Reserva</div><div class="val vlg tg">'+fmt(res)+'</div><div class="pt"><div class="pf" style="width:'+Math.min(res/mRes*100,100)+'%;background:var(--blue)"></div></div><div style="font-size:.62rem;color:var(--muted)">'+Math.round(res/mRes*100)+'% de '+fmt(mRes)+'</div></div><div class="card" style="margin:0"><div class="ctitle">✈️ Viagem</div><div class="val vlg tg">'+fmt(viag)+'</div><div class="pt"><div class="pf" style="width:'+Math.min(viag/mViag*100,100)+'%;background:var(--purple)"></div></div><div style="font-size:.62rem;color:var(--muted)">'+Math.round(viag/mViag*100)+'% de '+fmt(mViag)+'</div></div><div class="card" style="margin:0"><div class="ctitle">🏦 Dívidas</div><div class="val vlg tr">'+fmt(passivos)+'</div><div style="font-size:.68rem;color:var(--muted);margin-top:4px">'+('Serasa: '+serasaScore)+' · meta: '+(cfg.m_score||600)+'</div></div><div class="card" style="margin:0"><div class="ctitle">💰 Caixinhas total</div><div class="val vlg tg">'+fmt(ativos)+'</div><div style="font-size:.68rem;color:var(--muted);margin-top:4px">Líquido: '+fmt(liquido)+'</div></div>';
   // Fidelity
-  var bruto=+cfg.bruto||40000;var fid37=Math.round(2.4*bruto);
-  if(Q('prog-fidelity'))Q('prog-fidelity').innerHTML='<div class="ctitle">📊 Fidelity Benchmark (37 anos)</div><div class="fsb mb4"><span style="font-size:.78rem">Meta Fidelity (2.4× bruto)</span><span class="val vsm ty">'+fmt(fid37)+'</span></div><div class="fsb mb4"><span style="font-size:.78rem">Seu patrimônio agora</span><span class="val vsm tr">'+fmt(ativos)+'</span></div><div class="fsb mb8"><span style="font-size:.78rem">Déficit</span><span class="val vsm tr">'+fmt(fid37-ativos)+'</span></div><div class="alert ay" style="margin:0"><span>💡</span><div style="font-size:.72rem">A virada começou em mai/2026. O déficit cai conforme as dívidas somem e as caixinhas crescem.</div></div>';
+  var bruto=+cfg.bruto||40000;var fid37=Math.round(2.2*bruto);
+  if(Q('prog-fidelity'))Q('prog-fidelity').innerHTML='<div class="ctitle">📊 Fidelity Benchmark (36 anos · 2.2× bruto)</div><div class="fsb mb4"><span style="font-size:.78rem">Meta Fidelity (2.4× bruto)</span><span class="val vsm ty">'+fmt(fid37)+'</span></div><div class="fsb mb4"><span style="font-size:.78rem">Seu patrimônio agora</span><span class="val vsm tr">'+fmt(ativos)+'</span></div><div class="fsb mb8"><span style="font-size:.78rem">Déficit</span><span class="val vsm tr">'+fmt(fid37-ativos)+'</span></div><div class="alert ay" style="margin:0"><span>💡</span><div style="font-size:.72rem">A virada começou em mai/2026. O déficit cai conforme as dívidas somem e as caixinhas crescem.</div></div>';
   // Projeção
   var sobra=(+(cfg.sal15||16000))+(+(cfg.sal30||13432))-(getTotFixosPix()+getTotAss()+getTotVar());
   var mesesRes=sobra>0&&res<mRes?Math.ceil((mRes-res)/sobra*0.4):0;
-  if(Q('prog-projecao'))Q('prog-projecao').innerHTML='<div class="ctitle">🔮 Projeção</div><div class="row" style="padding:5px 0"><span style="font-size:.78rem">Reserva completa (R$40k)</span><span class="val vsm tg">'+( mesesRes>0?'~'+mesesRes+' meses':'✅ Batida!')+'</span></div><div class="row" style="padding:5px 0;border:none"><span style="font-size:.78rem">Sobra mensal estimada</span><span class="val vsm tg">'+fmt(sobra)+'</span></div>';
+  var aporteMensal=5000;var mesesResCorr=res<mRes?Math.ceil((mRes-res)/aporteMensal):0;
+  var metaItau1Mes=res>=20000?'✅ Já pode quitar!':'Reserva chega R$20k em ~'+Math.ceil((20000-res)/aporteMensal)+' meses';
+  if(Q('prog-projecao'))Q('prog-projecao').innerHTML='<div class="ctitle">🔮 Projeção</div>'
+    +'<div class="row" style="padding:5px 0"><span style="font-size:.78rem">Reserva completa ('+fmt(mRes)+')</span><span class="val vsm tg">'+(mesesResCorr>0?'~'+mesesResCorr+' meses':'✅ Batida!')+'</span></div>'
+    +'<div class="row" style="padding:5px 0"><span style="font-size:.78rem">Quitar Itaú 1</span><span class="val vsm ty">'+metaItau1Mes+'</span></div>'
+    +'<div class="row" style="padding:5px 0"><span style="font-size:.78rem">Tesouro Selic</span><span class="val vsm tb">Out/2026 — reserva > R$20k</span></div>'
+    +'<div class="row" style="padding:5px 0;border:none"><span style="font-size:.78rem">Aporte mensal reserva</span><span class="val vsm tg">'+fmt(aporteMensal)+'</span></div>';
   // Comparativo mês anterior
   var snaps=S.snapshots||[];
   if(snaps.length>=2){
@@ -2251,15 +2277,15 @@ function addSnapshot(){
 // REGRAS
 // ═══════════════════════════════════════════════
 var REGRAS=[
-  {id:'parcela',e:'🚫',t:'Zero parcelamentos novos',d:'Até ago/2026',r:'As parcelas antigas somem sozinhas. Cada mês que passa você fica mais leve.',get s(){
+  {id:'parcela',e:'🧠',t:'Parcelamento consciente',d:'Só se planejado — nunca no impulso',r:'Parcelas antigas somem sozinhas. Novas compras: só se couber no orçamento sem apertar. Marketplace (TikTok/Shopee) é o maior risco.',get s(){
     var n=(S.parcExtras||[]).filter(function(p){return p.s==='ativa'&&p.origem!=='auto';}).length;
     return n===0?'verde':n<=1?'amarelo':'vermelho';
   },get info(){var n=(S.parcExtras||[]).filter(function(p){return p.s==='ativa'&&p.origem!=='auto';}).length;return n+' parcela'+( n!==1?'s':'')+' nova'+( n!==1?'s':'');}},
   {id:'delivery',e:'🍽️',t:'Alimentação fora — R$700/mês',d:'Delivery + restaurantes',r:'Quando o envelope zera, alimentação fora acabou.',get s(){var env=(S.envDef||[]).find(function(e){return e.id==='delivery';});var u=+(env&&env.usado||0),l=+(env&&env.lim||700);return u/l<0.7?'verde':u/l<0.9?'amarelo':'vermelho';},get info(){var env=(S.envDef||[]).find(function(e){return e.id==='delivery';});return fmt(+(env&&env.usado||0))+' de '+fmt(+(env&&env.lim||700));}},
   {id:'lazer',e:'🎉',t:'Lazer — R$500/mês',d:'Shows, bares, saídas',r:'Comprou ingresso? Desconta. Quando zera, acabou.',get s(){var env=(S.envDef||[]).find(function(e){return e.id==='lazer';});var u=+(env&&env.usado||0),l=+(env&&env.lim||500);return u/l<0.7?'verde':u/l<0.9?'amarelo':'vermelho';},get info(){var env=(S.envDef||[]).find(function(e){return e.id==='lazer';});return fmt(+(env&&env.usado||0))+' de '+fmt(+(env&&env.lim||500));}},
-  {id:'fatura',e:'📊',t:'Indicador de fatura',d:'Nubank CC',r:'🟢 <R$2k: pode comprar · 🟡 R$2k–2.8k: normal · 🔴 >R$2.8k: congela',get s(){var nu=+(S.faturas&&S.faturas.nu||0);return nu<2000?'verde':nu<2800?'amarelo':'vermelho';},get info(){return 'Fatura: '+fmt(+(S.faturas&&S.faturas.nu||0));}},
-  {id:'50_50',e:'💸',t:'Protocolo 50/50',d:'Para dinheiro extra',r:'Everton, honorários, IR: 50% → dívidas/reserva · 50% → livre.',s:'azul',info:'Regra preventiva'},
-  {id:'meta',e:'🎯',t:'Foco 2026 — crescimento',d:'Reserva R$51.472 · Score 800 · Viagem set',r:'C6 quitado ✅ · Nome limpo ✅ · Próximo: fechar reserva em dez/2026 e estrear investimentos.',get s(){var res=+((S.cx||{}).reserva||0);var itau1=(S.dividas||[]).find(function(d){return d.id==='itau1';});return res>30000&&(!itau1||itau1.v===0)?'verde':res>15000?'amarelo':'vermelho';},get info(){var res=+((S.cx||{}).reserva||0);var pct=Math.round(res/51472*100);return 'Reserva '+pct+'% · Serasa '+(+((S.cfg||{}).serasa_score||735));}},
+  {id:'fatura',e:'📊',t:'Indicador de fatura',d:'Bradesco CC (principal)',r:'🟢 <R$4k: normal · 🟡 R$4k–5.5k: atenção · 🔴 >R$5.5k: congela cartão',get s(){var br=+(S.faturas&&S.faturas.br||0);return br<4000?'verde':br<5500?'amarelo':'vermelho';},get info(){return 'Bradesco: '+fmt(+(S.faturas&&S.faturas.br||0));}},
+  {id:'50_50',e:'💸',t:'Protocolo 50/50',d:'Para dinheiro extra',r:'Éverton, Monique, IR restituição: 50% → reserva emergência · 50% → livre. Itaú 1 quitar quando reserva > R$20k.',s:'azul',info:'Regra preventiva'},
+  {id:'meta',e:'🎯',t:'Foco 2026 — crescimento',d:'Reserva R$51.472 · Score 800 · Viagem set',r:'C6 quitado ✅ · Nome limpo ✅ · Serasa 735 ✅ · Próximo: Quitar Itaú 1 dez/26 · Tesouro Selic out/26 · Reserva meta dez/26.',get s(){var res=+((S.cx||{}).reserva||0);var itau1=(S.dividas||[]).find(function(d){return d.id==='itau1';});return res>30000&&(!itau1||itau1.v===0)?'verde':res>15000?'amarelo':'vermelho';},get info(){var res=+((S.cx||{}).reserva||0);var pct=Math.round(res/51472*100);return 'Reserva '+pct+'% · Serasa '+(+((S.cfg||{}).serasa_score||735));}},
 ];
 function rRegras(){
   var verde=REGRAS.filter(function(r){return r.s==='verde';}).length;
