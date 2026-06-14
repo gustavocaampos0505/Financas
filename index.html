@@ -881,7 +881,7 @@ async function loadData(){
   initDefaults();renderAll();
 }
 function initDefaults(){
-  if(!S.cfg)S.cfg={sal15:16200,sal30:13006,va:400,flash_c:400,flash_i:180,lim_nu:3500,lim_br:2000,m_res:51472,m_viag:14200,m_score:735,a_nu:2800,a_res:5000,a_days:3,nome:'Gustavo',inicio:'2026-05-08',bruto:40000,serasa_score:735};
+  if(!S.cfg)S.cfg={sal15:16000,sal30:13432,va:3193,flash_c:400,flash_i:180,lim_nu:3500,lim_br:2000,m_res:51472,m_viag:14200,m_score:735,a_nu:2800,a_res:5000,a_days:3,nome:'Gustavo',inicio:'2026-05-08',bruto:40000,serasa_score:735};
   if(!S.cx)S.cx={};
   if(!S.cxDef)S.cxDef={fixas:dfCxFixas(),uso:dfCxUso()};
   // DÍVIDAS: migrate object→array if needed
@@ -941,6 +941,19 @@ function initDefaults(){
   if(!S.snapshots)S.snapshots=[];
   if(!S.confissoes)S.confissoes=[];
   if(!S.faturas)S.faturas={nu:6200,br:4817};
+  // Auto virada de mês
+  var _mesHoje=(function(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');})();
+  if(!S._lastMes)S._lastMes=_mesHoje;
+  if(S._lastMes!==_mesHoje){
+    // Mês mudou desde último acesso
+    setTimeout(function(){
+      if(confirm('📅 Novo mês detectado ('+_mesHoje+')!\n\nDeseja decrementar parcelas e fechar o mês anterior automaticamente?')){
+        autoVirarMes(_mesHoje);
+      } else {
+        S._lastMes=_mesHoje;save();
+      }
+    },800);
+  }
 }
 
 async function save(){
@@ -1003,9 +1016,10 @@ function dfParc(){return{
   savana:{n:'Savana',b:'NU',vp:63,tp:7,cp:6,f:'Nov/2026'},
 };}
 function dfFixosPix(){return[
+  {id:'localiza',e:'🚗',n:'Localiza Meoo',v:2980,dia:'1',obs:'Boleto mensal · até ago/2029',enc:''},
   {id:'santander',e:'🏦',n:'Santander',v:972,dia:'4',obs:'Dívida · 0,49%/mês',enc:''},
   {id:'dentista',e:'🦷',n:'Dentista PIX',v:481,dia:'22',obs:'Parcelas Bradesco · última set/2026',enc:'2026-09'},
-  {id:'psicologa',e:'🧠',n:'Psicóloga',v:823.50,dia:'15',obs:'3 sessões/mês',enc:''},
+  {id:'psicologa',e:'🧠',n:'Psicóloga',v:600,dia:'15',obs:'2 sessões/mês · Alessandra Christina',enc:''},
   {id:'rose',e:'💆',n:'Rose diarista 1ª',v:1000,dia:'15',obs:'1ª parcela mensal',enc:''},
   {id:'rose2',e:'💆',n:'Rose diarista 2ª',v:1000,dia:'30',obs:'2ª parcela mensal',enc:''},
   {id:'personal',e:'🏋️',n:'Personal Rafael',v:2720,dia:'30',obs:'',enc:''},
@@ -1031,7 +1045,7 @@ function dfFixosAss(){return[
 ];}
 function dfEntradas(){return[
   {id:'retro',d:'Retroativo abril',v:10060,m:'2026-05',o:'Recebido em mai/2026',s:'recebido'},
-  {id:'everton1',d:'Éverton',v:1250,m:'2026-06',o:'1ª parcela',s:'pendente'},
+  {id:'everton1',d:'Éverton',v:1250,m:'2026-06',o:'1ª parcela',s:'recebido'},
   {id:'everton2',d:'Éverton',v:1000,m:'2026-07',o:'2ª parcela',s:'pendente'},
   {id:'everton3',d:'Éverton',v:1000,m:'2026-08',o:'3ª parcela',s:'pendente'},
   {id:'honorarios',d:'Honorários Monique',v:2369,m:'2026-08',o:'Previsto ago/2026',s:'pendente'},
@@ -2528,8 +2542,36 @@ function runMigration2(){
   alert('✅ Correções jul/2026 aplicadas!');
   renderAll();
 }
+function autoVirarMes(novoMes){
+  // Decrementa cp de todas as parcelas
+  var parc=S.parc||{};
+  var encerradas=[];
+  Object.keys(parc).forEach(function(k){
+    if(parc[k].cp>0){
+      parc[k].cp=Math.max(0,parc[k].cp-1);
+      parc[k].cur_p=parc[k].cp;
+      if(parc[k].cp===0)encerradas.push(parc[k].n||k);
+    }
+  });
+  // Decrementa parcExtras
+  if(S.parcExtras){
+    S.parcExtras=S.parcExtras.map(function(p){
+      if(p.cp>0){
+        p.cp=Math.max(0,p.cp-1);
+        if(p.cp===0)encerradas.push(p.n);
+      }
+      return p;
+    });
+  }
+  S._lastMes=novoMes;
+  save();
+  var msg='✅ Parcelas decrementadas!';
+  if(encerradas.length>0)msg+='\n\nEncerraram: '+encerradas.join(', ');
+  alert(msg);
+  renderAll();
+}
 function resetMes(){
-  if(!confirm("Fechar mes e arquivar gastos?"))return;
+  if(!confirm("Fechar mês e arquivar gastos?"))return;
   var d=new Date();var mesAnt=new Date(d.getFullYear(),d.getMonth()-1,1);
   var chave=mesAnt.getFullYear()+"-"+String(mesAnt.getMonth()+1).padStart(2,"0");
   if(!S.histMeses)S.histMeses={};
@@ -2537,7 +2579,10 @@ function resetMes(){
   S.gastos=[];S.eventuais=[];S.extras=[];
   if(S.envDef)S.envDef.forEach(function(e){e.usado=0;});
   S.faturas={nu:0,br:0};
-  save();alert("Arquivado "+chave+"! Mes resetado.");renderAll();
+  // Também decrementa parcelas ao fechar mês manualmente
+  var novoMes=(function(){var dd=new Date();return dd.getFullYear()+'-'+String(dd.getMonth()+1).padStart(2,'0');})();
+  autoVirarMes(novoMes);
+  save();alert("Arquivado "+chave+"! Mês resetado e parcelas decrementadas.");renderAll();
 }
 function resetTudo(){if(!confirm('RESET COMPLETO? Isso apaga TUDO.'))return;if(!confirm('Tem certeza absoluta?'))return;S={};initDefaults();save();alert('Reset completo!');renderAll();}
 
