@@ -337,7 +337,7 @@ body.desktop .desk-fab svg{width:15px;height:15px;stroke-width:2.5}
               <button class="btn bp bfull mt12" onclick="regExtra()">Registrar</button>
             </div>
             <div class="card" style="margin:0">
-              <div class="fsb mb8"><div class="ctitle" style="margin:0">Este mês</div><div style="display:flex;gap:6px;align-items:center"><span class="val vsm tr" id="ext-tot">R$0</span><button class="btn bg bsm" onclick="toggleExtAnt()" style="font-size:.6rem;padding:3px 8px" id="btn-ext-ant">◀ Mês ant.</button><button class="btn bg bsm" onclick="importarMaio()" style="font-size:.6rem;padding:3px 8px">📥 mai/26</button></div></div>
+              <div class="fsb mb8"><div class="ctitle" style="margin:0">Este mês</div><div style="display:flex;gap:6px;align-items:center"><span class="val vsm tr" id="ext-tot">R$0</span><button class="btn bg bsm" onclick="toggleExtAnt()" style="font-size:.6rem;padding:3px 8px" id="btn-ext-ant">◀ Mês ant.</button><button class="btn bg bsm" onclick="importarMaio()" style="font-size:.6rem;padding:3px 8px">📥 mai/26</button><button class="btn bg bsm" onclick="importarJunho()" style="font-size:.6rem;padding:3px 8px">📥 jun/26</button></div></div>
               <div id="ext-log"></div>
             </div>
           </div>
@@ -1482,6 +1482,61 @@ function importarMaio(){
   S._ext_mai26=true;
   save();rExtras();
   alert('✅ 20 lançamentos de mai/26 importados!');
+}
+function importarJunho(){
+  if(S._ext_jun26){alert('Extrato de jun/26 já foi importado.');return;}
+  if(!confirm('Importar lançamentos do extrato de junho/2026?'))return;
+  if(!S.extras)S.extras=[];
+  function ts(d){return new Date(2026,5,d,12,0,0).getTime();}
+  var imp=[
+    {v:45,    cat:'outros',     desc:'Wesley Lima — axé',               pgto:'debito',banco:'br',cart:'',np:1,vp:45,    ts:ts(1)},
+    {v:180,   cat:'outros',     desc:'Lucas André — axé',               pgto:'debito',banco:'br',cart:'',np:1,vp:180,   ts:ts(1)},
+    {v:250,   cat:'saude',      desc:'Paula Rodrigues — tarô',           pgto:'debito',banco:'br',cart:'',np:1,vp:250,   ts:ts(1)},
+    {v:50,    cat:'carro',      desc:'RKI Park Estacionamento',          pgto:'debito',banco:'br',cart:'',np:1,vp:50,    ts:ts(1)},
+    {v:6,     cat:'alimentacao',desc:'Kitanda Das Minas',                pgto:'debito',banco:'br',cart:'',np:1,vp:6,     ts:ts(1)},
+    {v:255.66,cat:'outros',     desc:'Neobankless — fatura C6 antiga',  pgto:'debito',banco:'br',cart:'',np:1,vp:255.66, ts:ts(1)},
+    {v:9.93,  cat:'outros',     desc:'IOF utilização limite',            pgto:'debito',banco:'br',cart:'',np:1,vp:9.93,  ts:ts(2)},
+    {v:45,    cat:'alimentacao',desc:'Sabor de Vitória',                 pgto:'debito',banco:'br',cart:'',np:1,vp:45,    ts:ts(2)},
+    {v:300,   cat:'estetica',   desc:'Dólares — cremes beleza',         pgto:'debito',banco:'br',cart:'',np:1,vp:300,    ts:ts(2)},
+    {v:120,   cat:'estetica',   desc:'Igor Koreia — barbeiro',           pgto:'debito',banco:'br',cart:'',np:1,vp:120,   ts:ts(3)},
+    {v:6.22,  cat:'outros',     desc:'Flash Tecnologia — tarifa',        pgto:'debito',banco:'br',cart:'',np:1,vp:6.22,  ts:ts(3)},
+    {v:110,   cat:'outros',     desc:'Karolina — colega',                pgto:'debito',banco:'br',cart:'',np:1,vp:110,   ts:ts(5)},
+    {v:274.50,cat:'saude',      desc:'Alessandra — psicóloga',           pgto:'debito',banco:'br',cart:'',np:1,vp:274.50,ts:ts(5)},
+    {v:1250,  cat:'saude',      desc:'Joyce Tham — Mounjaro',            pgto:'debito',banco:'br',cart:'',np:1,vp:1250,  ts:ts(5)},
+    {v:52.88, cat:'farmacia',   desc:'Imifarma',                         pgto:'debito',banco:'br',cart:'',np:1,vp:52.88, ts:ts(5)},
+    {v:266.27,cat:'viagem',     desc:'B.M.L. — estacionamento aeroporto PT',pgto:'debito',banco:'br',cart:'',np:1,vp:266.27,ts:ts(8)},
+    {v:414.29,cat:'viagem',     desc:'Levare — ônibus Minas',            pgto:'debito',banco:'br',cart:'',np:1,vp:414.29,ts:ts(11)},
+    {v:85.87, cat:'alimentacao',desc:'iFood delivery',                   pgto:'credito',banco:'',cart:'BR',np:1,vp:85.87, ts:ts(9)},
+    {v:144.30,cat:'saude',      desc:'RD Saúde Online',                  pgto:'credito',banco:'',cart:'BR',np:1,vp:144.30,ts:ts(8)},
+    {v:47,    cat:'carro',      desc:'TA Estacionamento',                pgto:'credito',banco:'',cart:'BR',np:1,vp:47,    ts:ts(7)},
+    {v:126,   cat:'lazer',      desc:'Zigpay — lazer',                   pgto:'credito',banco:'',cart:'BR',np:1,vp:126,   ts:ts(6)},
+    {v:20,    cat:'outros',     desc:'MP*Marlene',                       pgto:'credito',banco:'',cart:'BR',np:1,vp:20,    ts:ts(6)},
+    {v:36.99, cat:'transporte', desc:'Uber',                             pgto:'credito',banco:'',cart:'BR',np:1,vp:36.99, ts:ts(6)},
+    {v:117.84,cat:'outros',     desc:'Casa Umbanda Zé Baiano',           pgto:'credito',banco:'',cart:'BR',np:1,vp:117.84,ts:ts(4)},
+    {v:108.30,cat:'outros',     desc:'HMBrasil',                         pgto:'credito',banco:'',cart:'BR',np:1,vp:108.30,ts:ts(7)},
+    {v:636.99,cat:'viagem',     desc:'Azul — passagem Portugal',         pgto:'credito',banco:'',cart:'BR',np:1,vp:636.99,ts:ts(4)},
+    {v:397.91,cat:'viagem',     desc:'Decolar — taxas passagem',         pgto:'credito',banco:'',cart:'BR',np:1,vp:397.91,ts:ts(4)},
+    {v:91.50, cat:'outros',     desc:'Amazon BR',                        pgto:'credito',banco:'',cart:'BR',np:1,vp:91.50, ts:ts(3)},
+    {v:131.58,cat:'outros',     desc:'Amazon BR',                        pgto:'credito',banco:'',cart:'BR',np:1,vp:131.58,ts:ts(3)},
+    {v:140,   cat:'outros',     desc:'TikTok Shop',                      pgto:'credito',banco:'',cart:'NU',np:1,vp:140,   ts:ts(7)},
+    {v:55.10, cat:'outros',     desc:'TikTok Shop',                      pgto:'credito',banco:'',cart:'NU',np:1,vp:55.10, ts:ts(23)},
+    {v:70.98, cat:'outros',     desc:'Amazon NuPay',                     pgto:'credito',banco:'',cart:'NU',np:1,vp:70.98, ts:ts(17)},
+    {v:59.96, cat:'transporte', desc:'Uber x2',                          pgto:'credito',banco:'',cart:'NU',np:1,vp:59.96, ts:ts(13)},
+    {v:27,    cat:'carro',      desc:'Estacionamento',                   pgto:'credito',banco:'',cart:'NU',np:1,vp:27,    ts:ts(13)},
+    {v:101.86,cat:'carro',      desc:'Posto Brigadeiro',                 pgto:'credito',banco:'',cart:'NU',np:1,vp:101.86,ts:ts(13)},
+    {v:31.24, cat:'alimentacao',desc:'Extra Hiper',                      pgto:'credito',banco:'',cart:'NU',np:1,vp:31.24, ts:ts(12)},
+    {v:33.97, cat:'outros',     desc:'Mercado Livre',                    pgto:'credito',banco:'',cart:'NU',np:1,vp:33.97, ts:ts(12)},
+    {v:122.68,cat:'alimentacao',desc:'Cozinha dos Ferrari',              pgto:'credito',banco:'',cart:'NU',np:1,vp:122.68,ts:ts(11)},
+    {v:100,   cat:'alimentacao',desc:'Gourmet Sports',                   pgto:'credito',banco:'',cart:'NU',np:1,vp:100,   ts:ts(9)},
+    {v:30,    cat:'carro',      desc:'Dexon Auto Posto',                 pgto:'credito',banco:'',cart:'NU',np:1,vp:30,    ts:ts(10)},
+    {v:43.95, cat:'casa',       desc:'W.e Materiais Construção',         pgto:'credito',banco:'',cart:'NU',np:1,vp:43.95, ts:ts(10)},
+    {v:21.74, cat:'transporte', desc:'99 NuPay',                         pgto:'credito',banco:'',cart:'NU',np:1,vp:21.74, ts:ts(8)},
+    {v:8,     cat:'outros',     desc:'Felipe — PIX',                     pgto:'credito',banco:'',cart:'NU',np:1,vp:8,     ts:ts(10)},
+  ];
+  imp.forEach(function(item){item.id=uid();S.extras.push(item);});
+  S._ext_jun26=true;
+  save();rExtras();
+  alert('✅ '+imp.length+' lançamentos de jun/26 importados!');
 }
 
 // ═══════════════════════════════════════════════
