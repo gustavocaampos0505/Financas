@@ -564,6 +564,7 @@ body.desktop .desk-fab svg{width:15px;height:15px;stroke-width:2.5}
               <div class="ctitle">Gerenciar dados</div>
               <div class="div"></div>
               <button class="btn bp bfull mt8" onclick="runMigration()">🔧 Aplicar correções jun/2026</button>
+              <button class="btn bp bfull mt8" onclick="runMigration2()">🔧 Aplicar correções jul/2026</button>
               <button class="btn bg bfull mt8" onclick="exportDados()">📥 Exportar JSON</button>
               <button class="btn bo bfull mt8" onclick="resetMes()">🔄 Resetar mês (gastos + envelopes)</button>
               <button class="btn bd bfull mt8" onclick="resetTudo()">⚠️ Reset completo</button>
@@ -983,7 +984,7 @@ function dfEnvs(){return[
 function dfParc(){return{
   tassia:{n:'Tassia Devecchi',b:'NU',vp:465,tp:6,cp:4,f:'Out/2026'},
   exame_bact:{n:'Exame Bacterias',b:'BR',vp:465,tp:6,cp:5,f:'Nov/2026'},
-  carro:{n:'Carro',b:'NU',vp:480,tp:5,cp:3,f:'Set/2026'},
+  carro:{n:'Funilaria',b:'NU',vp:480,tp:5,cp:3,f:'Set/2026'},
   ml_som:{n:'ML Som',b:'NU',vp:55.90,tp:10,cp:7,f:'Dez/2026'},
   ticket:{n:'Ticketmaster',b:'NU',vp:113.63,tp:7,cp:2,f:'Jul/2026'},
   mp_ali:{n:'AliExpress',b:'NU',vp:52.96,tp:10,cp:3,f:'Jan/2027'},
@@ -1030,7 +1031,7 @@ function dfFixosAss(){return[
 ];}
 function dfEntradas(){return[
   {id:'retro',d:'Retroativo abril',v:10060,m:'2026-05',o:'Recebido em mai/2026',s:'recebido'},
-  {id:'everton1',d:'Éverton',v:1200,m:'2026-06',o:'1ª parcela',s:'pendente'},
+  {id:'everton1',d:'Éverton',v:1250,m:'2026-06',o:'1ª parcela',s:'pendente'},
   {id:'everton2',d:'Éverton',v:1000,m:'2026-07',o:'2ª parcela',s:'pendente'},
   {id:'everton3',d:'Éverton',v:1000,m:'2026-08',o:'3ª parcela',s:'pendente'},
   {id:'honorarios',d:'Honorários Monique',v:2369,m:'2026-08',o:'Previsto ago/2026',s:'pendente'},
@@ -2448,6 +2449,28 @@ function runMigration(){
 
   save();
   alert('✅ Correções jun/2026 aplicadas e salvas no Firebase!');
+  renderAll();
+}
+function runMigration2(){
+  if(!confirm('Aplicar correções jul/2026?\n\n• Funilaria (era Carro)\n• Éverton 1ª → R$1.250\n• Perfume Ebn nova (1 parcela ago/26)\n• Entrada pai R$1.000 jun/26'))return;
+  if(!S.parc)S.parc={};
+  if(S.parc.carro)S.parc.carro.n='Funilaria';
+  if(!S.parcExtras)S.parcExtras=[];
+  var jaExiste=S.parcExtras.find(function(p){return p.id==='perfume_ebn';});
+  if(!jaExiste){
+    S.parcExtras.push({id:'perfume_ebn',n:'Perfume Ebn',b:'Nubank CC',vp:80.24,tp:2,cp:1,f:'Ago/2026',s:'ativa',mesInicio:'2026-07-01'});
+  }
+  if(!S.entradas)S.entradas=dfEntradas();
+  S.entradas=S.entradas.map(function(e){
+    if(e.id==='everton1')return Object.assign({},e,{v:1250});
+    return e;
+  });
+  var jaTemPai=S.entradas.find(function(e){return e.id==='pai_jun26';});
+  if(!jaTemPai){
+    S.entradas.push({id:'pai_jun26',d:'Pai',v:1000,m:'2026-06',o:'Transferência jun/2026',s:'recebido'});
+  }
+  save();
+  alert('✅ Correções jul/2026 aplicadas!');
   renderAll();
 }
 function resetMes(){
