@@ -880,6 +880,107 @@ async function loadData(){
   }catch(e){S={};}
   initDefaults();renderAll();
 }
+function migracaoJunho2026(){
+  if(S._migJun2026)return;
+  // 1. Forçar rebuild das parcelas com os cp corretos do dfParc atualizado
+  S._parcFixed=false;
+  S.parc={};
+  var def=dfParc();
+  Object.keys(def).forEach(function(k){
+    S.parc[k]=Object.assign({},def[k],{cp:def[k].cp,cur_p:def[k].cp});
+  });
+  S._parcFixed=true;
+  // Marcar quitadas no dfParc que tem cp=0
+  (S.parcExtras||[]).forEach(function(p){if((+p.cp||0)===0)p.s='quitada';});
+  // 2. Reserva emergência (saldo real MP em 22/06/2026)
+  if(!S.cx)S.cx={};
+  S.cx.reserva=8656.37;
+  // 3. Entradas: marcar recebidas
+  (S.entradas||[]).forEach(function(e){
+    if(e.id==='everton1'||e.id==='ir2025')e.s='recebido';
+  });
+  // 4. Psicóloga: corrigir para 1 sessão
+  if(S.fixosPix){var ps=S.fixosPix.find(function(f){return f.id==='psicologa';});if(ps){ps.v=274.50;ps.obs='1 sessão/mês · Alessandra Christina';}}
+  // 5. Gastos de junho 2026
+  if(!S.gastos)S.gastos=[];
+  var _gj=[
+    {tipo:'envelope',cat:'delivery',val:45,desc:'Sabor de Vitória',data:'2026-06-02'},
+    {tipo:'envelope',cat:'delivery',val:6,desc:'Kitanda das Minas — bar',data:'2026-06-01'},
+    {tipo:'envelope',cat:'delivery',val:169.58,desc:'Restaurantes — viagem Minas Gerais',data:'2026-06-20'},
+    {tipo:'envelope',cat:'delivery',val:70.80,desc:'Queijaria Sales',data:'2026-06-20'},
+    {tipo:'envelope',cat:'delivery',val:8.90,desc:'Padaria Super Pão — Minas',data:'2026-06-19'},
+    {tipo:'envelope',cat:'lazer',val:356.52,desc:'Uber — viagem Minas Gerais (ida+volta)',data:'2026-06-19'},
+    {tipo:'envelope',cat:'lazer',val:105.52,desc:'99/NuPay — transportes junho',data:'2026-06-21'},
+    {tipo:'envelope',cat:'lazer',val:250.80,desc:'CAEM Brasil — vinhos (Minas)',data:'2026-06-20'},
+    {tipo:'envelope',cat:'compras',val:64.12,desc:'Shopee *Charlesx (Bradesco)',data:'2026-06-07'},
+    {tipo:'envelope',cat:'compras',val:49.90,desc:'Shopee *Adocicadistrib (Bradesco)',data:'2026-06-10'},
+    {tipo:'envelope',cat:'compras',val:61.23,desc:'Shopee *Loschef (Bradesco)',data:'2026-06-10'},
+    {tipo:'envelope',cat:'compras',val:259.90,desc:'Mercado Livre (Bradesco 1567)',data:'2026-06-16'},
+    {tipo:'envelope',cat:'compras',val:255.66,desc:'Neobankless — cartão dólar',data:'2026-06-01'},
+    {tipo:'envelope',cat:'compras',val:9.90,desc:'Apple.com/Bill (Nubank)',data:'2026-06-21'},
+    {tipo:'envelope',cat:'roupas',val:550.70,desc:'Confecções Tatobel — roupas viagem',data:'2026-06-16'},
+    {tipo:'envelope',cat:'roupas',val:59.98,desc:'Lojas Renner (Nubank)',data:'2026-06-18'},
+    {tipo:'envelope',cat:'farm',val:52.88,desc:'Imifarma',data:'2026-06-05'},
+    {tipo:'livre',cat:'religioso',val:45,desc:'Wesley Lima — axé',data:'2026-06-01'},
+    {tipo:'livre',cat:'religioso',val:180,desc:'Lucas André — axé',data:'2026-06-01'},
+    {tipo:'livre',cat:'religioso',val:100,desc:'Associação Cultural — espiritual',data:'2026-06-15'},
+    {tipo:'livre',cat:'religioso',val:250,desc:'Paula Rodrigues — tarô',data:'2026-06-01'},
+    {tipo:'livre',cat:'religioso',val:777,desc:'Janaina Teodoro — assentamento (mãe de santo)',data:'2026-05-29'},
+  ];
+  var _exist=S.gastos.map(function(g){return g.desc;});
+  _gj.forEach(function(g){
+    if(!_exist.includes(g.desc))S.gastos.push(Object.assign({id:uid(),ts:Date.now()},g));
+  });
+  // Recalcular envDef.usado a partir dos gastos
+  if(S.envDef){
+    S.envDef.forEach(function(e){e.usado=0;});
+    S.gastos.forEach(function(g){
+      var env=S.envDef.find(function(e){return e.id===g.cat;});
+      if(env)env.usado=(+env.usado||0)+(+g.val||0);
+    });
+  }
+  // 6. IATA reembolso pendente como entrada extra
+  if(S.entradas&&!S.entradas.find(function(e){return e.id==='iata_reimb';})){
+    S.entradas.push({id:'iata_reimb',d:'Reembolso IATA GOL',v:165,m:'2026-06',o:'Assentos conforto — solicitar reembolso',s:'pendente'});
+  }
+  // 8. Gastos extraordinários de junho não registrados antes
+  var _gj2=[
+    {tipo:'livre',cat:'religioso',val:50,desc:'RKI Park — estacionamento axé',data:'2026-06-01'},
+    {tipo:'envelope',cat:'lazer',val:110,desc:'Karolina — lazer/colega',data:'2026-06-04'},
+    {tipo:'envelope',cat:'lazer',val:180,desc:'Nego Trancas — tranças (estética)',data:'2026-06-16'},
+    {tipo:'envelope',cat:'lazer',val:266.27,desc:'BML — estacionamento aeroporto (viagem PT)',data:'2026-06-08'},
+    {tipo:'envelope',cat:'lazer',val:414.29,desc:'Distribusion/Levare — ônibus Minas Gerais',data:'2026-06-11'},
+    {tipo:'envelope',cat:'lazer',val:103,desc:'GOL — voo Minas Gerais (Nubank)',data:'2026-06-19'},
+    {tipo:'livre',cat:'farm',val:1250,desc:'Joyce Tham — Mounjaro (adiantado)',data:'2026-06-05'},
+    {tipo:'livre',cat:'compras',val:419,desc:'SNS Industria — perfume (sacado cofrinho)',data:'2026-06-18'},
+  ];
+  var _exist2=S.gastos.map(function(g){return g.desc;});
+  _gj2.forEach(function(g){
+    if(!_exist2.includes(g.desc))S.gastos.push(Object.assign({id:uid(),ts:Date.now()},g));
+  });
+  // Recalcular envDef.usado novamente
+  if(S.envDef){
+    S.envDef.forEach(function(e){e.usado=0;});
+    S.gastos.forEach(function(g){
+      var env=S.envDef.find(function(e){return e.id===g.cat;});
+      if(env)env.usado=(+env.usado||0)+(+g.val||0);
+    });
+  }
+  // 9. ENEL e SABESP reais de junho
+  if(!S.fixosVar)S.fixosVar={};
+  S.fixosVar.luz=347.71;
+  S.fixosVar.agua=81.24;
+  // 10. Parcela GOL Lisboa BR→PT (10x R$700 Bradesco, 1ª parcela jul/2026)
+  if(S.parcExtras&&!S.parcExtras.find(function(p){return p.id==='gol_lisboa';})){
+    S.parcExtras.push({id:'gol_lisboa',n:'GOL — passagem BR↔Lisboa',b:'Bradesco CC',vp:700,tp:10,cp:10,mesInicio:'2026-07',f:'Abr/2027',s:'ativa'});
+  }
+  // 11. ChatGPT no fixosAss se ainda não existir
+  if(S.fixosAss&&!S.fixosAss.find(function(f){return f.id==='chatgpt';})){
+    S.fixosAss.push({id:'chatgpt',e:'🤖',n:'ChatGPT Plus',v:99,cartao:'BR',obs:'a partir jul/2026'});
+  }
+  S._migJun2026=true;
+  save();
+}
 function initDefaults(){
   if(!S.cfg)S.cfg={sal15:16000,sal30:13432,va:3193,flash_c:400,flash_i:180,lim_nu:3500,lim_br:2000,m_res:51472,m_viag:20000,m_score:800,a_nu:2800,a_res:5000,a_days:3,nome:'Gustavo',inicio:'2026-05-08',bruto:40000,serasa_score:735};
   if(!S.cx)S.cx={};
@@ -959,6 +1060,7 @@ function initDefaults(){
   if(!S.snapshots)S.snapshots=[];
   if(!S.confissoes)S.confissoes=[];
   if(!S.faturas)S.faturas={nu:6200,br:4817};
+  migracaoJunho2026();
   // Auto virada de mês
   var _mesHoje=(function(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');})();
   if(!S._lastMes)S._lastMes=_mesHoje;
@@ -1013,31 +1115,31 @@ function dfEnvs(){return[
   {id:'religioso',e:'🙏',n:'Religioso/Axé',lim:0,tipo:'livre',usado:0},
 ];}
 function dfParc(){return{
-  tassia:{n:'Tassia Devecchi',b:'NU',vp:465,tp:6,cp:4,f:'Out/2026'},
-  exame_bact:{n:'Exame Bacterias',b:'BR',vp:465,tp:6,cp:5,f:'Nov/2026'},
-  carro:{n:'Funilaria',b:'NU',vp:480,tp:5,cp:3,f:'Set/2026'},
-  ml_som:{n:'ML Som',b:'NU',vp:55.90,tp:10,cp:7,f:'Dez/2026'},
-  ticket:{n:'Ticketmaster',b:'NU',vp:113.63,tp:7,cp:2,f:'Jul/2026'},
-  mp_ali:{n:'AliExpress',b:'NU',vp:52.96,tp:10,cp:3,f:'Jan/2027'},
-  shopee_v:{n:'Shopee Verdemania',b:'NU',vp:62.70,tp:10,cp:3,f:'Jan/2027'},
-  ml_merc:{n:'ML Mercadol',b:'NU',vp:31.75,tp:4,cp:2,f:'Jul/2026'},
-  actual:{n:'Actual Pharma',b:'NU',vp:130,tp:3,cp:1,f:'Jun/2026'},
-  tiktok:{n:'TikTok Shop',b:'NU',vp:41.97,tp:3,cp:2,f:'Jul/2026'},
-  apple_w:{n:'Apple Watch',b:'BR',vp:223.25,tp:12,cp:7,f:'Dez/2026'},
-  emporio:{n:'Empório da Casa',b:'BR',vp:169.60,tp:6,cp:2,f:'Jul/2026'},
-  cadeira:{n:'ML Cadeira',b:'BR',vp:101.65,tp:12,cp:4,f:'Set/2026'},
-  lacoste:{n:'Lacoste',b:'BR',vp:132.33,tp:6,cp:2,f:'Jul/2026'},
-  adidas:{n:'Adidas',b:'BR',vp:62.99,tp:10,cp:5,f:'Out/2026'},
-  electro:{n:'Electrolux',b:'BR',vp:40.54,tp:20,cp:13,f:'Jul/2027'},
-  ady:{n:'ADY Ingresse',b:'BR',vp:303.06,tp:2,cp:1,f:'Jun/2026'},
-  liniker:{n:'Liniker Show',b:'PIX',vp:44,tp:8,cp:6,f:'Dez/2026'},
-  savana:{n:'Savana',b:'NU',vp:63,tp:7,cp:6,f:'Nov/2026'},
+  tassia:{n:'Tassia Devecchi',b:'NU',vp:465,tp:6,cp:3,f:'Out/2026'},
+  exame_bact:{n:'Exame Bacterias',b:'BR',vp:465,tp:6,cp:4,f:'Nov/2026'},
+  carro:{n:'Funilaria',b:'NU',vp:480,tp:5,cp:2,f:'Ago/2026'},
+  ml_som:{n:'ML Som',b:'NU',vp:55.90,tp:10,cp:6,f:'Dez/2026'},
+  ticket:{n:'Ticketmaster',b:'NU',vp:113.63,tp:7,cp:1,f:'Jul/2026'},
+  mp_ali:{n:'AliExpress',b:'NU',vp:52.96,tp:10,cp:2,f:'Ago/2026'},
+  shopee_v:{n:'Shopee Verdemania',b:'NU',vp:62.70,tp:10,cp:2,f:'Ago/2026'},
+  ml_merc:{n:'ML Mercadol',b:'NU',vp:31.75,tp:4,cp:1,f:'Jul/2026'},
+  actual:{n:'Actual Pharma',b:'NU',vp:130,tp:3,cp:0,f:'Jun/2026'},
+  tiktok:{n:'TikTok Shop',b:'NU',vp:41.97,tp:3,cp:1,f:'Jul/2026'},
+  apple_w:{n:'Apple Watch',b:'BR',vp:223.25,tp:12,cp:6,f:'Dez/2026'},
+  emporio:{n:'Empório da Casa',b:'BR',vp:169.60,tp:6,cp:1,f:'Jul/2026'},
+  cadeira:{n:'ML Cadeira',b:'BR',vp:101.65,tp:12,cp:3,f:'Set/2026'},
+  lacoste:{n:'Lacoste',b:'BR',vp:132.33,tp:6,cp:1,f:'Jul/2026'},
+  adidas:{n:'Adidas',b:'BR',vp:62.99,tp:10,cp:4,f:'Out/2026'},
+  electro:{n:'Electrolux',b:'BR',vp:40.54,tp:20,cp:12,f:'Jul/2027'},
+  ady:{n:'ADY Ingresse',b:'BR',vp:303.06,tp:2,cp:0,f:'Jun/2026'},
+  liniker:{n:'Liniker Show',b:'PIX',vp:44,tp:8,cp:5,f:'Dez/2026'},
+  savana:{n:'Savana',b:'NU',vp:63,tp:7,cp:5,f:'Nov/2026'},
 };}
 function dfFixosPix(){return[
   {id:'localiza',e:'🚗',n:'Localiza Meoo',v:2980,dia:'1',obs:'Boleto mensal · até ago/2029',enc:''},
   {id:'santander',e:'🏦',n:'Santander',v:972,dia:'4',obs:'Dívida · 0,49%/mês',enc:''},
   {id:'dentista',e:'🦷',n:'Dentista PIX',v:481,dia:'22',obs:'Parcelas Bradesco · última set/2026',enc:'2026-09'},
-  {id:'psicologa',e:'🧠',n:'Psicóloga',v:600,dia:'15',obs:'2 sessões/mês · Alessandra Christina',enc:''},
+  {id:'psicologa',e:'🧠',n:'Psicóloga',v:274.50,dia:'15',obs:'1 sessão/mês · Alessandra Christina',enc:''},
   {id:'rose',e:'💆',n:'Rose diarista 1ª',v:1000,dia:'15',obs:'1ª parcela mensal',enc:''},
   {id:'rose2',e:'💆',n:'Rose diarista 2ª',v:1000,dia:'30',obs:'2ª parcela mensal',enc:''},
   {id:'personal',e:'🏋️',n:'Personal Rafael',v:2720,dia:'30',obs:'',enc:''},
@@ -1060,6 +1162,7 @@ function dfFixosAss(){return[
   {id:'conectcar',e:'🚗',n:'Conectcar',v:50,cartao:'NU',obs:''},
   {id:'estac',e:'🅿️',n:'Estacionamento',v:380,cartao:'NU',obs:'Mensalista'},
   {id:'folhasp',e:'📰',n:'Folha de S.Paulo',v:9.90,cartao:'NU',obs:''},
+  {id:'chatgpt',e:'🤖',n:'ChatGPT Plus',v:99,cartao:'BR',obs:'a partir jul/2026'},
 ];}
 function dfEntradas(){return[
   {id:'retro',d:'Retroativo abril',v:10060,m:'2026-05',o:'Recebido em mai/2026',s:'recebido'},
