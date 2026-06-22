@@ -880,6 +880,64 @@ async function loadData(){
   }catch(e){S={};}
   initDefaults();renderAll();
 }
+function migracaoJunho2026b(){
+  if(S._migJun2026b)return;
+  // 1. Corrigir parcela: remover gol_lisboa (estimativa errada), adicionar azul_lisboa real
+  if(S.parcExtras){
+    S.parcExtras=S.parcExtras.filter(function(p){return p.id!=='gol_lisboa';});
+    if(!S.parcExtras.find(function(p){return p.id==='azul_lisboa';})){
+      S.parcExtras.push({id:'azul_lisboa',n:'Azul — voo Lisboa BR↔PT',b:'Bradesco CC',vp:63.70,tp:10,cp:10,mesInicio:'2026-07',f:'Abr/2027',s:'ativa'});
+    }
+    // Decolar Lisboa à vista já foi pago na fatura — registrar como gasto
+  }
+  // 2. Wellhub: corrigir para valor real cobrado R$220
+  if(S.fixosAss){
+    var wh=S.fixosAss.find(function(f){return f.id==='wellhub';});
+    if(wh)wh.v=220;
+  }
+  // 3. Gastos cartão 6575 (Bradesco Principal — dia a dia)
+  if(!S.gastos)S.gastos=[];
+  var _g65=[
+    {tipo:'livre',cat:'comb',val:234.11,desc:'PostoSetee + Splanada Raposo — combustível',data:'2026-06-17'},
+    {tipo:'livre',cat:'super',val:168,desc:'Barbosa Loja 38 — supermercado',data:'2026-06-16'},
+    {tipo:'livre',cat:'super',val:225.35,desc:'Sacolão Higienópolis',data:'2026-06-14'},
+    {tipo:'envelope',cat:'farm',val:234.87,desc:'Drogaria SP 249 + RD Saúde Online',data:'2026-06-12'},
+    {tipo:'envelope',cat:'delivery',val:127.26,desc:'iFood (×2) junho',data:'2026-06-17'},
+    {tipo:'envelope',cat:'delivery',val:69.80,desc:'Nossa Casa — refeição',data:'2026-06-17'},
+    {tipo:'envelope',cat:'lazer',val:545,desc:'Renaissance São Paulo — spa/luxo',data:'2026-06-14'},
+    {tipo:'envelope',cat:'lazer',val:90,desc:'Banca Trianon MASP',data:'2026-06-15'},
+    {tipo:'envelope',cat:'lazer',val:126,desc:'ZigPay — festa/evento',data:'2026-06-06'},
+    {tipo:'envelope',cat:'lazer',val:136.27,desc:'Uber — cartão 6575 junho',data:'2026-06-17'},
+    {tipo:'livre',cat:'religioso',val:117.84,desc:'Casa Umbanda Zé Baiano',data:'2026-06-04'},
+    {tipo:'envelope',cat:'roupas',val:108.30,desc:'HMBRASIL — roupa',data:'2026-06-07'},
+    {tipo:'envelope',cat:'lazer',val:47,desc:'TA Estacionamento',data:'2026-06-07'},
+    {tipo:'envelope',cat:'lazer',val:20,desc:'MP*Marlene',data:'2026-06-06'},
+    {tipo:'livre',cat:'super',val:63,desc:'Jim.com Savana — compra',data:'2026-05-16'},
+  ];
+  // 4. Gastos cartão 2376 (Bradesco Principal — Localiza + serviços)
+  var _g23=[
+    {tipo:'envelope',cat:'lazer',val:397.91,desc:'Decolar — hotel Lisboa (viagem PT+GR)',data:'2026-06-04'},
+    {tipo:'envelope',cat:'lazer',val:273.78,desc:'Localiza — multa extra junho',data:'2026-06-12'},
+    {tipo:'livre',cat:'super',val:270.77,desc:'Amazon BR — compras junho',data:'2026-06-13'},
+    {tipo:'envelope',cat:'lazer',val:108.30,desc:'HMBrasil — roupa (2376)',data:'2026-06-07'},
+    {tipo:'envelope',cat:'lazer',val:47.69,desc:'Amazon BR — compra extra',data:'2026-06-13'},
+  ];
+  var _all=[].concat(_g65,_g23);
+  var _exist=S.gastos.map(function(g){return g.desc;});
+  _all.forEach(function(g){
+    if(!_exist.includes(g.desc))S.gastos.push(Object.assign({id:(Math.random().toString(36).slice(2,9)),ts:Date.now()},g));
+  });
+  // Recalcular envDef.usado
+  if(S.envDef){
+    S.envDef.forEach(function(e){e.usado=0;});
+    S.gastos.forEach(function(g){
+      var env=S.envDef.find(function(e){return e.id===g.cat;});
+      if(env)env.usado=(+env.usado||0)+(+g.val||0);
+    });
+  }
+  S._migJun2026b=true;
+  save();
+}
 function migracaoJunho2026(){
   if(S._migJun2026)return;
   // 1. Forçar rebuild das parcelas com os cp corretos do dfParc atualizado
@@ -1061,6 +1119,7 @@ function initDefaults(){
   if(!S.confissoes)S.confissoes=[];
   if(!S.faturas)S.faturas={nu:6200,br:4817};
   migracaoJunho2026();
+  migracaoJunho2026b();
   // Auto virada de mês
   var _mesHoje=(function(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');})();
   if(!S._lastMes)S._lastMes=_mesHoje;
