@@ -565,6 +565,7 @@ body.desktop .desk-fab svg{width:15px;height:15px;stroke-width:2.5}
               <div class="div"></div>
               <button class="btn bp bfull mt8" onclick="runMigration()">🔧 Aplicar correções jun/2026</button>
               <button class="btn bp bfull mt8" onclick="runMigration2()">🔧 Aplicar correções jul/2026</button>
+              <button class="btn bp bfull mt8" onclick="runMigration3()">🔧 Fechar jun + atualizar jul/2026</button>
               <button class="btn bg bfull mt8" onclick="exportDados()">📥 Exportar JSON</button>
               <button class="btn bo bfull mt8" onclick="resetMes()">🔄 Resetar mês (gastos + envelopes)</button>
               <button class="btn bd bfull mt8" onclick="resetTudo()">⚠️ Reset completo</button>
@@ -2728,6 +2729,139 @@ function runMigration2(){
   }
   save();
   alert('✅ Correções jul/2026 aplicadas!');
+  renderAll();
+}
+function runMigration3(){
+  if(!confirm('Fechar junho/2026 e atualizar julho?\n\n• Avança cp de todas as parcelas\n• Corrige Azul Lisboa (R$636,99/parcela)\n• Corrige Pier→Nubank, ConnectCar→Bradesco, Savana→Bradesco\n• Corrige Wellhub R$220, Dentista enc dez/2026\n• Remove Spotify e Mensalista revertido\n• Adiciona Axé R$100, Condomínio R$100, Matheus Zanon\n• Atualiza sal30 para R$13.192, reserva p/ R$10.737\n• Arquiva gastos de junho'))return;
+
+  if(!S.parc)S.parc={};
+  if(!S.parcExtras)S.parcExtras=[];
+
+  // 1. AVANÇAR CP — julho 15 pago (cada parcela usa 1 cp)
+  var novoCp={
+    tassia:3,exame_bact:4,carro:2,ml_som:6,ticket:1,
+    mp_ali:2,shopee_v:2,ml_merc:1,actual:0,apple_w:6,
+    emporio:1,cadeira:3,lacoste:1,adidas:4,electro:12,
+    liniker:5,savana:5,tiktok:1,ady:0,mounjaro:0
+  };
+  Object.keys(novoCp).forEach(function(id){
+    if(S.parc[id])S.parc[id].cp=novoCp[id];
+    else{var d=dfParc()[id];if(d)S.parc[id]=Object.assign({},d,{cp:novoCp[id]});}
+  });
+
+  // 2. AZUL LISBOA — corrigir vp e avançar cp
+  var azul=S.parcExtras.find(function(p){return p.id==='azul_lisboa';});
+  if(azul){azul.vp=636.99;azul.cp=9;}
+
+  // 3. PERFUME EBN — encerrar
+  var pfm=S.parcExtras.find(function(p){return p.id==='perfume_ebn';});
+  if(pfm)pfm.cp=0;
+
+  // 4. MATHEUS ZANON — nova parcela PIX (2ª jul/30, 3ª ago/30)
+  if(!S.parcExtras.find(function(p){return p.id==='matheus_zanon';})){
+    S.parcExtras.push({id:'matheus_zanon',n:'Matheus Zanon',b:'PIX',vp:150,tp:3,cp:2,f:'Ago/2026',s:'ativa'});
+  }
+
+  // 5. RESERVA EMERGÊNCIA — atualizar após aporte de R$4.000 hoje
+  if(!S.cx)S.cx={};
+  S.cx.reserva=10737;
+
+  // 6. FIXOS PIX — adicionar Axé e Condomínio, remover Spotify, corrigir Dentista
+  if(!S.fixosPix)S.fixosPix=dfFixosPix();
+  if(!S.fixosPix.find(function(x){return x.id==='axe_ass';})){
+    S.fixosPix.push({id:'axe_ass',e:'🙏',n:'Associação Axé',v:100,dia:'15',obs:'Mensal · dia 15',enc:''});
+  }
+  if(!S.fixosPix.find(function(x){return x.id==='condominio';})){
+    S.fixosPix.push({id:'condominio',e:'🏠',n:'Condomínio',v:100,dia:'15',obs:'Rita Izabel · dia 15',enc:''});
+  }
+  S.fixosPix=S.fixosPix.filter(function(x){return x.id!=='spotify';});
+  var dent=S.fixosPix.find(function(x){return x.id==='dentista';});
+  if(dent)dent.enc='2026-12';
+
+  // 7. ASSINATURAS — corrigir cartões e valores
+  if(!S.fixosAss)S.fixosAss=dfFixosAss();
+  S.fixosAss=S.fixosAss.filter(function(x){return x.id!=='estac';});
+  var cc=S.fixosAss.find(function(x){return x.id==='conectcar';});
+  if(cc)cc.cartao='BR';
+  var pier=S.fixosAss.find(function(x){return x.id==='pier';});
+  if(pier)pier.cartao='NU';
+  var wh=S.fixosAss.find(function(x){return x.id==='wellhub';});
+  if(wh)wh.v=220;
+
+  // 8. PARCELAS — corrigir cartão Savana (BR, não NU)
+  if(S.parc.savana)S.parc.savana.b='BR';
+
+  // 9. CONFIG — atualizar sal30 real
+  if(!S.cfg)S.cfg={};
+  S.cfg.sal30=13192;
+
+  // 10. PERSONAL RAFAEL — atualizar para set/2026 em diante
+  var raf=S.fixosPix.find(function(x){return x.id==='personal';});
+  if(raf)raf.obs='R$2.000 a partir set/2026';
+
+  // 11. ARQUIVAR JUNHO — guardar gastos atuais em histMeses
+  if(!S.histMeses)S.histMeses={};
+  var mj='2026-06';
+  if(!S.histMeses[mj]){
+    S.histMeses[mj]={
+      gastos:JSON.parse(JSON.stringify(S.gastos||[])),
+      extras:JSON.parse(JSON.stringify(S.extras||[])),
+      eventuais:JSON.parse(JSON.stringify(S.eventuais||[])),
+      envDef:JSON.parse(JSON.stringify((S.envDef||[]).map(function(e){return{id:e.id,n:e.n,e:e.e,lim:e.lim,usado:e.usado||0};})))
+    };
+  }
+
+  // 12. GASTOS JUNHO NÃO REGISTRADOS — adicionar ao histórico jun
+  if(!S.histMeses[mj].extras)S.histMeses[mj].extras=[];
+  var extJun=S.histMeses[mj].extras;
+  function addGasto(v,cat,desc){
+    extJun.push({id:uid(),v:v,cat:cat,desc:desc,pgto:'cartao',banco:'BR',cart:'BR',np:1,vp:v,ts:Date.now()});
+  }
+  // Religioso
+  addGasto(117.84,'religioso','Casa Umbanda Zé Baiano 04/jun');
+  addGasto(218.56,'religioso','Casa Umbanda Zé Baiano 23/mai');
+  addGasto(1000,'religioso','Presente Axé (PIX emergência) 23/jun');
+  addGasto(180,'religioso','Lucas André — galo assentamento');
+  addGasto(327.77,'religioso','Janaina Teodoro (77,77 + 250)');
+  addGasto(100,'religioso','Associação Cultural Axé 15/jun');
+  // Lazer/luxo
+  addGasto(545,'lazer','Renaissance SP — spa/luxo 14/jun');
+  addGasto(126,'lazer','ZigPay — festa 06/jun');
+  addGasto(250.80,'lazer','CAEM Brasil — vinhos 22/jun');
+  addGasto(45,'lazer','Wesley — cerveja 01/jun');
+  addGasto(35,'lazer','Dejair — festa junina 15/jun');
+  addGasto(90,'lazer','MASP Banca Trianon 15/jun');
+  addGasto(109.80,'delivery','Bares/choperia jun (Mureta+Cachacaria+Queijaria)');
+  // Roupas
+  addGasto(550.70,'roupas','Tatobel — camisa+gravata evento 16/jun');
+  addGasto(119.96,'roupas','Lojas Renner ×2 18/jun');
+  addGasto(108.30,'roupas','HMBRASIL — roupa 07/jun');
+  addGasto(309.80,'roupas','Lojas Renner 21/mai');
+  // Supermercado
+  addGasto(1412.29,'super','Supermercado jun (Amazon+ML+Shopee+Barbosa+Sacolão+outros)');
+  // Farmácia
+  addGasto(395.42,'farm','Farmácia junho (RD Saúde+Drogaria+Raia+Gabigui+Imifarma)');
+  // Alimentação fora
+  addGasto(175.85,'delivery','iFood ×3 junho');
+  addGasto(75.70,'delivery','Alimentação fora (Sabor Vitória+Marlene+Gilberto)');
+  // Combustível no cartão
+  addGasto(322.01,'comb','Combustível junho Bradesco (Posto+Raposo+Estação)');
+  // Viagem (mala e assento)
+  addGasto(700,'lazer','Youxiao Wu — mala viagem Portugal 23/jun');
+  addGasto(165,'lazer','IATA — assento conforto GOL 21/jun');
+  // Multa
+  addGasto(273.78,'imprevistos','Multa Localiza (LOCALIZAMEOO) 12/jun');
+  // Outros
+  addGasto(244,'compras','Felipe Arabé — quitação dívida Obatobi');
+
+  // 13. RESETAR MÊS ATUAL para julho
+  S.gastos=[];S.extras=[];S.eventuais=[];
+  if(S.envDef)S.envDef.forEach(function(e){e.usado=0;});
+  else S.envDef=dfEnvs();
+  S.faturas={nu:0,br:0};
+
+  save();
+  alert('✅ Junho arquivado! Julho iniciado.\n\nParcelas atualizadas · Azul R$636,99 corrigido\nAxé+Condomínio adicionados · Gastos de junho registrados no histórico');
   renderAll();
 }
 function autoVirarMes(novoMes){
