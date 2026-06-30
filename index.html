@@ -566,6 +566,7 @@ body.desktop .desk-fab svg{width:15px;height:15px;stroke-width:2.5}
               <button class="btn bp bfull mt8" onclick="runMigration()">🔧 Aplicar correções jun/2026</button>
               <button class="btn bp bfull mt8" onclick="runMigration2()">🔧 Aplicar correções jul/2026</button>
               <button class="btn bp bfull mt8" onclick="runMigration3()">🔧 Fechar jun + atualizar jul/2026</button>
+              <button class="btn bp bfull mt8" onclick="runMigration4()">🔧 Correções estruturais jul/2026 (v4)</button>
               <button class="btn bg bfull mt8" onclick="exportDados()">📥 Exportar JSON</button>
               <button class="btn bo bfull mt8" onclick="resetMes()">🔄 Resetar mês (gastos + envelopes)</button>
               <button class="btn bd bfull mt8" onclick="resetTudo()">⚠️ Reset completo</button>
@@ -2862,6 +2863,84 @@ function runMigration3(){
 
   save();
   alert('✅ Junho arquivado! Julho iniciado.\n\nParcelas atualizadas · Azul R$636,99 corrigido\nAxé+Condomínio adicionados · Gastos de junho registrados no histórico');
+  renderAll();
+}
+function runMigration4(){
+  if(!confirm('Correções estruturais v4?\n\n• Itaú 1 → R$507,62\n• Benchmark variável → R$2.893\n• Estacionamento R$380 card 2376\n• Gabinete cozinha (2× R$312 PIX)\n• COPA Cartagena (3× R$1.034,83)\n• 2 compras TikTok faltantes\n• Reembolsos COPA R$2.520 + LBS R$151\n• Garante Éverton jul+ago'))return;
+
+  // 1. CONFIG — sal30 e benchmark
+  if(!S.cfg)S.cfg={};
+  S.cfg.sal30=13192;
+  S.cfg.va=2893;
+
+  // 2. ITAÚ 1 — valor correto R$507,62
+  if(S.fixosPix){
+    var it1=S.fixosPix.find(function(x){return x.id==='itau1';});
+    if(it1)it1.v=507.62;
+  }
+  if(S.dividas){
+    S.dividas=S.dividas.map(function(d){
+      if(d.id==='itau1')return Object.assign({},d,{m:507.62});
+      return d;
+    });
+  }
+
+  // 3. AZUL — garantir vp R$636,99 (corrige erro da migração antiga)
+  if(S.parcExtras){
+    var azul=S.parcExtras.find(function(p){return p.id==='azul_lisboa';});
+    if(azul){azul.vp=636.99;azul.n='Azul — voo Lisboa BR↔PT';}
+  }
+
+  // 4. ESTACIONAMENTO — re-adicionar correto (R$380 card 2376, era removido)
+  if(!S.fixosAss)S.fixosAss=dfFixosAss();
+  if(!S.fixosAss.find(function(x){return x.id==='estac';})){
+    S.fixosAss.push({id:'estac',e:'🅿️',n:'Estacionamento mensal',v:380,cartao:'BR',obs:'Card 2376 · pode variar por dias extras'});
+  } else {
+    var es=S.fixosAss.find(function(x){return x.id==='estac';});
+    es.v=380;es.cartao='BR';es.n='Estacionamento mensal';es.obs='Card 2376 · pode variar por dias extras';
+  }
+
+  // 5. GABINETE COZINHA — 2 parcelas restantes (sinal já pago)
+  if(!S.parcExtras)S.parcExtras=[];
+  if(!S.parcExtras.find(function(p){return p.id==='gabinete';})){
+    S.parcExtras.push({id:'gabinete',n:'Gabinete cozinha (Magaly)',b:'PIX',vp:312,tp:2,cp:2,f:'Ago/2026',s:'ativa',mesInicio:'2026-07'});
+  }
+
+  // 6. COPA CARTAGENA — 3 parcelas R$1.034,83 (card 2376)
+  if(!S.parcExtras.find(function(p){return p.id==='copa_cartagena';})){
+    S.parcExtras.push({id:'copa_cartagena',n:'COPA — voo Cartagena',b:'Bradesco CC',vp:1034.83,tp:3,cp:3,f:'Set/2026',s:'ativa',mesInicio:'2026-07'});
+  }
+
+  // 7. TIKTOK — 2 compras faltantes (além da tiktok já existente)
+  if(!S.parc)S.parc={};
+  if(!S.parc.tiktok2)S.parc.tiktok2={n:'TikTok Lf8indust',b:'NU',vp:41.97,tp:2,cp:1,f:'Jul/2026'};
+  if(!S.parc.tiktok3)S.parc.tiktok3={n:'TikTok Ebn 1/2',b:'NU',vp:41.97,tp:2,cp:2,f:'Ago/2026'};
+
+  // 8. REEMBOLSOS — entradas previstas (recebíveis até 31/07)
+  if(!S.entradas)S.entradas=dfEntradas();
+  if(!S.entradas.find(function(e){return e.id==='reemb_copa';})){
+    S.entradas.push({id:'reemb_copa',d:'Reembolso COPA (empresa)',v:2520,m:'2026-07',o:'Até 31/jul',s:'pendente'});
+  }
+  if(!S.entradas.find(function(e){return e.id==='reemb_lbs';})){
+    S.entradas.push({id:'reemb_lbs',d:'Reembolso LBS (empresa)',v:151,m:'2026-07',o:'Até 31/jul',s:'pendente'});
+  }
+
+  // 9. ÉVERTON — garantir jul + ago (já existem em dfEntradas, reforçar se faltar)
+  if(!S.entradas.find(function(e){return e.id==='everton2';})){
+    S.entradas.push({id:'everton2',d:'Éverton',v:1000,m:'2026-07',o:'2ª parcela',s:'pendente'});
+  }
+  if(!S.entradas.find(function(e){return e.id==='everton3';})){
+    S.entradas.push({id:'everton3',d:'Éverton',v:1000,m:'2026-08',o:'3ª parcela',s:'pendente'});
+  }
+
+  // 10. ANITTA / ADY — Kauê 2ª parcela como entrada julho
+  if(!S.entradas.find(function(e){return e.id==='kaue_anitta2';})){
+    S.entradas.push({id:'kaue_anitta2',d:'Kauê (Anitta 2ª)',v:303,m:'2026-07',o:'Reembolso ingresso',s:'pendente'});
+  }
+
+  S._mig4=true;
+  save();
+  alert('✅ Correções v4 aplicadas!\n\nItaú R$507,62 · Estacionamento · Gabinete · COPA\n2 TikTok · Reembolsos · Éverton garantido');
   renderAll();
 }
 function autoVirarMes(novoMes){
