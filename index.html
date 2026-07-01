@@ -570,6 +570,9 @@ body.desktop .desk-fab svg{width:15px;height:15px;stroke-width:2.5}
               <button class="btn bp bfull mt8" onclick="runMigration5()">🔧 Seguro viagem + regra Itaú (v5)</button>
               <button class="btn bp bfull mt8" onclick="runMigration6()">🔧 Flash R$780 + meta super R$1.000 (v6)</button>
               <button class="btn bp bfull mt8" onclick="runMigration7()">🔧 Estratégia Itaú out + projeção conservadora (v7)</button>
+              <button class="btn bp bfull mt8" onclick="runMigration8()">🔧 Dentista out/2026 + Itaú mar/2027 (v8)</button>
+              <button class="btn bp bfull mt8" onclick="runMigration9()">🔧 Orçamento viagem final: €2.121 (v9)</button>
+              <button class="btn bp bfull mt8" onclick="runMigration10()">🔧 Reforma cofrinhos + calendário aportes (v10)</button>
               <button class="btn bg bfull mt8" onclick="exportDados()">📥 Exportar JSON</button>
               <button class="btn bo bfull mt8" onclick="resetMes()">🔄 Resetar mês (gastos + envelopes)</button>
               <button class="btn bd bfull mt8" onclick="resetTudo()">⚠️ Reset completo</button>
@@ -3026,6 +3029,112 @@ function runMigration7(){
   S._mig7=true;
   save();
   alert('✅ Correções v7 aplicadas!\n\nProjeção conservadora · Marco Itaú outubro\nRoupas viagem = spending euros');
+  renderAll();
+}
+function runMigration8(){
+  if(!confirm('Correções v8?\n\n• Dentista R$12.000 em 5× R$2.400 PIX, começa OUTUBRO\n• Parcelas out-nov-dez/2026 + jan-fev/2027\n• Itaú 1 payoff remarcado para MAR/2027 (após dentista)\n• Prioridade: reserva+viagem > dentista > Itaú'))return;
+
+  if(!S.parcExtras)S.parcExtras=[];
+  // DENTISTA — parcela grande, começa outubro
+  if(!S.parcExtras.find(function(p){return p.id==='dentista_sorita';})){
+    S.parcExtras.push({id:'dentista_sorita',n:'Dentista Sorita (5×)',b:'PIX',vp:2400,tp:5,cp:5,f:'Fev/2027',s:'ativa',mesInicio:'2026-10',obs:'R$12k total. Nota integral na conclusão (confirmar Sorita). Dedutível IR.'});
+  }
+
+  // TIMELINE — atualizar marco Itaú para março/2027
+  if(!S.tlMarcos)S.tlMarcos=[];
+  var itauMarco=S.tlMarcos.find(function(m){return m.id==='itau_out';});
+  if(itauMarco){
+    itauMarco.data='2027-03-15';
+    itauMarco.t='Quitar Itaú 1 (após dentista)';
+    itauMarco.d='Mar/2027: reserva cheia + dentista pago. Usar carry pra quitar Itaú 1 (~R$6k, 1,29%/mês). Dentista tem prioridade (out-fev).';
+  }
+  // Marco dentista
+  if(!S.tlMarcos.find(function(m){return m.id==='dentista_inicio';})){
+    S.tlMarcos.push({id:'dentista_inicio',e:'🦷',t:'Dentista inicia',d:'Out/2026: R$12k em 5× R$2.400 PIX. Após reserva ≥R$25k e viagem. Dedutível IR (R$3.300 de volta). Confirmar com Sorita: nota integral na conclusão.',data:'2026-10-01',tipo:'meta'});
+  }
+
+  // Config: nota do dentista
+  if(!S.cfg)S.cfg={};
+  S.cfg.nota_dentista='R$12k Sorita, 5×R$2.400 PIX, out/2026-fev/2027. Dedutível (pagamento+nota 2026). CONFIRMAR se nota integral sai na conclusão. Prioridade após reserva+viagem.';
+
+  S._mig8=true;
+  save();
+  alert('✅ Correções v8 aplicadas!\n\nDentista out/2026 (5×R$2.400)\nItaú 1 remarcado mar/2027\nPrioridade: reserva > dentista > Itaú');
+  renderAll();
+}
+function runMigration9(){
+  if(!confirm('Correções v9?\n\n• Roteiro viagem atualizado (Lisboa+Sitges/BCN+Atenas+Milos)\n• Euros: €571 obrigações + €1.550 livre = €2.121 total\n• Distribuição: jul €700 + ago €900 + set €521\n• Ajusta cofrinho viagem para refletir realidade'))return;
+
+  // 1. ROTEIRO — atualizar cofrinho viagem com dados reais
+  if(!S.cxDef)S.cxDef={fixas:dfCxFixas(),uso:dfCxUso()};
+  var viagem=S.cxDef.fixas.find(function(c){return c.id==='viagem';});
+  if(viagem){
+    viagem.r='Roteiro: 3-6 Lisboa (amigos) · 6-10 Sitges/BCN (Diego, pago) · 10-14 Atenas · 14-19 Milos · 19-20 Atenas · 20-22 Lisboa (amigos).';
+    viagem.o='€2.121 total a comprar (€571 obrigações + €1.550 livre: €450 compras + €1.100 dia a dia ~€58/dia)';
+  }
+
+  // 2. CONFIG — registrar plano de compra de euros atualizado
+  if(!S.cfg)S.cfg={};
+  S.cfg.euros_plano='Jul €700 (R$4.270) + Ago €900 (R$5.490) + Set €521 antes de embarcar (R$3.178). Total €2.121. Já comprado/enviado: €200+€330 Revolut + €200 Diego (Sitges €118+Milos entrada €80). Obrigações restantes: hotel Atenas €180 + Milos restante €235 + ferry €156 = €571. Livre €1.550 (compras €450 + dia a dia €1.100 ~€58/dia, testado com pesquisa de preços Grécia).';
+  S.cfg.euros_teto=6.10;
+
+  // 3. Nota: voos internos já cobertos
+  S.cfg.voos_internos_nota='Lisboa-Barcelona-Atenas-Lisboa (€330) já comprados/cobertos pelos euros enviados. Trem Barcelona-Sitges incluído nos €118 do Diego.';
+
+  S._mig9=true;
+  save();
+  alert('✅ Correções v9 aplicadas!\n\nRoteiro atualizado · Euros €2.121 total\nPlano: jul€700+ago€900+set€521');
+  renderAll();
+}
+function runMigration10(){
+  if(!confirm('Correções v10?\n\n• Obrigação → R$632,12/mês (meta mai/2027)\n• Imprevistos → meta R$3.000 (aporte R$300 mantém)\n• Liniker removido (quitado)\n• Viagem/Ferias encerrada — saldo R$245,71 abate euros jul\n• Cofrinhos qualidade de vida (Compras/Lazer/Super Extra/Alim.fora) mantidos como meta futura, alimentados só com excedente a partir de out/2026'))return;
+
+  // 1. OBRIGAÇÃO — novo valor e meta de data
+  if(!S.cxDef)S.cxDef={fixas:dfCxFixas(),uso:dfCxUso()};
+  var obrig=S.cxDef.fixas.find(function(c){return c.id==='obrigacao';});
+  if(obrig){
+    obrig.ap=632.12;
+    obrig.fim='2027-05';
+    obrig.o='meta R$7.000 até mai/2027 (saldo real jun/26: R$46,69)';
+    obrig.r='Usar somente no evento (jul/2027). Aporte recalculado para fechar até maio.';
+  }
+
+  // 2. IMPREVISTOS — nova meta, sem trava
+  var imprev=S.cxDef.uso.find(function(c){return c.id==='imprevistos';});
+  if(imprev){
+    imprev.m=3000;
+    imprev.r='Saúde, família, carro, casa. Meta ampliada de R$900 para R$3.000 — cobre imprevisto real.';
+    imprev.o='meta R$3.000';
+  }
+
+  // 3. VIAGEM/FERIAS — encerrar
+  var viagem=S.cxDef.fixas.find(function(c){return c.id==='viagem';});
+  if(viagem){
+    viagem.ap=0;
+    viagem.r='ENCERRADO — viagem paga via Revolut direto. Saldo R$245,71 usado para abater compra de euros jul/2026.';
+    viagem.o='encerrado jul/2026';
+  }
+
+  // 4. LINIKER — remover de parcelas (quitado)
+  if(S.parc&&S.parc.liniker)S.parc.liniker.cp=0;
+
+  // 5. COFRINHOS QUALIDADE DE VIDA — registrar como metas futuras (não fixas mensais)
+  if(!S.cxDef.qualidadeVida){
+    S.cxDef.qualidadeVida=[
+      {id:'compras_qv',e:'🛍️',n:'Compras',m:300,ap:0,r:'Alimentar com excedente a partir de out/2026. Ordem 1.',tipo:'excedente'},
+      {id:'lazer_qv',e:'🎉',n:'Lazer',m:500,ap:0,r:'Alimentar com excedente a partir de nov/2026. Ordem 2.',tipo:'excedente'},
+      {id:'super_extra_qv',e:'🛒',n:'Supermercado Extra',m:800,ap:0,r:'Alimentar com excedente a partir de nov/2026. Ordem 3.',tipo:'excedente'},
+      {id:'alim_fora_qv',e:'🍽️',n:'Alimentação fora',m:700,ap:0,r:'Alimentar com excedente a partir de dez/2026. Ordem 4.',tipo:'excedente'},
+    ];
+  }
+
+  // 6. Nota da filosofia no config
+  if(!S.cfg)S.cfg={};
+  S.cfg.filosofia_cofrinhos='Cofrinho = fricção protetora contra gasto por impulso no cartão. Potes de qualidade de vida (Compras/Lazer/Super Extra/Alim.fora) ficam com meta registrada mas SÓ recebem aporte quando há excedente/carry confirmado no fim do mês — nunca da conta corrente programada. Ordem: Emergência > Obrigação > Imprevistos(até 3k) > Compras > Lazer > Super Extra > Alim.fora.';
+
+  S._mig10=true;
+  save();
+  alert('✅ Correções v10 aplicadas!\n\nObrigação R$632,12 · Imprevistos meta R$3.000\nLiniker removido · Viagem encerrada\nCofrinhos qualidade de vida registrados como meta futura');
   renderAll();
 }
 function autoVirarMes(novoMes){
