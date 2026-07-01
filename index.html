@@ -567,6 +567,8 @@ body.desktop .desk-fab svg{width:15px;height:15px;stroke-width:2.5}
               <button class="btn bp bfull mt8" onclick="runMigration2()">🔧 Aplicar correções jul/2026</button>
               <button class="btn bp bfull mt8" onclick="runMigration3()">🔧 Fechar jun + atualizar jul/2026</button>
               <button class="btn bp bfull mt8" onclick="runMigration4()">🔧 Correções estruturais jul/2026 (v4)</button>
+              <button class="btn bp bfull mt8" onclick="runMigration5()">🔧 Seguro viagem + regra Itaú (v5)</button>
+              <button class="btn bp bfull mt8" onclick="runMigration6()">🔧 Flash R$780 + meta super R$1.000 (v6)</button>
               <button class="btn bg bfull mt8" onclick="exportDados()">📥 Exportar JSON</button>
               <button class="btn bo bfull mt8" onclick="resetMes()">🔄 Resetar mês (gastos + envelopes)</button>
               <button class="btn bd bfull mt8" onclick="resetTudo()">⚠️ Reset completo</button>
@@ -2941,6 +2943,67 @@ function runMigration4(){
   S._mig4=true;
   save();
   alert('✅ Correções v4 aplicadas!\n\nItaú R$507,62 · Estacionamento · Gabinete · COPA\n2 TikTok · Reembolsos · Éverton garantido');
+  renderAll();
+}
+function runMigration5(){
+  if(!confirm('Correções v5?\n\n• Remove seguro viagem R$1.500 (Visa Infinite 2376 cobre — DMH USD 175k)\n• Compras Portugal mantém R$2.000\n• Regra Itaú 1: só antecipar com reserva ≥ R$20k\n• Itaú 1 saldo → R$8.113'))return;
+
+  // 1. SEGURO VIAGEM — removido (Infinite cobre). Registrar nota.
+  if(!S.parcExtras)S.parcExtras=[];
+  // Remove qualquer entrada de seguro viagem se existir como parcela/extra
+  S.parcExtras=S.parcExtras.filter(function(p){
+    return !(p.id==='seguro_viagem'||(p.n&&p.n.toLowerCase().indexOf('seguro viagem')>=0));
+  });
+
+  // 2. REGRA ITAÚ 1 — reserva ≥ R$20k antes de antecipar
+  if(S.dividas){
+    S.dividas=S.dividas.map(function(d){
+      if(d.id==='itau1')return Object.assign({},d,{obs:'1,29%/mês · só antecipar com reserva ≥ R$20k (set/2026). Liquidez antes de quitação.'});
+      return d;
+    });
+  }
+
+  // 3. NOTA no perfil/config sobre o seguro
+  if(!S.cfg)S.cfg={};
+  S.cfg.seguro_viagem_nota='Visa Infinite (2376) cobre Schengen — DMH USD 175k. Emitir bilhete grátis no Portal Visa Benefícios antes de embarcar.';
+
+  // 4. TIMELINE — marco do seguro economizado
+  if(!S.tlMarcos)S.tlMarcos=[];
+  if(!S.tlMarcos.find(function(m){return m.id==='seguro_infinite';})){
+    S.tlMarcos.push({id:'seguro_infinite',e:'🛡️',t:'Seguro viagem grátis (Infinite)',d:'Visa Infinite cobre Schengen (DMH USD 175k). Economia de R$1.500.',data:'2026-06-30',tipo:'meta'});
+  }
+
+  S._mig5=true;
+  save();
+  alert('✅ Correções v5 aplicadas!\n\nSeguro viagem removido (Infinite cobre)\nRegra Itaú 1: reserva ≥ R$20k primeiro');
+  renderAll();
+}
+function runMigration6(){
+  if(!confirm('Correções v6?\n\n• Flash alimentação → R$780 (era R$1.100, benefício caiu)\n• Registra flash_a no config\n• Meta supermercado → R$1.000 (teto rígido)\n• Meta Uber/transporte → R$300 (dia a dia, sem aeroporto)'))return;
+
+  // 1. FLASH — registrar valores atuais no config
+  if(!S.cfg)S.cfg={};
+  S.cfg.flash_a=780;   // alimentação (caiu de 1100)
+  S.cfg.flash_c=400;   // combustível
+  S.cfg.flash_i=180;   // internet
+  // Total Flash agora: R$1.360/mês (era R$1.680)
+
+  // 2. SUPERMERCADO — teto rígido R$1.000
+  if(!S.envDef)S.envDef=dfEnvs();
+  var sup=S.envDef.find(function(e){return e.id==='super';});
+  if(sup){sup.lim=1000;sup.obs='Teto rígido R$1.000 — concentrar compras, evitar 5 plataformas';}
+
+  // 3. UBER/TRANSPORTE — meta R$300 (dia a dia normal, sem aeroporto)
+  // Uber está dentro de envelope? verificar. Se não existe, criar nota.
+  var uberEnv=S.envDef.find(function(e){return e.id==='transporte'||e.id==='uber';});
+  if(uberEnv){uberEnv.lim=300;uberEnv.obs='Dia a dia. Aeroporto/viagem = exceção pontual.';}
+  else{
+    S.envDef.push({id:'transporte',e:'🚗',n:'Transporte apps',lim:300,tipo:'livre',usado:0,obs:'Uber+99 dia a dia. Aeroporto = exceção.'});
+  }
+
+  S._mig6=true;
+  save();
+  alert('✅ Correções v6 aplicadas!\n\nFlash alimentação R$780 registrado\nSupermercado teto R$1.000\nTransporte apps meta R$300');
   renderAll();
 }
 function autoVirarMes(novoMes){
