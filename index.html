@@ -569,6 +569,7 @@ body.desktop .desk-fab svg{width:15px;height:15px;stroke-width:2.5}
               <button class="btn bp bfull mt8" onclick="runMigration4()">🔧 Correções estruturais jul/2026 (v4)</button>
               <button class="btn bp bfull mt8" onclick="runMigration5()">🔧 Seguro viagem + regra Itaú (v5)</button>
               <button class="btn bp bfull mt8" onclick="runMigration6()">🔧 Flash R$780 + meta super R$1.000 (v6)</button>
+              <button class="btn bp bfull mt8" onclick="runMigration7()">🔧 Estratégia Itaú out + projeção conservadora (v7)</button>
               <button class="btn bg bfull mt8" onclick="exportDados()">📥 Exportar JSON</button>
               <button class="btn bo bfull mt8" onclick="resetMes()">🔄 Resetar mês (gastos + envelopes)</button>
               <button class="btn bd bfull mt8" onclick="resetTudo()">⚠️ Reset completo</button>
@@ -3004,6 +3005,27 @@ function runMigration6(){
   S._mig6=true;
   save();
   alert('✅ Correções v6 aplicadas!\n\nFlash alimentação R$780 registrado\nSupermercado teto R$1.000\nTransporte apps meta R$300');
+  renderAll();
+}
+function runMigration7(){
+  if(!confirm('Correções v7?\n\n• Variável projeção → R$2.800 (postura conservadora)\n• Marco: avaliar quitar Itaú 1 em outubro\n• Nota: roupas da viagem saem do spending em euros'))return;
+
+  if(!S.cfg)S.cfg={};
+  S.cfg.va=2800;  // volta pra conservador (não 2893 nem 2450)
+  S.cfg.postura='conservadora — variável estimado alto, sobra vira carry/reserva';
+
+  // Marco timeline: avaliação Itaú outubro
+  if(!S.tlMarcos)S.tlMarcos=[];
+  if(!S.tlMarcos.find(function(m){return m.id==='itau_out';})){
+    S.tlMarcos.push({id:'itau_out',e:'🎯',t:'Avaliar quitar Itaú 1',d:'Out/2026: se reserva ≥R$20k e carry permitir, quitar saldo ~R$6k (1,29%/mês) sem derrubar reserva. Liquidez antes de quitação.',data:'2026-10-15',tipo:'meta'});
+  }
+
+  // Nota roupas viagem
+  S.cfg.nota_roupas='Roupas da viagem (Uniqlo etc) saem do spending em euros €1.250, não da fatura BR. Revolut, sem spread/IOF.';
+
+  S._mig7=true;
+  save();
+  alert('✅ Correções v7 aplicadas!\n\nProjeção conservadora · Marco Itaú outubro\nRoupas viagem = spending euros');
   renderAll();
 }
 function autoVirarMes(novoMes){
