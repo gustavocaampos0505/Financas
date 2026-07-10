@@ -2,10 +2,13 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#07090d">
+<meta name="description" content="Painel pessoal para organização financeira.">
 <title>Finanças · GS</title>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Fraunces:opsz,wght@9..144,700&family=Sora:wght@300;400;500;600&display=swap');
 :root{
@@ -19,6 +22,8 @@
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;font-family:'Sora',sans-serif;background:var(--bg);color:var(--text);overflow:hidden}
 input,button,select,textarea{font-family:inherit}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid rgba(56,176,240,.65);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
 ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
 
 /* LOGIN */
@@ -32,6 +37,10 @@ input,button,select,textarea{font-family:inherit}
 .linput:focus{border-color:var(--green)}
 .lbtn{width:100%;background:var(--green);color:#040608;border:none;border-radius:10px;padding:13px;font-size:.85rem;font-weight:600;cursor:pointer}
 .lerr{color:var(--red);font-size:.7rem;margin-top:8px;font-family:'DM Mono',monospace;min-height:16px}
+.lsafe{font-size:.64rem!important;line-height:1.5;color:var(--muted)!important;margin:12px 0 0!important}
+.save-state{position:fixed;top:12px;right:12px;z-index:10000;background:var(--s2);border:1px solid var(--border);border-radius:20px;padding:7px 11px;font:500 .65rem 'DM Mono',monospace;color:var(--muted);opacity:0;transform:translateY(-6px);pointer-events:none;transition:.2s}
+.save-state.on{opacity:1;transform:none}.save-state.ok{color:var(--green)}.save-state.err{color:var(--red)}
+.toast{position:fixed;left:50%;bottom:calc(var(--nav-h) + var(--safe) + 18px);z-index:10001;max-width:min(420px,calc(100vw - 32px));transform:translate(-50%,20px);background:var(--s3);border:1px solid var(--b2);box-shadow:0 12px 40px rgba(0,0,0,.45);border-radius:10px;padding:10px 14px;font-size:.75rem;opacity:0;pointer-events:none;transition:.22s}.toast.on{opacity:1;transform:translate(-50%,0)}
 
 /* APP */
 #app{position:fixed;inset:0;display:flex;opacity:0;pointer-events:none;transition:opacity .2s}
@@ -172,14 +181,20 @@ body.desktop .desk-fab svg{width:15px;height:15px;stroke-width:2.5}
 </style>
 </head>
 <body>
+<div id="save-state" class="save-state" role="status" aria-live="polite"></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
 <div id="login">
   <div class="lbox">
     <div class="licon">💰</div>
     <h1>Finanças GS</h1>
-    <p>Sistema financeiro pessoal · v7</p>
-    <input type="password" class="linput" id="pwd" placeholder="••••••" autocomplete="current-password">
+    <p>Sistema financeiro pessoal · acesso protegido</p>
+    <label for="email" style="text-align:left">E-mail</label>
+    <input type="email" class="linput" id="email" placeholder="seu@email.com" autocomplete="username" inputmode="email">
+    <label for="pwd" style="text-align:left">Senha</label>
+    <input type="password" class="linput" id="pwd" placeholder="••••••••" autocomplete="current-password">
     <button class="lbtn" onclick="doLogin()">Entrar</button>
-    <p class="lerr" id="lerr"></p>
+    <div class="lerr" id="lerr" role="alert" aria-live="polite"></div>
+    <p class="lsafe">Seu acesso é validado pelo Firebase Authentication. Os dados ficam associados à sua conta.</p>
   </div>
 </div>
 <div id="app" style="opacity:0;pointer-events:none">
@@ -817,12 +832,14 @@ body.desktop .desk-fab svg{width:15px;height:15px;stroke-width:2.5}
 // ═══════════════════════════════════════════════
 // FIREBASE + GLOBALS
 // ═══════════════════════════════════════════════
-var fbApp,db,_fbOk=false;
+var fbApp,db,auth,_fbOk=false;
 function initFirebase(){
   try{
     if(typeof firebase!=='undefined'){
       fbApp=firebase.initializeApp({apiKey:"AIzaSyBvIbGuyRYTnbamputvyQ9c5toq92jYzfE",authDomain:"financas-gustavo.firebaseapp.com",projectId:"financas-gustavo",storageBucket:"financas-gustavo.firebasestorage.app",messagingSenderId:"956176776666",appId:"1:956176776666:web:b403bd4c7dac4226e994e3"});
       db=firebase.firestore(fbApp);
+      auth=firebase.auth(fbApp);
+      auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
       _fbOk=true;
     }
   }catch(e){console.warn('Firebase init error:',e);}
@@ -831,11 +848,16 @@ function initFirebase(){
 
 document.addEventListener('DOMContentLoaded',function(){
   initFirebase();
+  document.querySelectorAll('.ovl').forEach(function(el){el.setAttribute('role','dialog');el.setAttribute('aria-modal','true');el.setAttribute('aria-hidden','true');});
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Enter'&&!Q('login').classList.contains('hide'))doLogin();
+    if(e.key==='Escape'){var o=document.querySelector('.ovl.on');if(o)closeOvl(o.id);}
+  });
 });
-var S={},_saving=false,_acxId=null,_divId=null;
+var S={},_saving=false,_savePending=false,_acxId=null,_divId=null;
 
 
-var PWD='424466',DOC='gustavo_v4';
+var DOC=null;
 var NOW=new Date(),DIA=NOW.getDate(),MES=NOW.getFullYear()+'-'+String(NOW.getMonth()+1).padStart(2,'0');
 var MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 var MABREV=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -847,34 +869,49 @@ function fmtd(v){return'R$'+(+v||0).toLocaleString('pt-BR',{minimumFractionDigit
 function ml(s){if(!s)return'—';var p=s.split('-');if(p.length>=2)return MABREV[+p[1]-1]+'/'+p[0].slice(2);return s;}
 function hoje(){return NOW.toISOString().slice(0,10);}
 function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+function esc(v){return String(v==null?'':v).replace(/[&<>'"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c];});}
+var _toastTimer;
+function toast(msg){var el=Q('toast');if(!el)return;el.textContent=msg;el.classList.add('on');clearTimeout(_toastTimer);_toastTimer=setTimeout(function(){el.classList.remove('on');},2800);}
+function saveState(msg,type,hold){var el=Q('save-state');if(!el)return;el.textContent=msg;el.className='save-state on '+(type||'');clearTimeout(el._t);if(!hold)el._t=setTimeout(function(){el.classList.remove('on');},1600);}
 
-function doLogin(){
-  var el=Q('pwd');
-  var v=el?el.value.trim():'';
-  if(v!==PWD){var err=Q('lerr');if(err)err.textContent='Senha incorreta';return;}
+async function doLogin(){
+  var email=(Q('email')?.value||'').trim(),pwd=Q('pwd')?.value||'',err=Q('lerr'),btn=document.querySelector('.lbtn');
+  if(err)err.textContent='';
+  if(!email||!pwd){if(err)err.textContent='Informe e-mail e senha.';return;}
+  if(!_fbOk||!auth){if(err)err.textContent='Não foi possível conectar ao serviço de acesso.';return;}
+  try{
+    if(btn){btn.disabled=true;btn.textContent='Entrando…';}
+    var cred=await auth.signInWithEmailAndPassword(email,pwd);
+    DOC=cred.user.uid;
+  }catch(e){
+    if(err)err.textContent='E-mail ou senha inválidos.';
+    if(btn){btn.disabled=false;btn.textContent='Entrar';}
+    return;
+  }
   var l=Q('login');if(l)l.classList.add('hide');
   var a=Q('app');if(a){a.classList.add('show');a.style.opacity='1';a.style.pointerEvents='all';}
   if(window.innerWidth>=768)document.body.classList.add('desktop');
   loadData();
 }
-function doLogout(){location.reload();}
+async function doLogout(){try{if(auth)await auth.signOut();}catch(e){}location.reload();}
 
 
 
 async function loadData(){
+  if(!DOC){toast('Sessão inválida. Entre novamente.');return;}
   // Try Firebase first
   if(_fbOk&&db){
     try{
       var d=await db.collection('financas').doc(DOC).get();
       S=d.exists?d.data():{};
       // Also save to localStorage as backup
-      try{localStorage.setItem('financas-gs-backup',JSON.stringify(S));}catch(e){}
+      try{localStorage.setItem('financas-gs-backup-'+DOC,JSON.stringify(S));}catch(e){}
       initDefaults();renderAll();return;
     }catch(e){console.warn('Firebase load failed:',e);}
   }
   // Fallback: localStorage
   try{
-    var ls=localStorage.getItem('financas-gs-backup');
+    var ls=localStorage.getItem('financas-gs-backup-'+DOC);
     S=ls?JSON.parse(ls):{};
     console.warn('Using localStorage backup');
   }catch(e){S={};}
@@ -1136,14 +1173,17 @@ function initDefaults(){
 }
 
 async function save(){
-  if(_saving)return;_saving=true;
+  if(_saving){_savePending=true;return;}_saving=true;_savePending=false;saveState('Salvando…','',true);
   // Always save to localStorage
-  try{localStorage.setItem('financas-gs-backup',JSON.stringify(S));}catch(e){}
+  try{localStorage.setItem('financas-gs-backup-'+DOC,JSON.stringify(S));}catch(e){}
   // Try Firebase
   if(_fbOk&&db){
-    try{await db.collection('financas').doc(DOC).set(S);}catch(e){console.warn('Firebase save failed:',e);}
+    try{await db.collection('financas').doc(DOC).set(S);saveState('Salvo','ok');}catch(e){console.warn('Firebase save failed:',e);saveState('Falha ao salvar','err',true);toast('Não foi possível sincronizar. Uma cópia continua neste aparelho.');}
+  }else{
+    saveState('Salvo neste aparelho','ok');
   }
   _saving=false;
+  if(_savePending)save();
 }
 
 // DEFAULTS
@@ -1261,8 +1301,9 @@ function go(id){
   if(Q('desk-fab'))Q('desk-fab').classList.toggle('hidden',!showFab);
   renderScreen(id);
 }
-function openOvl(id){var el=Q(id);if(el)el.classList.add('on');}
-function closeOvl(id){var el=Q(id);if(el)el.classList.remove('on');}
+var _lastFocus=null;
+function openOvl(id){var el=Q(id);if(!el)return;_lastFocus=document.activeElement;el.classList.add('on');el.setAttribute('aria-hidden','false');setTimeout(function(){var f=el.querySelector('input,select,textarea,button');if(f)f.focus();},30);}
+function closeOvl(id){var el=Q(id);if(!el)return;el.classList.remove('on');el.setAttribute('aria-hidden','true');if(_lastFocus&&_lastFocus.focus)_lastFocus.focus();}
 function renderAll(){go(_screen);}
 function renderScreen(id){
   var r={home:rHome,envelopes:rEnvelopes,pix:rPix,extras:rExtras,agora:rAgora,fixos:rFixos,caixinhas:rCaixinhas,parcelas:rParcelas,dividas:rDividas,entradas:rEntradas,progresso:rProgresso,regras:rRegras,insights:rInsights,invest:rInvest,timeline:rTimeline,config:rConfig};
@@ -1495,7 +1536,7 @@ function delGasto(i){
 function limparGastos(){if(!confirm('Limpar todos os gastos?'))return;S.gastos=[];if(S.envDef)S.envDef.forEach(function(e){e.usado=0;});save();renderAllGastos();rEnvelopes();}
 
 function regNovoEnv(){
-  var e=Q('ne-e')?.value||'📌',n=Q('ne-n')?.value||'',l=+Q('ne-l')?.value||0,t=Q('ne-t')?.value||'envelope';
+  var e=esc(Q('ne-e')?.value||'📌'),n=esc(Q('ne-n')?.value||''),l=Math.max(0,+Q('ne-l')?.value||0),t=Q('ne-t')?.value||'envelope';
   if(!n)return;if(!S.envDef)S.envDef=dfEnvs();
   S.envDef.push({id:uid(),e,n,lim:l,tipo:t,usado:0});
   save();closeOvl('ovl-novo-env');rEnvelopes();
@@ -1906,7 +1947,7 @@ function editCx(grp,i){
 }
 function saveCx(){
   var tipo=Q('ncx-tipo')?.value||'fixa';var editId=Q('ncx-edit-id')?.value||'';
-  var c={e:Q('ncx-e')?.value||'🪣',n:Q('ncx-n')?.value||'Nova',m:+Q('ncx-m')?.value||0,ap:+Q('ncx-a')?.value||0,fim:Q('ncx-fim')?.value||'',r:Q('ncx-r')?.value||'',o:Q('ncx-o')?.value||'',tipo};
+  var c={e:esc(Q('ncx-e')?.value||'🪣'),n:esc(Q('ncx-n')?.value||'Nova'),m:Math.max(0,+Q('ncx-m')?.value||0),ap:Math.max(0,+Q('ncx-a')?.value||0),fim:Q('ncx-fim')?.value||'',r:esc(Q('ncx-r')?.value||''),o:esc(Q('ncx-o')?.value||''),tipo};
   if(!S.cxDef)S.cxDef={fixas:dfCxFixas(),uso:dfCxUso()};
   var lista=tipo==='fixa'?S.cxDef.fixas:S.cxDef.uso;
   if(editId){var p=editId.split('_');var idx=+p[1];var old=lista[idx];c.id=old?old.id:uid();lista[idx]=c;}
@@ -2472,13 +2513,13 @@ function rRegras(){
   if(Q('regras-hist'))Q('regras-hist').innerHTML=hc||'<div style="font-size:.74rem;color:var(--muted);padding:8px">Nenhuma quebra registrada 🎉</div>';
 }
 function regConfissao(){
-  var regra=Q('conf-regra')?.value,desc=Q('conf-desc')?.value||'',val=+Q('conf-val')?.value||0;
+  var regra=Q('conf-regra')?.value,desc=esc(Q('conf-desc')?.value||''),val=Math.max(0,+Q('conf-val')?.value||0);
   if(!desc)return;if(!S.confissoes)S.confissoes=[];
   S.confissoes.push({id:uid(),regra,desc,val,data:hoje()});
   save();closeOvl('ovl-confissao');rRegras();
 }
 function regNovaRegra(){
-  var e=Q('nr-e')?.value||'📌',t=Q('nr-t')?.value||'',d=Q('nr-d')?.value||'',r=Q('nr-r')?.value||'',fim=Q('nr-fim')?.value||'';
+  var e=esc(Q('nr-e')?.value||'📌'),t=esc(Q('nr-t')?.value||''),d=esc(Q('nr-d')?.value||''),r=esc(Q('nr-r')?.value||''),fim=Q('nr-fim')?.value||'';
   if(!t)return;if(!S.regrasCustom)S.regrasCustom=[];
   S.regrasCustom.push({id:uid(),e,t,d,r,fim,ativa:true});
   save();closeOvl('ovl-nova-regra');rRegras();
@@ -3373,7 +3414,7 @@ function fmtDataBR(str){
 }
 
 function regNovoMarco(){
-  var e=Q('ntl-e')?.value||'📌',t=Q('ntl-t')?.value||'',d=Q('ntl-d')?.value||'',data=Q('ntl-data')?.value||hoje(),tipo=Q('ntl-tipo')?.value||'outro';
+  var e=esc(Q('ntl-e')?.value||'📌'),t=esc(Q('ntl-t')?.value||''),d=esc(Q('ntl-d')?.value||''),data=Q('ntl-data')?.value||hoje(),tipo=Q('ntl-tipo')?.value||'outro';
   if(!t)return;
   if(!S.tlMarcos)S.tlMarcos=[];
   S.tlMarcos.push({id:uid(),e,t,d,data,tipo});
