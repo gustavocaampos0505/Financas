@@ -40,7 +40,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .lsafe{font-size:.64rem!important;line-height:1.5;color:var(--muted)!important;margin:12px 0 0!important}
 .save-state{position:fixed;top:12px;right:12px;z-index:10000;background:var(--s2);border:1px solid var(--border);border-radius:20px;padding:7px 11px;font:500 .65rem 'DM Mono',monospace;color:var(--muted);opacity:0;transform:translateY(-6px);pointer-events:none;transition:.2s}
 .save-state.on{opacity:1;transform:none}.save-state.ok{color:var(--green)}.save-state.err{color:var(--red)}
-.toast{position:fixed;left:50%;bottom:calc(var(--nav-h) + var(--safe) + 18px);z-index:10001;max-width:min(420px,calc(100vw - 32px));transform:translate(-50%,20px);background:var(--s3);border:1px solid var(--b2);box-shadow:0 12px 40px rgba(0,0,0,.45);border-radius:10px;padding:10px 14px;font-size:.75rem;opacity:0;pointer-events:none;transition:.22s}.toast.on{opacity:1;transform:translate(-50%,0)}
+.toast{position:fixed;left:50%;bottom:calc(var(--nav-h) + var(--safe) + 18px);z-index:10001;max-width:min(420px,calc(100vw - 32px));transform:translate(-50%,20px);background:var(--s3);border:1px solid var(--b2);box-shadow:0 12px 40px rgba(0,0,0,.45);border-radius:10px;padding:10px 14px;font-size:.75rem;opacity:0;pointer-events:none;transition:.22s;display:flex;align-items:center;gap:14px}.toast.on{opacity:1;transform:translate(-50%,0);pointer-events:auto}.toast button{margin-left:auto;background:none;border:none;color:var(--green);font-weight:700;cursor:pointer;font-size:.72rem}
 
 /* APP */
 #app{position:fixed;inset:0;display:flex;opacity:0;pointer-events:none;transition:opacity .2s}
@@ -137,6 +137,9 @@ label{font-size:.72rem;color:var(--muted);display:block;margin-bottom:5px;margin
 .metric-card{position:relative;overflow:hidden}.metric-card::after{content:'';position:absolute;width:48px;height:48px;border-radius:50%;right:-18px;top:-18px;background:var(--metric,rgba(40,212,120,.12))}
 .metric-label{font-size:.65rem;color:var(--muted);margin-bottom:5px}.metric-value{font:500 1rem 'DM Mono',monospace}.metric-note{font-size:.6rem;color:var(--muted);margin-top:4px}
 .next-bill{display:flex;align-items:center;gap:11px}.next-bill-icon{width:38px;height:38px;border-radius:10px;background:rgba(232,192,48,.1);display:grid;place-items:center;font-size:1.05rem;flex:none}
+.compare-row{display:grid;grid-template-columns:80px 1fr auto;gap:10px;align-items:center;margin:9px 0}.compare-label{font-size:.67rem;color:var(--muted)}.compare-track{height:8px;background:var(--s3);border-radius:5px;overflow:hidden}.compare-fill{height:100%;border-radius:5px;background:var(--green)}.compare-fill.prev{background:var(--purple)}.compare-val{font:500 .68rem 'DM Mono',monospace}
+.filter-box{background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:10px;margin-bottom:10px}.filter-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:7px}.filter-values{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:7px}
+.lforgot{background:none;border:none;color:var(--blue);font-size:.67rem;cursor:pointer;margin-top:10px}
 .soft-section{font:500 .62rem 'DM Mono',monospace;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:14px 2px 8px}
 @media(max-width:480px){.home-actions{grid-template-columns:repeat(2,1fr)}.decision-hero{padding:16px}.g3{grid-template-columns:1fr 1fr}.fsb.mobile-stack{align-items:flex-start;gap:10px;flex-direction:column}}
 
@@ -206,6 +209,7 @@ body.desktop .desk-fab svg{width:15px;height:15px;stroke-width:2.5}
     <label for="pwd" style="text-align:left">Senha</label>
     <input type="password" class="linput" id="pwd" placeholder="••••••••" autocomplete="current-password">
     <button class="lbtn" onclick="doLogin()">Entrar</button>
+    <button class="lforgot" onclick="resetPassword()">Esqueci minha senha</button>
     <div class="lerr" id="lerr" role="alert" aria-live="polite"></div>
     <p class="lsafe">Seu acesso é validado pelo Firebase Authentication. Os dados ficam associados à sua conta.</p>
   </div>
@@ -660,6 +664,10 @@ body.desktop .desk-fab svg{width:15px;height:15px;stroke-width:2.5}
     <div class="modal" onclick="event.stopPropagation()">
       <div class="mhdl"></div>
       <div class="fsb mb12"><div class="mtitle" style="margin:0">Todos os gastos</div><button class="btn bd bsm" onclick="limparGastos()">Limpar tudo</button></div>
+      <div class="filter-box">
+        <div class="filter-grid"><input class="inp inp-sm" id="gf-busca" placeholder="Buscar descrição" oninput="renderAllGastos()"><select class="sel inp-sm" id="gf-cat" onchange="renderAllGastos()"><option value="">Todas as categorias</option></select></div>
+        <div class="filter-values"><input type="number" class="inp inp-sm inp-mono" id="gf-min" placeholder="Valor mínimo" oninput="renderAllGastos()"><input type="number" class="inp inp-sm inp-mono" id="gf-max" placeholder="Valor máximo" oninput="renderAllGastos()"></div>
+      </div>
       <div id="all-gastos-list"></div>
     </div>
   </div>
@@ -855,6 +863,7 @@ function initFirebase(){
       db=firebase.firestore(fbApp);
       auth=firebase.auth(fbApp);
       auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+      auth.onAuthStateChanged(function(user){if(user)enterApp(user);});
       _fbOk=true;
     }
   }catch(e){console.warn('Firebase init error:',e);}
@@ -869,7 +878,7 @@ document.addEventListener('DOMContentLoaded',function(){
     if(e.key==='Escape'){var o=document.querySelector('.ovl.on');if(o)closeOvl(o.id);}
   });
 });
-var S={},_saving=false,_savePending=false,_acxId=null,_divId=null;
+var S={},_saving=false,_savePending=false,_acxId=null,_divId=null,_entered=false;
 
 
 var DOC=null;
@@ -886,7 +895,7 @@ function hoje(){return NOW.toISOString().slice(0,10);}
 function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
 function esc(v){return String(v==null?'':v).replace(/[&<>'"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c];});}
 var _toastTimer;
-function toast(msg){var el=Q('toast');if(!el)return;el.textContent=msg;el.classList.add('on');clearTimeout(_toastTimer);_toastTimer=setTimeout(function(){el.classList.remove('on');},2800);}
+function toast(msg,actionLabel,actionFn){var el=Q('toast');if(!el)return;el.innerHTML='';var span=document.createElement('span');span.textContent=msg;el.appendChild(span);if(actionLabel&&actionFn){var b=document.createElement('button');b.textContent=actionLabel;b.onclick=function(){clearTimeout(_toastTimer);el.classList.remove('on');actionFn();};el.appendChild(b);}el.classList.add('on');clearTimeout(_toastTimer);_toastTimer=setTimeout(function(){el.classList.remove('on');},actionFn?6000:2800);}
 function saveState(msg,type,hold){var el=Q('save-state');if(!el)return;el.textContent=msg;el.className='save-state on '+(type||'');clearTimeout(el._t);if(!hold)el._t=setTimeout(function(){el.classList.remove('on');},1600);}
 
 async function doLogin(){
@@ -897,16 +906,25 @@ async function doLogin(){
   try{
     if(btn){btn.disabled=true;btn.textContent='Entrando…';}
     var cred=await auth.signInWithEmailAndPassword(email,pwd);
-    DOC=cred.user.uid;
+    enterApp(cred.user);
   }catch(e){
     if(err)err.textContent='E-mail ou senha inválidos.';
     if(btn){btn.disabled=false;btn.textContent='Entrar';}
     return;
   }
+}
+function enterApp(user){
+  if(!user||_entered)return;_entered=true;DOC=user.uid;
   var l=Q('login');if(l)l.classList.add('hide');
   var a=Q('app');if(a){a.classList.add('show');a.style.opacity='1';a.style.pointerEvents='all';}
   if(window.innerWidth>=768)document.body.classList.add('desktop');
   loadData();
+}
+async function resetPassword(){
+  var email=(Q('email')?.value||'').trim(),err=Q('lerr');
+  if(!email){if(err)err.textContent='Digite seu e-mail primeiro.';return;}
+  try{await auth.sendPasswordResetEmail(email);if(err)err.textContent='';toast('Enviamos um link para redefinir sua senha.');}
+  catch(e){if(err)err.textContent='Não foi possível enviar o link. Confira o e-mail.';}
 }
 async function doLogout(){try{if(auth)await auth.signOut();}catch(e){}location.reload();}
 
@@ -1375,6 +1393,11 @@ function rHome(){
   var ent_prox=(S.entradas||[]).filter(function(e){return e.s==='pendente'&&e.m===MES;}).reduce(function(a,e){return a+(+e.v||0);},0);
   if(Q('home-grid'))Q('home-grid').innerHTML='<div class="card metric-card" style="margin:0;--metric:rgba(40,212,120,.14)"><div class="metric-label">Sobra após fixos</div><div class="metric-value tg">'+fmt(sobra)+'</div><div class="metric-note">'+pct+'% comprometido</div></div><div class="card metric-card" style="margin:0;--metric:rgba(240,64,96,.13)"><div class="metric-label">Dívidas</div><div class="metric-value tr">'+fmt(div_tot)+'</div><div class="metric-note">toque para acompanhar</div></div><div class="card metric-card" style="margin:0;--metric:rgba(56,176,240,.13)"><div class="metric-label">Caixinhas</div><div class="metric-value tb">'+fmt(cx_tot)+'</div><div class="metric-note">patrimônio guardado</div></div><div class="card metric-card" style="margin:0;--metric:rgba(232,192,48,.13)"><div class="metric-label">Entradas previstas</div><div class="metric-value ty">'+fmt((S.entradas||[]).filter(function(e){return e.s==='pendente';}).reduce(function(a,e){return a+(+e.v||0);},0))+'</div><div class="metric-note">'+fmt(ent_prox)+' este mês</div></div>';
 
+  // Comparação com o mês anterior
+  var somaMes=function(obj){return(obj.gastos||[]).reduce(function(a,x){return a+(+x.val||0);},0)+(obj.extras||[]).reduce(function(a,x){return a+(+x.v||0);},0)+(obj.eventuais||[]).reduce(function(a,x){return a+(+x.v||0);},0);};
+  var atualTotal=somaMes(S),chaveAnt=getMesAnt(),antObj=(S.histMeses||{})[chaveAnt]||{},antTotal=somaMes(antObj),maxComp=Math.max(atualTotal,antTotal,1),delta=antTotal?Math.round((atualTotal-antTotal)/antTotal*100):null;
+  if(Q('home-marco'))Q('home-marco').innerHTML='<div class="fsb mb4"><div class="ctitle" style="margin:0">Comparação mensal</div>'+(delta===null?'<span class="chip cb">sem histórico</span>':'<span class="chip '+(delta<=0?'cg':'cr')+'">'+(delta>0?'+':'')+delta+'%</span>')+'</div><div class="compare-row"><div class="compare-label">Este mês</div><div class="compare-track"><div class="compare-fill" style="width:'+Math.round(atualTotal/maxComp*100)+'%"></div></div><div class="compare-val">'+fmt(atualTotal)+'</div></div><div class="compare-row"><div class="compare-label">'+ml(chaveAnt)+'</div><div class="compare-track"><div class="compare-fill prev" style="width:'+Math.round(antTotal/maxComp*100)+'%"></div></div><div class="compare-val">'+fmt(antTotal)+'</div></div><div style="font-size:.65rem;color:var(--muted);margin-top:8px">Inclui gastos, extras e eventuais registrados.</div>';
+
   // Entradas próximas
   var prox=(S.entradas||[]).filter(function(e){return e.s==='pendente'&&e.m===MES;});
   var hp='';if(prox.length){hp='<div class="ctitle mt4">🎉 Entradas extras este mês</div>';prox.forEach(function(e){hp+='<div class="alert ag mb4"><span>💰</span><div style="font-size:.72rem"><strong>'+e.d+'</strong> — '+fmt(e.v)+'<br><span style="color:var(--muted)">'+e.o+'</span></div></div>';});}
@@ -1572,20 +1595,25 @@ function saveRollover(envId,val){
 
 function renderAllGastos(){
   var g=S.gastos||[];var envs=S.envDef||[];
-  var h='';[...g].reverse().forEach(function(item,i){
+  var catSel=Q('gf-cat');if(catSel&&catSel.options.length<=1){catSel.innerHTML='<option value="">Todas as categorias</option>'+envs.map(function(e){return'<option value="'+e.id+'">'+e.e+' '+e.n+'</option>';}).join('');}
+  var busca=(Q('gf-busca')?.value||'').trim().toLowerCase(),cat=Q('gf-cat')?.value||'',min=parseFloat(Q('gf-min')?.value||''),max=parseFloat(Q('gf-max')?.value||'');
+  var filtrados=g.map(function(item,idx){return{item,idx};}).filter(function(x){var item=x.item;var txt=((item.desc||'')+' '+item.cat).toLowerCase();return(!busca||txt.includes(busca))&&(!cat||item.cat===cat)&&(isNaN(min)||(+item.val||0)>=min)&&(isNaN(max)||(+item.val||0)<=max);});
+  var h='';filtrados.reverse().forEach(function(x){
+    var item=x.item,idx=x.idx;
     var env=envs.find(function(e){return e.id===item.cat;});
-    var idx=g.length-1-i;
     h+='<div class="grow"><div class="gcat">'+(env?env.e:'📌')+'</div><div class="ginfo"><div class="gdesc">'+(item.desc||item.cat)+'</div><div class="gmeta">'+item.data+' · '+(env?env.n:item.cat)+'</div></div><span class="gval tr">−'+fmt(item.val)+'</span><button class="gdel" aria-label="Editar gasto" onclick="editGasto('+idx+')">✏️</button><button class="gdel" aria-label="Excluir gasto" onclick="delGasto('+idx+')">🗑</button></div>';
   });
-  if(Q('all-gastos-list'))Q('all-gastos-list').innerHTML=h||'<div style="font-size:.74rem;color:var(--muted);text-align:center;padding:20px">Nenhum gasto</div>';
+  if(Q('all-gastos-list'))Q('all-gastos-list').innerHTML=h||'<div style="font-size:.74rem;color:var(--muted);text-align:center;padding:20px">Nenhum gasto encontrado</div>';
 }
 
+var _undoGasto=null;
 function delGasto(i){
   var g=S.gastos[i];if(!g)return;
   var envs=S.envDef||[];var env=envs.find(function(e){return e.id===g.cat;});
-  if(env&&g.tipo==='envelope')env.usado=Math.max(0,(+(env.usado||0))-(+g.val||0));
-  S.gastos.splice(i,1);save();toast('Gasto excluído.');renderAllGastos();rEnvelopes();
+  if(env)env.usado=Math.max(0,(+(env.usado||0))-(+g.val||0));
+  _undoGasto={gasto:g,index:i};S.gastos.splice(i,1);save();toast('Gasto excluído.','DESFAZER',undoDelGasto);renderAllGastos();rEnvelopes();
 }
+function undoDelGasto(){if(!_undoGasto)return;var u=_undoGasto;_undoGasto=null;if(!S.gastos)S.gastos=[];S.gastos.splice(Math.min(u.index,S.gastos.length),0,u.gasto);var env=(S.envDef||[]).find(function(e){return e.id===u.gasto.cat;});if(env)env.usado=(+env.usado||0)+(+u.gasto.val||0);save();toast('Gasto restaurado.');renderAllGastos();rEnvelopes();}
 
 function limparGastos(){if(!confirm('Limpar todos os gastos?'))return;S.gastos=[];if(S.envDef)S.envDef.forEach(function(e){e.usado=0;});save();renderAllGastos();rEnvelopes();}
 
