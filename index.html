@@ -141,6 +141,7 @@ label{font-size:.72rem;color:var(--muted);display:block;margin-bottom:5px;margin
 .decision-sub{font-size:.7rem;color:var(--muted);line-height:1.55}
 .home-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
 .home-action{background:var(--s2);border:1px solid var(--border);border-radius:12px;color:var(--text);padding:11px 8px;cursor:pointer;text-align:center;font-size:.67rem;font-weight:600;min-height:62px}.home-action span{display:block;font-size:1rem;margin-bottom:5px}
+.alert-summary{border-radius:14px;padding:13px 14px;margin-bottom:10px;border:1px solid var(--border);background:linear-gradient(110deg,var(--s2),rgba(17,21,32,.72));display:flex;gap:11px;align-items:flex-start}.alert-summary.critical{border-color:rgba(240,64,96,.32);background:linear-gradient(110deg,rgba(240,64,96,.12),var(--s2))}.alert-summary.warning{border-color:rgba(232,192,48,.3);background:linear-gradient(110deg,rgba(232,192,48,.1),var(--s2))}.alert-summary.info{border-color:rgba(56,176,240,.27)}.alert-summary-icon{width:31px;height:31px;border-radius:9px;background:var(--s3);display:grid;place-items:center;flex:none;font-size:.94rem}.alert-summary strong{font-size:.75rem;display:block;margin:1px 0 2px}.alert-summary p{font-size:.66rem;line-height:1.48;color:var(--muted)}.alert-summary button{margin-top:7px}
 .metric-card{position:relative;overflow:hidden}.metric-card::after{content:'';position:absolute;width:48px;height:48px;border-radius:50%;right:-18px;top:-18px;background:var(--metric,rgba(40,212,120,.12))}
 .metric-label{font-size:.65rem;color:var(--muted);margin-bottom:5px}.metric-value{font:500 1rem 'DM Mono',monospace}.metric-note{font-size:.6rem;color:var(--muted);margin-top:4px}
 .next-bill{display:flex;align-items:center;gap:11px}.next-bill-icon{width:38px;height:38px;border-radius:10px;background:rgba(232,192,48,.1);display:grid;place-items:center;font-size:1.05rem;flex:none}
@@ -1567,10 +1568,8 @@ function rHome(){
   var scoreLabel=score>=70?'Saudável 🟢':score>=50?'Atenção 🟡':'Risco 🔴';
   if(Q('home-score-card')){Q('home-score-card').className='card decision-hero mb8';Q('home-score-card').innerHTML='<div class="fsb mobile-stack"><div><div class="decision-label">Disponível para hoje</div><div class="decision-value">'+fmt(podeHoje)+'</div><div class="decision-sub">Baseado no que ainda resta nos envelopes por '+diasRest+' dias. Restante do mês: '+fmt(envRest)+'.</div></div><div style="min-width:92px;text-align:right"><div style="font-size:.62rem;color:var(--muted)">Saúde</div><div class="val vlg" style="color:'+scoreCor+'">'+score+'/100</div><div class="chip '+(score>=70?'cg':score>=50?'cy':'cr')+' mt4">'+scoreLabel+'</div></div></div>';}
 
-  if(Q('home-alertas'))Q('home-alertas').innerHTML='<div class="home-actions"><button class="home-action" onclick="newGasto()"><span>＋</span>Registrar gasto</button><button class="home-action" onclick="go(\'envelopes\')"><span>🎯</span>Ver envelopes</button><button class="home-action" onclick="go(\'pix\')"><span>↗</span>Próximas contas</button><button class="home-action" onclick="go(\'agora\')"><span>✓</span>Minha ação</button></div>';
-
-  // Alertas
-  var alertas='';
+  // Alertas que levam a uma ação direta. O painel mostra no máximo três para não virar ruído.
+  var alertas=[];
   var days=+(cfg.a_days||3);
   var proximas=(S.fixosPix||[]).filter(function(f){var d=+(f.dia||0);return !isNaN(d)&&d>=DIA;}).sort(function(a,b){return (+a.dia||0)-(+b.dia||0);});
   var proxConta=proximas[0];
@@ -1579,6 +1578,14 @@ function rHome(){
   var q15=buildPix15();var q30=buildPix30();
   var q=DIA<=15?q15:q30;var qLabel=DIA<=15?'Dia 15':'Dia 30';
   var sal=DIA<=15?(+cfg.sal15||16000):(+cfg.sal30||13432);
+  var envEstourados=envMes.filter(function(e){return +e.lim>0&&(+e.usado||0)>=+e.lim;});
+  var envNoLimite=envMes.filter(function(e){var p=(+e.usado||0)/(+e.lim||1);return p>=.85&&p<1;});
+  if(envEstourados.length){alertas.push('<div class="alert-summary critical"><div class="alert-summary-icon">⛔</div><div><strong>'+envEstourados.length+' envelope'+(envEstourados.length>1?'s chegaram':' chegou')+' ao limite</strong><p>Evite novos gastos nessa categoria até o próximo mês.</p><button class="btn bd bsm" onclick="go(\'envelopes\')">Ver envelopes</button></div></div>');}
+  else if(envNoLimite.length){alertas.push('<div class="alert-summary warning"><div class="alert-summary-icon">⚠️</div><div><strong>'+envNoLimite.length+' envelope'+(envNoLimite.length>1?'s estão':' está')+' perto do limite</strong><p>Você já usou 85% ou mais do orçamento definido.</p><button class="btn bg bsm" onclick="go(\'envelopes\')">Acompanhar agora</button></div></div>');}
+  if(proxConta&&(+proxConta.dia-DIA)<=days){alertas.push('<div class="alert-summary warning"><div class="alert-summary-icon">⏰</div><div><strong>'+esc(proxConta.n)+' vence '+(proxConta.dia===DIA?'hoje':'em '+(+proxConta.dia-DIA)+' dia'+(+proxConta.dia-DIA===1?'':'s'))+'</strong><p>Separe '+fmt(proxConta.v)+' para não ser pego de surpresa.</p><button class="btn bg bsm" onclick="go(\'pix\')">Ver contas do mês</button></div></div>');}
+  if(sal-q.tot<0){alertas.push('<div class="alert-summary critical"><div class="alert-summary-icon">📉</div><div><strong>Quinzena com saldo estimado negativo</strong><p>Faltam '+fmt(Math.abs(sal-q.tot))+' para cobrir os compromissos atuais.</p><button class="btn bd bsm" onclick="go(\'pix\')">Revisar compromissos</button></div></div>');}
+  if(!alertas.length){alertas.push('<div class="alert-summary info"><div class="alert-summary-icon">✓</div><div><strong>Nenhum alerta urgente agora</strong><p>Seu orçamento está dentro dos limites acompanhados hoje.</p></div></div>');}
+  if(Q('home-alertas'))Q('home-alertas').innerHTML='<div class="home-actions"><button class="home-action" onclick="newGasto()"><span>＋</span>Registrar gasto</button><button class="home-action" onclick="go(\'envelopes\')"><span>🎯</span>Ver envelopes</button><button class="home-action" onclick="go(\'pix\')"><span>↗</span>Próximas contas</button><button class="home-action" onclick="go(\'agora\')"><span>✓</span>Minha ação</button></div>'+alertas.slice(0,3).join('');
   if(Q('home-quinzena'))Q('home-quinzena').innerHTML='<div class="ctitle">Próxima movimentação</div>'+(proxConta?'<div class="next-bill"><div class="next-bill-icon">⏰</div><div style="flex:1"><div style="font-size:.82rem;font-weight:600">'+esc(proxConta.n)+'</div><div style="font-size:.66rem;color:var(--muted)">Vence dia '+proxConta.dia+' · '+qLabel+'</div></div><div class="val vmd tr">−'+fmt(proxConta.v)+'</div></div>':'<div style="font-size:.75rem;color:var(--muted)">Nenhuma conta futura registrada neste mês.</div>')+'<div class="div"></div><div class="fsb"><span style="font-size:.72rem;color:var(--muted)">Saldo estimado da quinzena</span><span class="val vsm '+(sal-q.tot>=0?'tg':'tr')+'">'+fmt(sal-q.tot)+'</span></div>';
 
   // Grid cards
