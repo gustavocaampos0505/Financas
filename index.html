@@ -60,6 +60,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 
 /* SHARED */
 .card{background:var(--s2);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:10px}
+.card:hover{border-color:rgba(78,90,114,.62)}
 .card-sm{padding:12px;margin-bottom:8px}
 .ctitle{font-family:'DM Mono',monospace;font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
 .val{font-family:'DM Mono',monospace;font-weight:500;white-space:nowrap}
@@ -142,6 +143,7 @@ label{font-size:.72rem;color:var(--muted);display:block;margin-bottom:5px;margin
 .home-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
 .home-action{background:var(--s2);border:1px solid var(--border);border-radius:12px;color:var(--text);padding:11px 8px;cursor:pointer;text-align:center;font-size:.67rem;font-weight:600;min-height:62px}.home-action span{display:block;font-size:1rem;margin-bottom:5px}
 .alert-summary{border-radius:14px;padding:13px 14px;margin-bottom:10px;border:1px solid var(--border);background:linear-gradient(110deg,var(--s2),rgba(17,21,32,.72));display:flex;gap:11px;align-items:flex-start}.alert-summary.critical{border-color:rgba(240,64,96,.32);background:linear-gradient(110deg,rgba(240,64,96,.12),var(--s2))}.alert-summary.warning{border-color:rgba(232,192,48,.3);background:linear-gradient(110deg,rgba(232,192,48,.1),var(--s2))}.alert-summary.info{border-color:rgba(56,176,240,.27)}.alert-summary-icon{width:31px;height:31px;border-radius:9px;background:var(--s3);display:grid;place-items:center;flex:none;font-size:.94rem}.alert-summary strong{font-size:.75rem;display:block;margin:1px 0 2px}.alert-summary p{font-size:.66rem;line-height:1.48;color:var(--muted)}.alert-summary button{margin-top:7px}
+.section-kicker{font:500 .62rem 'DM Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--green);margin-bottom:5px}.section-lead{font-size:.72rem;line-height:1.55;color:var(--muted)}.closing-hero{background:linear-gradient(135deg,rgba(152,120,240,.16),rgba(56,176,240,.07) 58%,var(--s2));border-color:rgba(152,120,240,.3)}.closing-total{font:500 clamp(1.55rem,5vw,2.15rem) 'DM Mono',monospace;color:#f5f1ff;margin:4px 0}.review-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0 2px}.review-metric{background:rgba(7,9,13,.34);border:1px solid rgba(78,90,114,.34);border-radius:10px;padding:10px}.review-metric b{display:block;font:500 .8rem 'DM Mono',monospace;margin-top:4px}.review-metric span{display:block;font-size:.58rem;color:var(--muted);line-height:1.35}.review-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}.review-row:last-child{border-bottom:none}.review-row p{font-size:.7rem;color:var(--muted);margin-top:2px}.review-icon{width:31px;height:31px;display:grid;place-items:center;background:var(--s3);border-radius:9px;flex:none}.soft-empty{border:1px dashed var(--b2);border-radius:12px;padding:15px;color:var(--muted);font-size:.72rem;text-align:center;line-height:1.55}
 .metric-card{position:relative;overflow:hidden}.metric-card::after{content:'';position:absolute;width:48px;height:48px;border-radius:50%;right:-18px;top:-18px;background:var(--metric,rgba(40,212,120,.12))}
 .metric-label{font-size:.65rem;color:var(--muted);margin-bottom:5px}.metric-value{font:500 1rem 'DM Mono',monospace}.metric-note{font-size:.6rem;color:var(--muted);margin-top:4px}
 .next-bill{display:flex;align-items:center;gap:11px}.next-bill-icon{width:38px;height:38px;border-radius:10px;background:rgba(232,192,48,.1);display:grid;place-items:center;font-size:1.05rem;flex:none}
@@ -149,7 +151,7 @@ label{font-size:.72rem;color:var(--muted);display:block;margin-bottom:5px;margin
 .filter-box{background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:10px;margin-bottom:10px}.filter-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:7px}.filter-values{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:7px}
 .lforgot{background:none;border:none;color:var(--blue);font-size:.67rem;cursor:pointer;margin-top:10px}
 .soft-section{font:500 .62rem 'DM Mono',monospace;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:14px 2px 8px}
-@media(max-width:480px){.home-actions{grid-template-columns:repeat(2,1fr)}.decision-hero{padding:16px}.g3{grid-template-columns:1fr 1fr}.fsb.mobile-stack{align-items:flex-start;gap:10px;flex-direction:column}}
+@media(max-width:480px){.home-actions{grid-template-columns:repeat(2,1fr)}.decision-hero{padding:16px}.g3{grid-template-columns:1fr 1fr}.review-grid{grid-template-columns:1fr}.fsb.mobile-stack{align-items:flex-start;gap:10px;flex-direction:column}}
 /* iOS Safari faz zoom automático ao focar um input com font-size < 16px. Aplicado só no mobile — desktop mantém os tamanhos atuais. */
 @media(max-width:767px){input,select,textarea{font-size:16px!important}}
 
@@ -252,6 +254,7 @@ body.desktop .desk-fab svg{width:15px;height:15px;stroke-width:2.5}
     <div class="sb-sec">Visão geral</div>
     <button class="sb-item sb-more" onclick="toggleDeskMore()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg><span id="sb-more-label">Mais análises</span></button>
     <button class="sb-item sb-advanced" id="sb-progresso" onclick="go('progresso')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Progresso</button>
+    <button class="sb-item sb-advanced" id="sb-fechamento" onclick="go('fechamento')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6L9 17l-5-5"/><path d="M12 3a9 9 0 1 1-9 9"/></svg>Fechamento</button>
 
     <button class="sb-item sb-advanced" id="sb-regras" onclick="go('regras')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Regras</button>
     <button class="sb-item sb-advanced" id="sb-insights" onclick="go('insights')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Insights</button>
@@ -512,6 +515,19 @@ body.desktop .desk-fab svg{width:15px;height:15px;stroke-width:2.5}
         </div>
       </div>
 
+      <!-- FECHAMENTO -->
+      <div id="s-fechamento" class="screen">
+        <div class="sh"><h2>Fechamento do mês</h2><p>Revise antes de arquivar o período</p></div>
+        <div class="p">
+          <div id="fech-hero" class="card closing-hero mb8"></div>
+          <div id="fech-envelopes" class="card mb8"></div>
+          <div id="fech-parcelas" class="card mb8"></div>
+          <div id="fech-resumo" class="card mb8"></div>
+          <button class="btn bp bfull" onclick="confirmarFechamento()">Conferi tudo · fechar mês</button>
+          <p style="font-size:.64rem;line-height:1.5;color:var(--muted);text-align:center;margin:10px 12px 4px">O fechamento arquiva os gastos e zera os envelopes. Ele não apaga seu histórico.</p>
+        </div>
+      </div>
+
       <!-- REGRAS -->
       <div id="s-regras" class="screen">
         <div class="sh fsb" style="align-items:flex-start">
@@ -616,7 +632,7 @@ body.desktop .desk-fab svg{width:15px;height:15px;stroke-width:2.5}
               <div class="ctitle">Gerenciar dados</div>
               <div class="div"></div>
               <button class="btn bg bfull mt8" onclick="exportDados()">📥 Exportar JSON</button>
-              <button class="btn bo bfull mt8" onclick="resetMes()">🔄 Resetar mês (gastos + envelopes)</button>
+              <button class="btn bo bfull mt8" onclick="go('fechamento')">📅 Fechamento guiado do mês</button>
               <button class="btn bd bfull mt8" onclick="resetTudo()">⚠️ Reset completo</button>
             </div>
           </div>
@@ -649,6 +665,7 @@ body.desktop .desk-fab svg{width:15px;height:15px;stroke-width:2.5}
         <button class="btn bg" onclick="go('dividas');closeOvl('ovl-menu')">🏦 Dívidas</button>
         <button class="btn bg" onclick="go('entradas');closeOvl('ovl-menu')">📈 Entradas</button>
         <button class="btn bg" onclick="go('progresso');closeOvl('ovl-menu')">📊 Progresso</button>
+        <button class="btn bg" onclick="go('fechamento');closeOvl('ovl-menu')">✅ Fechamento do mês</button>
         <button class="btn bg" onclick="go('timeline');closeOvl('ovl-menu')">🗓️ Timeline</button>
         <button class="btn bg" onclick="go('regras');closeOvl('ovl-menu')">🛡️ Regras</button>
         <button class="btn bg" onclick="go('insights');closeOvl('ovl-menu')">💡 Insights</button>
@@ -1508,7 +1525,7 @@ function dfEntradas(){return[
 // NAVEGAÇÃO
 // ═══════════════════════════════════════════════
 var _screen='home';
-var SCREEN_TITLES={home:'Início',envelopes:'Envelopes',pix:'PIX do mês',extras:'Gastos extras',agora:'E agora?',fixos:'Gastos Fixos',caixinhas:'Caixinhas MP',parcelas:'Parcelas',dividas:'Dívidas',entradas:'Entradas Extras',progresso:'Progresso',regras:'Regras',insights:'Insights',invest:'Investimentos',config:'Configurações'};
+var SCREEN_TITLES={home:'Início',envelopes:'Envelopes',pix:'PIX do mês',extras:'Gastos extras',agora:'E agora?',fixos:'Gastos Fixos',caixinhas:'Caixinhas MP',parcelas:'Parcelas',dividas:'Dívidas',entradas:'Entradas Extras',progresso:'Progresso',fechamento:'Fechamento do mês',regras:'Regras',insights:'Insights',invest:'Investimentos',config:'Configurações'};
 var FAB_SCREENS=['home','envelopes'];
 
 function go(id){
@@ -1536,7 +1553,7 @@ function openOvl(id){var el=Q(id);if(!el)return;_lastFocus=document.activeElemen
 function closeOvl(id){var el=Q(id);if(!el)return;el.classList.remove('on');el.setAttribute('aria-hidden','true');if(_lastFocus&&_lastFocus.focus)_lastFocus.focus();}
 function renderAll(){go(_screen);}
 function renderScreen(id){
-  var r={home:rHome,envelopes:rEnvelopes,pix:rPix,extras:rExtras,agora:rAgora,fixos:rFixos,caixinhas:rCaixinhas,parcelas:rParcelas,dividas:rDividas,entradas:rEntradas,progresso:rProgresso,regras:rRegras,insights:rInsights,invest:rInvest,timeline:rTimeline,config:rConfig};
+  var r={home:rHome,envelopes:rEnvelopes,pix:rPix,extras:rExtras,agora:rAgora,fixos:rFixos,caixinhas:rCaixinhas,parcelas:rParcelas,dividas:rDividas,entradas:rEntradas,progresso:rProgresso,fechamento:rFechamento,regras:rRegras,insights:rInsights,invest:rInvest,timeline:rTimeline,config:rConfig};
   if(r[id])r[id]();
 }
 
@@ -1620,6 +1637,46 @@ function rHome(){
     acaoTxt='<div class="ctitle">🎯 Próxima ação</div><div style="font-size:.82rem">Reserva completa! Partir para investimentos.</div><div class="mt8"><button class="btn bp bsm" onclick="go(\'invest\')">Ver investimentos →</button></div>';
   }
   if(Q('home-acao'))Q('home-acao').innerHTML=acaoTxt;
+}
+
+// ═══════════════════════════════════════════════
+// FECHAMENTO GUIADO
+// ═══════════════════════════════════════════════
+function rFechamento(){
+  var gastos=(S.gastos||[]).reduce(function(a,x){return a+(+x.val||0);},0);
+  var extras=(S.extras||[]).reduce(function(a,x){return a+(+x.v||0);},0);
+  var eventuais=(S.eventuais||[]).reduce(function(a,x){return a+(+x.v||0);},0);
+  var total=gastos+extras+eventuais;
+  var envs=(S.envDef||[]).filter(function(e){return e.tipo==='envelope';});
+  var usado=envs.reduce(function(a,e){return a+(+e.usado||0);},0);
+  var limite=envs.reduce(function(a,e){return a+(+e.lim||0);},0);
+  var estourados=envs.filter(function(e){return +e.lim>0&&(+e.usado||0)>+e.lim;});
+  var sobrou=Math.max(0,limite-usado);
+  var mes=MESES[NOW.getMonth()]+' '+NOW.getFullYear();
+  if(Q('fech-hero'))Q('fech-hero').innerHTML='<div class="section-kicker">Prévia · '+mes+'</div><div class="closing-total">'+fmt(total)+'</div><div class="section-lead">Registrado neste período. Confira os pontos abaixo antes de arquivar.</div><div class="review-grid"><div class="review-metric"><span>Gastos em envelopes</span><b>'+fmt(gastos)+'</b></div><div class="review-metric"><span>Gastos extras</span><b>'+fmt(extras+eventuais)+'</b></div><div class="review-metric"><span>Restante dos envelopes</span><b class="'+(sobrou>0?'tg':'tm')+'">'+fmt(sobrou)+'</b></div></div>';
+
+  var eh='';
+  if(envs.length){envs.forEach(function(e){var p=Math.round((+e.usado||0)/(+e.lim||1)*100);var cor=p>100?'var(--red)':p>=85?'var(--yellow)':'var(--green)';eh+='<div class="review-row"><div style="display:flex;gap:9px;align-items:center;min-width:0"><div class="review-icon">'+(e.e||'🎯')+'</div><div><strong style="font-size:.76rem">'+esc(e.n)+'</strong><p>'+fmt(e.usado||0)+' de '+fmt(e.lim||0)+'</p></div></div><div style="text-align:right"><span class="chip '+(p>100?'cr':p>=85?'cy':'cg')+'">'+p+'%</span></div></div>';});}
+  if(Q('fech-envelopes'))Q('fech-envelopes').innerHTML='<div class="ctitle">Envelopes · conferência final</div>'+(eh||'<div class="soft-empty">Nenhum envelope com limite foi criado neste mês.</div>')+(estourados.length?'<div class="alert ar mt8" style="margin-bottom:0"><span>⚠️</span><div><strong>'+estourados.length+' limite'+(estourados.length>1?'s ultrapassados':' ultrapassado')+'</strong><br>Vale revisar esses gastos antes de fechar.</div></div>':'');
+
+  var fim=[];Object.values(S.parc||{}).forEach(function(p){if(+p.cp===1)fim.push(p);});(S.parcExtras||[]).forEach(function(p){if(p.s==='ativa'&&+p.cp===1)fim.push(p);});
+  var ph='';fim.forEach(function(p){ph+='<div class="review-row"><div style="display:flex;gap:9px;align-items:center"><div class="review-icon">💳</div><div><strong style="font-size:.76rem">'+esc(p.n||'Parcela')+'</strong><p>Última parcela neste ciclo</p></div></div><span class="val vsm tg">'+fmt(p.vp||0)+'</span></div>';});
+  if(Q('fech-parcelas'))Q('fech-parcelas').innerHTML='<div class="ctitle">Parcelas que terminam agora</div>'+(ph||'<div class="soft-empty">Nenhuma parcela termina neste fechamento. As demais seguem normalmente para o próximo período.</div>');
+
+  var pend=(S.entradas||[]).filter(function(e){return e.s==='pendente'&&e.m===MES;}).reduce(function(a,e){return a+(+e.v||0);},0);
+  var fixos=getTotFixosPix()+getTotAss()+getTotVar();
+  if(Q('fech-resumo'))Q('fech-resumo').innerHTML='<div class="ctitle">O que segue para o próximo mês</div><div class="review-row"><div style="display:flex;gap:9px;align-items:center"><div class="review-icon">📌</div><div><strong style="font-size:.76rem">Compromissos recorrentes</strong><p>Fixos e assinaturas já cadastrados</p></div></div><span class="val vsm">'+fmt(fixos)+'</span></div><div class="review-row"><div style="display:flex;gap:9px;align-items:center"><div class="review-icon">💰</div><div><strong style="font-size:.76rem">Entradas previstas</strong><p>Pendentes neste mês</p></div></div><span class="val vsm tg">'+fmt(pend)+'</span></div>';
+}
+function confirmarFechamento(){askConfirm('Fechar este mês?','Os gastos serão arquivados, os envelopes serão reiniciados e as parcelas avançarão um ciclo. Confira a prévia antes de confirmar.',function(){executarFechamento();},false);}
+function executarFechamento(){
+  var chave=addMonths(getMonthKeySP(),-1);
+  if(!S.histMeses)S.histMeses={};
+  S.histMeses[chave]={gastos:JSON.parse(JSON.stringify(S.gastos||[])),extras:JSON.parse(JSON.stringify(S.extras||[])),eventuais:JSON.parse(JSON.stringify(S.eventuais||[])),envDef:JSON.parse(JSON.stringify((S.envDef||[]).map(function(e){return{id:e.id,n:e.n,e:e.e,lim:e.lim,usado:e.usado||0};})))};
+  S.gastos=[];S.eventuais=[];S.extras=[];
+  if(S.envDef)S.envDef.forEach(function(e){e.usado=0;});
+  S.faturas={nu:0,br:0};
+  autoVirarMes(getMonthKeySP(),true);
+  save();toast('Mês '+chave+' arquivado com sucesso.');go('home');
 }
 
 function calcHealthScore(){
@@ -3588,7 +3645,7 @@ function runMigration10(){
   alert('✅ Correções v10 aplicadas!\n\nObrigação R$632,12 · Imprevistos meta R$3.000\nLiniker removido · Viagem encerrada\nCofrinhos qualidade de vida registrados como meta futura');
   renderAll();
 }
-function autoVirarMes(novoMes){
+function autoVirarMes(novoMes,silencioso){
   // Decrementa cp de todas as parcelas
   var parc=S.parc||{};
   var encerradas=[];
@@ -3611,25 +3668,9 @@ function autoVirarMes(novoMes){
   }
   S._lastMes=novoMes;
   save();
-  var msg='✅ Parcelas decrementadas!';
-  if(encerradas.length>0)msg+='\n\nEncerraram: '+encerradas.join(', ');
-  alert(msg);
-  renderAll();
+  if(!silencioso){var msg='✅ Parcelas decrementadas!';if(encerradas.length>0)msg+='\n\nEncerraram: '+encerradas.join(', ');alert(msg);renderAll();}
 }
-function resetMes(){
-  askConfirm('Fechar o mês?','Os gastos atuais serão arquivados e os envelopes serão reiniciados. Esta ação altera também as parcelas.',function(){
-  var chave=addMonths(getMonthKeySP(),-1);
-  if(!S.histMeses)S.histMeses={};
-  S.histMeses[chave]={gastos:JSON.parse(JSON.stringify(S.gastos||[])),extras:JSON.parse(JSON.stringify(S.extras||[])),eventuais:JSON.parse(JSON.stringify(S.eventuais||[])),envDef:JSON.parse(JSON.stringify((S.envDef||[]).map(function(e){return{id:e.id,n:e.n,e:e.e,lim:e.lim,usado:e.usado||0};})))};
-  S.gastos=[];S.eventuais=[];S.extras=[];
-  if(S.envDef)S.envDef.forEach(function(e){e.usado=0;});
-  S.faturas={nu:0,br:0};
-  // Também decrementa parcelas ao fechar mês manualmente
-  var novoMes=getMonthKeySP();
-  autoVirarMes(novoMes);
-  save();toast('Mês '+chave+' arquivado.');renderAll();
-  },false);
-}
+function resetMes(){go('fechamento');}
 function resetTudo(){askConfirm('Apagar todos os dados?','Esta ação remove todo o conteúdo financeiro da sua conta e não pode ser desfeita.',function(){askConfirm('Confirmação final','Você realmente quer apagar tudo?',function(){S={};initDefaults();save();toast('Todos os dados foram redefinidos.');renderAll();},true);},true);}
 
 // ═══════════════════════════════════════════════
