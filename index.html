@@ -2209,7 +2209,7 @@ function rFixosPix(){
   var l=S.fixosPix||[];var h='';
   l.forEach(function(f,i){
     var hoje=getMonthKeySP();var venc=f.enc&&f.enc<hoje;
-    h+='<div class="fix-item"><span style="font-size:.9rem">'+(f.e||'💳')+'</span><div style="flex:1"><div style="font-size:.8rem">'+(venc?'<s>':'')+esc(f.n)+(venc?'</s>':'')+' <span style="font-size:.6rem;color:var(--muted)">dia '+f.dia+'</span>'+(f.enc?'<span style="font-size:.58rem;color:'+(venc?'var(--muted)':'var(--orange)')+'"> até '+ml(f.enc)+'</span>':'')+'</div>'+(f.obs?'<div style="font-size:.6rem;color:var(--muted)">'+esc(f.obs)+'</div>':'')+' </div><input type="number" value="'+f.v+'" onchange="S.fixosPix['+i+'].v=+this.value" step="0.01"><button class="fix-del" onclick="delFixo(\'pix\','+i+')">🗑</button></div>';
+    h+='<div class="fix-item"><span style="font-size:.9rem">'+(f.e||'💳')+'</span><div style="flex:1"><div style="font-size:.8rem">'+(venc?'<s>':'')+esc(f.n)+(venc?'</s>':'')+' <span style="font-size:.6rem;color:var(--muted)">dia '+f.dia+'</span>'+(f.enc?'<span style="font-size:.58rem;color:'+(venc?'var(--muted)':'var(--orange)')+'"> até '+ml(f.enc)+'</span>':'')+'</div>'+(f.obs?'<div style="font-size:.6rem;color:var(--muted)">'+esc(f.obs)+'</div>':'')+' </div><input type="number" value="'+f.v+'" onchange="updateFixo(\'pix\','+i+',this.value)" step="0.01"><button class="fix-del" onclick="delFixo(\'pix\','+i+')">🗑</button></div>';
   });
   if(Q('fix-pix'))Q('fix-pix').innerHTML=h||'<div style="font-size:.74rem;color:var(--muted);padding:8px">Nenhum item</div>';
 }
@@ -2225,7 +2225,7 @@ function rFixosAss(){
       +(f.obs?'<div style="font-size:.6rem;color:var(--muted)">'+esc(f.obs)+'</div>':'')
       +(f.enc?'<div style="font-size:.58rem;color:var(--orange)">até '+ml(f.enc)+'</div>':'')
       +'</div>'
-      +'<input type="number" value="'+f.v+'" onchange="S.fixosAss['+i+'].v=+this.value" step="0.01" style="'+(ativo?'':'opacity:.4')+'">'
+      +'<input type="number" value="'+f.v+'" onchange="updateFixo(\'ass\','+i+',this.value)" step="0.01" style="'+(ativo?'':'opacity:.4')+'">'
       +'<button class="fix-del" onclick="delFixo(\'ass\','+i+')">🗑</button></div>';
   });
   if(h){h+='<div style="display:flex;gap:12px;padding:8px 0;border-top:1px solid var(--border);margin-top:4px"><span style="font-size:.68rem;color:var(--muted)">Nubank CC: <strong style="color:var(--text)">'+fmt(nuTot)+'</strong></span><span style="font-size:.68rem;color:var(--muted)">Bradesco CC: <strong style="color:var(--text)">'+fmt(brTot)+'</strong></span></div>';}
@@ -2233,16 +2233,18 @@ function rFixosAss(){
 }
 function toggleFixoAtivo(tipo,i){
   var l=tipo==='pix'?S.fixosPix:S.fixosAss;
-  if(l&&l[i])l[i].ativo=l[i].ativo===false?true:false;
+  if(l&&l[i]){l[i].ativo=l[i].ativo===false?true:false;save();}
   rFixos();
 }
 function rFixosVar(){
   var v=S.fixosVar||{};
   var itens=[{k:'luz',e:'⚡',n:'ENEL (luz)'},{k:'agua',e:'💧',n:'Sabesp (água)'},{k:'gas',e:'🔥',n:'Gás'}];
-  var h='';itens.forEach(function(it){h+='<div class="fix-item"><span>'+it.e+'</span><div style="flex:1;font-size:.8rem">'+it.n+'</div><input type="number" value="'+(v[it.k]||0)+'" onchange="S.fixosVar[\''+it.k+'\']=+this.value" step="0.01"></div>';});
+  var h='';itens.forEach(function(it){h+='<div class="fix-item"><span>'+it.e+'</span><div style="flex:1;font-size:.8rem">'+it.n+'</div><input type="number" value="'+(v[it.k]||0)+'" onchange="updateFixoVar(\''+it.k+'\',this.value)" step="0.01"></div>';});
   if(Q('fix-var'))Q('fix-var').innerHTML=h;
 }
 function delFixo(tipo,i){var l=tipo==='pix'?S.fixosPix:S.fixosAss;if(l)l.splice(i,1);save();rFixos();}
+function updateFixo(tipo,i,valor){var l=tipo==='pix'?S.fixosPix:S.fixosAss;if(!l||!l[i])return;l[i].v=+valor||0;save();rFixos();toast('Conta atualizada e salva.');}
+function updateFixoVar(chave,valor){if(!S.fixosVar)S.fixosVar={};S.fixosVar[chave]=+valor||0;save();rFixos();toast('Conta atualizada e salva.');}
 function saveFixos(){save();rFixos();var el=Q('fix-pix');if(el){el.style.borderColor='var(--green)';setTimeout(function(){el.style.borderColor='';},1500);}}
 function addFixo(tipo){
   Q('af-tipo').value=tipo;Q('af-title').textContent=tipo==='pix'?'+ PIX/Boleto':'+ Assinatura';
