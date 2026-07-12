@@ -550,8 +550,7 @@ button,.card,.month-event,.tab,.home-action{touch-action:manipulation}@media (pr
           <div class="fsb mb8">
             <span class="btn-with-icon" style="font-size:.78rem;font-weight:500"><span class="ui-icon" data-icon="card" data-icon-size="14" aria-hidden="true"></span>Parcelas ativas</span>
             <div style="display:flex;gap:6px;flex-wrap:wrap">
-              <button class="btn bg bsm btn-with-icon" onclick="voltarMes()"><span class="ui-icon" data-icon="arrowUpCircle" data-icon-size="13" style="transform:rotate(-90deg)" aria-hidden="true"></span><span>Anterior</span></button>
-              <button class="btn bg bsm btn-with-icon" onclick="avancarMes()"><span>Próximo</span><span class="ui-icon" data-icon="arrowUpCircle" data-icon-size="13" style="transform:rotate(90deg)" aria-hidden="true"></span></button>
+              <button class="btn bp bsm btn-with-icon" onclick="confirmarFaturaPaga()"><span class="ui-icon" data-icon="checkCircle" data-icon-size="13" aria-hidden="true"></span><span>Fatura paga · avançar parcelas</span></button>
               <button class="btn bo bsm btn-with-icon" onclick="go('fechamento')"><span class="ui-icon" data-icon="checkSquare" data-icon-size="13" aria-hidden="true"></span><span>Fechar mês</span></button>
               <button class="btn bg bsm" onclick="openOvl('ovl-nova-parc')">+ Nova</button>
             </div>
@@ -1821,10 +1820,10 @@ function rFechamento(){
 function confirmarFechamento(){
   var chave=FECHAMENTO_MONTH_KEY||getMonthKeySP();
   if(S.closedMonths&&S.closedMonths[chave]){toast('Este mês já foi fechado.');return;}
-  askConfirm('Fechar este mês?','Os gastos serão arquivados, os envelopes serão reiniciados e as parcelas avançarão um ciclo. Confira a prévia antes de confirmar.',function(){executarFechamento();},false);
+  askConfirm('Fechar este mês?','Os gastos serão arquivados e os envelopes serão reiniciados. As parcelas avançam quando você registra o pagamento da fatura.',function(){executarFechamento();},false);
 }
-// Avança parcelas — chamada exclusivamente pelo fechamento mensal. Não chama save(), renderAll() ou alert().
-// Regras: quitada/antecipada não avança; cp<=0 não avança; parcela futura (mesInicio após o mês fechado) não avança;
+// Avança parcelas ao confirmar o pagamento da fatura. Não chama save(), renderAll() ou alert().
+// Regras: quitada/antecipada não avança; cp<=0 não avança; parcela futura (mesInicio após o ciclo pago) não avança;
 // ao chegar a zero, status vira 'quitada'.
 function advanceInstallmentsForClosedMonth(monthKey){
   Object.keys(S.parc||{}).forEach(function(k){
@@ -1875,8 +1874,6 @@ async function executarFechamento(){if(!canMutateNow())return;
     fixos:{fixosPix:S.fixosPix||[],fixosAss:S.fixosAss||[],fixosVar:S.fixosVar||{}},
     totais:totais
   }));
-
-  advanceInstallmentsForClosedMonth(chave);
 
   S.gastos=[];S.eventuais=[];S.extras=[];
   if(S.envDef)S.envDef.forEach(function(e){e.usado=0;});
@@ -2472,11 +2469,11 @@ async function delCx(grp,i){if(!canMutateNow())return;if(!confirm('Excluir esta 
 // PARCELAS
 // ═══════════════════════════════════════════════
 function rParcelas(){
-  var ciclo=S.parcCiclo||0; // 0=atual, 1=próximo, -1=anterior etc.
+  var ciclo=0; // Esta tela mostra sempre o ciclo corrente; o avanço é o pagamento da fatura.
   var baseDate=new Date(NOW.getFullYear(), NOW.getMonth()+ciclo, 1);
   var cicloLabel='08/'+String(baseDate.getMonth()+1).padStart(2,'0')+'/'+baseDate.getFullYear()+
     ' → 08/'+String(baseDate.getMonth()+2).padStart(2,'0')+'/'+baseDate.getFullYear();
-  if(Q('parc-periodo'))Q('parc-periodo').textContent='Ciclo '+cicloLabel+' · '+MESES[baseDate.getMonth()]+' '+baseDate.getFullYear();
+  if(Q('parc-periodo'))Q('parc-periodo').textContent='Ciclo '+cicloLabel+' · vence dia 15 · '+MESES[baseDate.getMonth()]+' '+baseDate.getFullYear();
 
   var parc=S.parc||dfParc();var extras=S.parcExtras||[];
   // Adjust cp for cycle offset
@@ -2498,7 +2495,6 @@ function rParcelas(){
       +'<div style="flex:1"><div class="fsb"><div style="font-size:.84rem;font-weight:500">'+esc(p.n)+(isFinal?'<span style="font-size:.6rem;color:var(--yellow);margin-left:6px"><span class="status-dot" style="background:var(--yellow)"></span>encerrando em breve</span>':'')+'</div>'
       +'<span class="chip '+(ativa?'cg':'bdg-m')+'">'+(ativa?cpAdj+'× rest.':icon('check',10)+' quitada')+'</span></div>'
       +'<div style="font-size:.65rem;color:var(--muted);margin-top:2px">'+esc(p.b)+' · '+fmtd(p.vp)+'/mês · '+(p.tp-cpAdj)+'/'+p.tp+' pagas · até '+p.f+'</div>'
-      +(ativa&&ciclo===0?'<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap"><button class="btn bg bsm" onclick="antecParc(\''+k+'\')">−1 paga</button><button class="btn bg bsm" onclick="restauraParc(\''+k+'\')">+1 desfazer</button></div>':'')
       +'</div></div></div>';
     if(ativa)hAtiv+=card;else hDone+=card;
   });
@@ -2515,11 +2511,9 @@ function rParcelas(){
     } else {
       iniDate=new Date(NOW.getFullYear(),NOW.getMonth(),1);
     }
-    var cpAdj=0;
-    if(cicloDate>=iniDate){
-      var mesesDesdeInicio=(cicloDate.getFullYear()-iniDate.getFullYear())*12+(cicloDate.getMonth()-iniDate.getMonth());
-      cpAdj=Math.max(0,(+p.cp||0)-mesesDesdeInicio);
-    }
+    // O saldo é atualizado exclusivamente pelo fechamento. Aqui, mudar de mês
+    // apenas projeta o que restará — sem descontar uma segunda vez as novas parcelas.
+    var cpAdj=cicloDate>=iniDate?Math.max(0,(+p.cp||0)-ciclo):0;
     if(cpAdj>0){if(p.b==='Nubank CC')nuMes+=vp;else if(p.b==='Bradesco CC')brMes+=vp;else piMes+=vp;}
     var feitas=(p.tp||1)-cpAdj;var prog=Math.round(Math.max(0,feitas/(p.tp||1))*100);
     var r=18,circ=Math.PI*2*r;var dash=Math.round(prog/100*circ);
@@ -2557,10 +2551,7 @@ function rParcGrafico(parc, extras){
         var cicloGraf=new Date(hoje.getFullYear(),hoje.getMonth()+m,1);
         var partesG=p.mesInicio.split('-');
         var iniGraf=new Date(+partesG[0],+partesG[1]-1,1);
-        if(cicloGraf>=iniGraf){
-          var mdInicio=(cicloGraf.getFullYear()-iniGraf.getFullYear())*12+(cicloGraf.getMonth()-iniGraf.getMonth());
-          c=Math.max(0,(+p.cp||0)-mdInicio);
-        }
+        if(cicloGraf>=iniGraf)c=Math.max(0,(+p.cp||0)-m);
       } else {
         c=Math.max(0,(+p.cp||0)-m);
       }
@@ -2572,7 +2563,7 @@ function rParcGrafico(parc, extras){
   if(!maxTot){if(Q('parc-grafico'))Q('parc-grafico').innerHTML='<div style="font-size:.74rem;color:var(--green);padding:4px;display:flex;align-items:center;gap:5px">'+icon('checkCircle',14)+'Sem parcelas!</div>';return;}
   var BW=20,GAP=6,H=50,PT=12,PB=14;
   var VW=meses.length*(BW+GAP);var VH=H+PT+PB;
-  var ci=S.parcCiclo||0;var svg='';
+  var ci=0;var svg='';
   meses.forEach(function(m,i){
     var x=i*(BW+GAP);var cur=i===ci;
     var th=m.tot?Math.max(2,Math.round(m.tot/maxTot*H)):0;
@@ -2591,15 +2582,20 @@ function rParcGrafico(parc, extras){
   if(Q('parc-grafico'))Q('parc-grafico').innerHTML='<svg viewBox="0 0 '+VW+' '+VH+'" style="width:100%;height:90px;display:block">'+svg+'</svg>'+leg;
 }
 
-function avancarMes(){
-  if(!S.parcCiclo)S.parcCiclo=0;
-  S.parcCiclo++;
-  rParcelas();
+function cicloDaFaturaAVencer(){
+  // A fatura paga no dia 15 corresponde ao ciclo que fechou no dia 08 do mês anterior.
+  return addMonths(getMonthKeySP(),-1);
 }
-function voltarMes(){
-  if(!S.parcCiclo)S.parcCiclo=0;
-  S.parcCiclo--;
-  rParcelas();
+async function confirmarFaturaPaga(){if(!canMutateNow())return;
+  var ciclo=cicloDaFaturaAVencer();
+  if(!S.parcFaturasPagas)S.parcFaturasPagas=[];
+  if(S.parcFaturasPagas.includes(ciclo)){toast('A fatura de '+ml(ciclo)+' já foi registrada como paga.');return;}
+  askConfirm('Fatura paga?','Vou avançar uma parcela em cada compra que compunha a fatura do ciclo 08/'+ciclo.slice(5)+' e manter as compras que começam depois dele intactas.',async function(){
+    advanceInstallmentsForClosedMonth(ciclo);
+    S.parcFaturasPagas.push(ciclo);
+    var saved=await save();if(!saved)return;
+    toast('Fatura registrada. As parcelas avançaram um ciclo.');rParcelas();
+  },false);
 }
 // resetParc() foi removida da interface (substituía dados online por valores hardcoded do
 // código e apagava S.parcExtras). A função é mantida apenas como redirecionamento inofensivo,
