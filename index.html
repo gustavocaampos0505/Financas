@@ -724,6 +724,7 @@ button,.card,.month-event,.tab,.home-action{touch-action:manipulation}@media (pr
               <button class="btn bg bfull mt8 btn-with-icon" onclick="exportDados()"><span class="ui-icon" data-icon="download" data-icon-size="14" aria-hidden="true"></span><span>Exportar JSON</span></button>
               <input type="file" id="import-file" accept="application/json,.json" class="hidden" onchange="importDados(event)">
               <button class="btn bg bfull mt8 btn-with-icon" onclick="Q('import-file').click()"><span class="ui-icon" data-icon="upload" data-icon-size="14" aria-hidden="true"></span><span>Importar backup JSON</span></button>
+              <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarAtualizacaoJulho2026()"><span class="ui-icon" data-icon="refreshCw" data-icon-size="14" aria-hidden="true"></span><span>Aplicar atualização financeira jul/2026</span></button>
               <button class="btn bo bfull mt8 btn-with-icon" onclick="limparParcelasDuplicadas()"><span class="ui-icon" data-icon="tool" data-icon-size="14" aria-hidden="true"></span><span>Corrigir parcelas duplicadas</span></button>
               <button class="btn bo bfull mt8 btn-with-icon" onclick="go('fechamento')"><span class="ui-icon" data-icon="checkSquare" data-icon-size="14" aria-hidden="true"></span><span>Fechamento guiado do mês</span></button>
               <button class="btn bd bfull mt8 btn-with-icon" onclick="resetTudo()"><span class="ui-icon" data-icon="alertTriangle" data-icon-size="14" aria-hidden="true"></span><span>Reset completo</span></button>
@@ -1401,7 +1402,7 @@ async function ensureInitialDoc(){
 
 
 function initDefaults(){
-  if(!S.cfg)S.cfg={sal15:16000,sal30:13432,va:3193,flash_c:400,flash_i:180,lim_nu:3500,lim_br:2000,m_res:51472,m_viag:20000,m_score:800,a_nu:2800,a_res:5000,a_days:3,nome:'Gustavo',inicio:'2026-05-08',bruto:40000,serasa_score:735};
+  if(!S.cfg)S.cfg={sal15:16000,sal30:13192,va:780,flash_c:400,flash_i:180,lim_nu:3500,lim_br:2000,m_res:51472,m_viag:20000,m_score:800,a_nu:2800,a_res:5000,a_days:3,nome:'Gustavo',inicio:'2026-05-08',bruto:40000,serasa_score:735};
   if(!S.cx)S.cx={};
   if(!S.cxDef)S.cxDef={fixas:dfCxFixas(),uso:dfCxUso()};
   // DÍVIDAS: só cria quando totalmente ausente. Se já existir (mesmo array vazio), é preservada
@@ -1576,7 +1577,7 @@ function dfEnvs(){return[
 ];}
 function dfParc(){return{
   tassia:{n:'Tassia Devecchi',b:'NU',vp:465,tp:6,cp:3,f:'Out/2026'},
-  exame_bact:{n:'Exame Bacterias',b:'BR',vp:465,tp:6,cp:4,f:'Nov/2026'},
+  exame_bact:{n:'Exame Bacterias',b:'NU',vp:465,tp:6,cp:4,f:'Nov/2026'},
   carro:{n:'Funilaria',b:'NU',vp:480,tp:5,cp:2,f:'Ago/2026'},
   ml_som:{n:'ML Som',b:'NU',vp:55.90,tp:10,cp:6,f:'Dez/2026'},
   ticket:{n:'Ticketmaster',b:'NU',vp:113.63,tp:7,cp:1,f:'Jul/2026'},
@@ -3260,6 +3261,41 @@ async function saveCfg(tipo){if(!canMutateNow())return;
 }
 function downloadJson(obj,nome){var json=JSON.stringify(obj,null,2);var b=new Blob([json],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=nome;a.click();setTimeout(function(){URL.revokeObjectURL(a.href);},1000);}
 function exportDados(){downloadJson(S,'financas-gs-'+MES+'.json');}
+function aplicarAtualizacaoJulho2026(){
+  if(!canMutateNow())return;
+  if(S.mig13Feito){toast('A atualização financeira de julho já foi aplicada.');return;}
+  askConfirm('Aplicar atualização financeira de jul/2026?',
+    'Um backup será baixado antes. Serão incluídas as parcelas Ademicon, Óculos e Clínica Wandemberg; o Exame Bactérias será movido para Nubank; os saldos de Emergência e Obrigação, salário dia 30 e VA serão atualizados. Nenhum outro registro será apagado.',
+    async function(){
+      if(!canMutateNow())return;
+      var anterior=JSON.parse(JSON.stringify(S));
+      downloadJson(anterior,'financas-gs-antes-atualizacao-jul-2026-'+getTodayKeySP()+'.json');
+      if(!S.parcExtras)S.parcExtras=[];
+      var jaExiste=function(nome){
+        var alvo=String(nome||'').trim().toLowerCase();
+        return S.parcExtras.some(function(p){return String((p&&p.n)||'').trim().toLowerCase()===alvo;});
+      };
+      var adicionar=function(nome,banco,valor,total,fim){
+        if(!jaExiste(nome))S.parcExtras.push({id:uid(),n:nome,b:banco,vp:valor,tp:total,cp:total,f:fim,s:'ativa',mesInicio:'2026-07',origem:'atualizacao-jul-2026'});
+      };
+      adicionar('Ademicon Veículos (consórcio carro)','Nubank CC',1557,24,'—');
+      adicionar('Óculos novos (Pb*Lahtref)','Nubank CC',159.20,6,'Dez/2026');
+      adicionar('Clínica Dr. Wandemberg (intestino)','Nubank CC',375,4,'Out/2026');
+      if(S.parc&&S.parc.exame_bact)S.parc.exame_bact.b='NU';
+      if(!S.cx)S.cx={};
+      S.cx.reserva=4488.17;
+      S.cx.obrigacao=46.95;
+      if(!S.cfg)S.cfg={};
+      S.cfg.sal30=13192;
+      S.cfg.va=780;
+      S.mig13Feito=true;
+      S.mig13AplicadaEm=Date.now();
+      var saved=await save();
+      if(!saved){S=anterior;renderAll();toast('Não foi possível aplicar a atualização. Seus dados foram restaurados.');return;}
+      renderAll();
+      toast('Atualização financeira de julho aplicada.');
+    },false);
+}
 function assinaturaParcela(p){
   return [String(p.n||'').trim().toLowerCase(),p.b||'',Math.round((+p.vp||0)*100),+p.tp||0,+p.cp||0,p.s||'ativa',p.mesInicio||''].join('|');
 }
