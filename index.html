@@ -530,6 +530,7 @@ button,.card,.month-event,.tab,.home-action{touch-action:manipulation}@media (pr
           <div style="text-align:right"><div style="font-size:.68rem;color:var(--muted)">Total acumulado</div><div class="val vlg tg" id="cx-total">—</div></div>
         </div>
         <div class="p">
+          <div id="cx-plano" class="mb8"></div>
           <div class="fsb mb8"><span class="btn-with-icon" style="font-size:.78rem;font-weight:500"><span class="ui-icon" data-icon="lock" data-icon-size="14" aria-hidden="true"></span>Metas de longo prazo</span><button class="btn bg bsm" onclick="novaCx('fixa')">+ Nova</button></div>
           <div id="cx-fixas" class="mb8"></div>
           <div class="fsb mb8"><span class="btn-with-icon" style="font-size:.78rem;font-weight:500"><span class="ui-icon" data-icon="zap" data-icon-size="14" aria-hidden="true"></span>Caixinhas de uso</span><button class="btn bg bsm" onclick="novaCx('uso')">+ Nova</button></div>
@@ -725,6 +726,7 @@ button,.card,.month-event,.tab,.home-action{touch-action:manipulation}@media (pr
               <input type="file" id="import-file" accept="application/json,.json" class="hidden" onchange="importDados(event)">
               <button class="btn bg bfull mt8 btn-with-icon" onclick="Q('import-file').click()"><span class="ui-icon" data-icon="upload" data-icon-size="14" aria-hidden="true"></span><span>Importar backup JSON</span></button>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarAtualizacaoJulho2026()"><span class="ui-icon" data-icon="refreshCw" data-icon-size="14" aria-hidden="true"></span><span>Aplicar atualização financeira jul/2026</span></button>
+              <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarPlanoSegundoSemestre2026()"><span class="ui-icon" data-icon="calendar" data-icon-size="14" aria-hidden="true"></span><span>Aplicar plano jul–dez/2026</span></button>
               <button class="btn bo bfull mt8 btn-with-icon" onclick="limparParcelasDuplicadas()"><span class="ui-icon" data-icon="tool" data-icon-size="14" aria-hidden="true"></span><span>Corrigir parcelas duplicadas</span></button>
               <button class="btn bo bfull mt8 btn-with-icon" onclick="go('fechamento')"><span class="ui-icon" data-icon="checkSquare" data-icon-size="14" aria-hidden="true"></span><span>Fechamento guiado do mês</span></button>
               <button class="btn bd bfull mt8 btn-with-icon" onclick="resetTudo()"><span class="ui-icon" data-icon="alertTriangle" data-icon-size="14" aria-hidden="true"></span><span>Reset completo</span></button>
@@ -1551,14 +1553,16 @@ async function save(){
 
 // DEFAULTS
 function dfCxFixas(){return[
-  {id:'reserva',e:'🔒',n:'Reserva Emergência',m:51472,ap:5000,fim:'2026-12',r:'Usar só para emergências reais.',o:'meta R$51.472 · dez/2026',tipo:'fixa'},
+  {id:'reserva',e:'🔒',n:'Reserva Emergência',m:40000,ap:0,fim:'2026-12',r:'Usar só para emergências reais. Não usar para viagem, carta do carro ou multa da Localiza.',o:'meta R$40.000 · plano jul–dez/2026',tipo:'fixa'},
   {id:'viagem',e:'✈️',n:'Viagem Portugal+Grécia',m:14200,ap:2500,fim:'2026-09',r:'Pagar tudo à vista. Não parcelar nada na viagem.',o:'set/2026',tipo:'fixa'},
-  {id:'obrigacao',e:'⚱️',n:'Obrigação 3 anos',m:7000,ap:400,fim:'2027-06',r:'Usar somente em jun/2027.',o:'a partir jun/26',tipo:'fixa'},
+  {id:'obrigacao',e:'⚱️',n:'Obrigação 3 anos',m:7000,ap:632.12,fim:'2027-06',r:'Usar somente na obrigação planejada.',o:'retomar aporte em out/2026',tipo:'fixa'},
+  {id:'carro_2028',e:'🚗',n:'Troca do carro 2028/29',m:70000,ap:0,fim:'2028-08',r:'Não aportar antes de a Reserva chegar a R$40 mil e de reavaliar a carta com a Ademicon. Cobre complemento, TDA Localiza e custos iniciais.',o:'meta condicional · sem aporte por enquanto',tipo:'fixa'},
 ];}
 function dfCxUso(){return[
-  {id:'imprevistos',e:'🚨',n:'Imprevistos',m:900,ap:300,fim:'',r:'Saúde, família, carro, casa. Acima de R$900: decisão consciente.',o:'meta R$900',tipo:'uso'},
+  {id:'imprevistos',e:'🚨',n:'Imprevistos',m:3000,ap:300,fim:'',r:'Saúde, família, carro, casa. Acima de R$3.000: decisão consciente.',o:'meta R$3.000 · retomar em out/2026',tipo:'uso'},
   {id:'estetica',e:'💇',n:'Estética',m:880,ap:440,fim:'',r:'Igor 2×R$120 + Karolina 2×R$100. Não usar para outros fins.',o:'Igor+Karolina',tipo:'uso'},
   {id:'psiquiatra',e:'🧠',n:'Psiquiatra',m:950,ap:238,fim:'',r:'Reiniciar após cada consulta.',o:'ciclo 4 meses',tipo:'uso'},
+  {id:'odontologia_planejada',e:'🦷',n:'Odontologia',m:0,ap:0,fim:'',r:'Em avaliação: possível correção ortodôntica antes do tratamento. Não criar gasto ou aporte até ter orçamento, forma de pagamento e data.',o:'aguardando definição clínica',tipo:'uso'},
 ];}
 function dfDividas(){return[
   {id:'c6',n:'C6 Bank',v:0,m:0,obs:'QUITADO jun/2026 · R$15.692,48 · desconto ~85%',urgencia:0,pags:[]},
@@ -1598,9 +1602,9 @@ function dfParc(){return{
   savana:{n:'Savana',b:'NU',vp:63,tp:7,cp:5,f:'Nov/2026'},
 };}
 function dfFixosPix(){return[
-  {id:'localiza',e:'🚗',n:'Localiza Meoo',v:2980,dia:'1',obs:'Boleto mensal · até ago/2029',enc:''},
+  {id:'localiza',e:'🚗',n:'Localiza Meoo',v:2980,dia:'1',obs:'Contrato 48 meses · IGP-M · término estimado ago/2029 · TDA: 15% das mensalidades restantes',enc:''},
   {id:'santander',e:'🏦',n:'Santander',v:972,dia:'4',obs:'Dívida · 0,49%/mês',enc:''},
-  {id:'dentista',e:'🦷',n:'Dentista PIX',v:481,dia:'22',obs:'Parcelas Bradesco · última set/2026',enc:'2026-09'},
+  {id:'dentista',e:'🦷',n:'Odontologia (em avaliação)',v:0,dia:'22',obs:'Possível correção ortodôntica antes do tratamento. Sem valor ou data definidos.',enc:'',ativo:false},
   {id:'psicologa',e:'🧠',n:'Psicóloga',v:274.50,dia:'15',obs:'1 sessão/mês · Alessandra Christina',enc:''},
   {id:'rose',e:'💆',n:'Rose diarista 1ª',v:1000,dia:'15',obs:'1ª parcela mensal',enc:''},
   {id:'rose2',e:'💆',n:'Rose diarista 2ª',v:1000,dia:'30',obs:'2ª parcela mensal',enc:''},
@@ -1611,6 +1615,7 @@ function dfFixosPix(){return[
   {id:'seg_res',e:'🏠',n:'Seguro Residencial',v:162.90,dia:'15',obs:'Bradesco',enc:''},
 ];}
 function dfFixosAss(){return[
+  {id:'ademicon',e:'🚗',n:'Ademicon Veículos',v:1556.50,cartao:'BR',obs:'Pré-contemplação · revisar para R$2.033,50 no mês da contemplação',ativo:true},
   {id:'wellhub',e:'🏃',n:'Wellhub',v:239.90,cartao:'BR',obs:''},
   {id:'google',e:'🔵',n:'Google One',v:14.99,cartao:'BR',obs:''},
   {id:'pier',e:'📱',n:'Pier seguro iPhone',v:184.50,cartao:'BR',obs:''},
@@ -2405,7 +2410,8 @@ function getAgoraEventos(){
   if(+fat.nu>0)passos15.push({t:'Pagar fatura Nubank '+fmt(fat.nu),s:'Valor atual cadastrado na aba PIX. Evite parcelar a fatura.',a:'pix'});
   if(+fat.br>0)passos15.push({t:'Pagar fatura Bradesco '+fmt(fat.br),s:'Valor atual cadastrado na aba PIX. Evite parcelar a fatura.',a:'pix'});
   passos15=passos15.concat(d15,d22);
-  if(!(S.fixosPix||[]).some(function(f){return /dentista/i.test(String(f.n||''))&&itemAtivoNoMes(f);})){passos15.push({t:'Cadastrar o PIX do dentista',s:'Ainda não há um PIX ativo com esse nome. Cadastre valor e vencimento reais em Gastos Fixos antes de considerar o mês fechado.',a:'fixos'});}
+  var odontologiaAtiva=(S.fixosPix||[]).some(function(f){return /dentista|odontologia/i.test(String(f.n||''))&&itemAtivoNoMes(f)&&(+f.v||0)>0;});
+  if(!odontologiaAtiva){passos15.push({t:'Odontologia em avaliação',s:'Possível correção ortodôntica antes do tratamento. Não reservar nem lançar parcelas até ter orçamento, forma de pagamento e data.',a:'caixinhas'});}
   passos15.push({t:estrategia.livrePlanejado>0?'Definir aporte possível nas caixinhas':'Adiar aportes nas caixinhas neste mês',s:estrategia.livrePlanejado>0?'Há '+fmt(estrategia.livrePlanejado)+' após compromissos e envelopes. Aporte somente o valor que decidir reservar.':'O plano fecha com '+fmt(Math.abs(estrategia.livrePlanejado))+' de falta antes de novos aportes. Preserve a liquidez.',a:'caixinhas'});
   passos15.push({t:'Usar envelopes como orçamento, inclusive no crédito',s:'O valor não precisa estar separado em dinheiro: registre supermercado, gasolina e demais categorias no envelope correspondente.',a:'envelopes'});
   return [
@@ -2447,8 +2453,8 @@ function rFixos(){
 function rFixosPix(){
   var l=S.fixosPix||[];var h='';
   l.forEach(function(f,i){
-    var hoje=getMonthKeySP();var venc=f.enc&&f.enc<hoje;
-    h+='<div class="fix-item"><span style="font-size:.9rem">'+icon(fixoIconMap[f.id]||'card',16)+'</span><div style="flex:1"><div style="font-size:.8rem">'+(venc?'<s>':'')+esc(f.n)+(venc?'</s>':'')+' <span style="font-size:.6rem;color:var(--muted)">dia '+f.dia+'</span>'+(f.enc?'<span style="font-size:.58rem;color:'+(venc?'var(--muted)':'var(--orange)')+'"> até '+ml(f.enc)+'</span>':'')+'</div>'+(f.obs?'<div style="font-size:.6rem;color:var(--muted)">'+esc(f.obs)+'</div>':'')+' </div><input type="number" value="'+f.v+'" onchange="updateFixo(\'pix\','+i+',this.value)" step="0.01"><button class="fix-del" onclick="delFixo(\'pix\','+i+')">'+icon('trash',14)+'</button></div>';
+    var hoje=getMonthKeySP();var venc=f.enc&&f.enc<hoje;var ativo=f.ativo!==false;
+    h+='<div class="fix-item" style="'+(ativo?'':'opacity:.4')+'"><span style="font-size:.9rem;cursor:pointer" onclick="toggleFixoAtivo(\'pix\','+i+')" title="'+(ativo?'Desativar':'Ativar')+'">'+icon(fixoIconMap[f.id]||'card',16)+'</span><div style="flex:1"><div style="font-size:.8rem">'+(venc?'<s>':'')+esc(f.n)+(venc?'</s>':'')+' <span style="font-size:.6rem;color:'+(ativo?'var(--green)':'var(--muted)')+'">dia '+f.dia+' <span class="status-dot" style="background:'+(ativo?'var(--green)':'var(--muted)')+'"></span></span>'+(f.enc?'<span style="font-size:.58rem;color:'+(venc?'var(--muted)':'var(--orange)')+'"> até '+ml(f.enc)+'</span>':'')+'</div>'+(f.obs?'<div style="font-size:.6rem;color:var(--muted)">'+esc(f.obs)+'</div>':'')+' </div><input type="number" value="'+f.v+'" onchange="updateFixo(\'pix\','+i+',this.value)" step="0.01"><button class="fix-del" onclick="delFixo(\'pix\','+i+')">'+icon('trash',14)+'</button></div>';
   });
   if(Q('fix-pix'))Q('fix-pix').innerHTML=h||'<div style="font-size:.74rem;color:var(--muted);padding:8px">Nenhum item</div>';
 }
@@ -2508,9 +2514,23 @@ async function saveFixoItem(){if(!canMutateNow())return;
 function rCaixinhas(){
   var cx=S.cx||{};var tot=Object.values(cx).reduce(function(a,v){return a+(+v||0);},0);
   if(Q('cx-total'))Q('cx-total').textContent=fmt(tot);
+  rPlanoAportes();
   var def=S.cxDef||{fixas:dfCxFixas(),uso:dfCxUso()};
   rCxGrupo('cx-fixas',def.fixas||[],cx);
   rCxGrupo('cx-uso',def.uso||[],cx);
+}
+function rPlanoAportes(){
+  var plano=S.planoAportes||{},meses=plano.meses||[];
+  if(!Q('cx-plano'))return;
+  if(!meses.length){Q('cx-plano').innerHTML='';return;}
+  var h='<div class="card" style="border-color:var(--blue)"><div class="ctitle" style="display:flex;align-items:center;gap:6px">'+icon('calendar',14)+' Plano de aportes — jul a dez/2026</div><div style="font-size:.68rem;color:var(--muted);margin:4px 0 9px">Valores planejados. Atualize o saldo real após cada aporte; nada é movimentado automaticamente.</div>';
+  meses.forEach(function(item){
+    var total=Object.values(item.aportes||{}).reduce(function(a,v){return a+(+v||0);},0);
+    var partes=[];Object.keys(item.aportes||{}).forEach(function(k){if(+item.aportes[k]>0)partes.push(esc(k)+': '+fmt(item.aportes[k]));});
+    h+='<div style="padding:7px 0;border-top:1px solid var(--border)"><div class="fsb"><strong style="font-size:.75rem">'+esc(ml(item.m))+'</strong><span style="font:500 .72rem DM Mono,monospace;color:var(--green)">'+fmt(total)+'</span></div><div style="font-size:.63rem;color:var(--muted);line-height:1.45;margin-top:2px">'+(partes.length?partes.join(' · '):'Sem aporte programado')+(item.nota?' · '+esc(item.nota):'')+'</div></div>';
+  });
+  h+='<div style="font-size:.65rem;color:var(--muted);background:var(--s3);border-radius:7px;padding:8px;margin-top:8px;line-height:1.5">Carro: meta futura sem aporte antes de Reserva R$40 mil e da revisão da carta em jan/2027. Odontologia: aguardando orçamento e data.</div></div>';
+  Q('cx-plano').innerHTML=h;
 }
 function rCxGrupo(elId,lista,cx){
   var h='';
@@ -3349,6 +3369,63 @@ function aplicarAtualizacaoJulho2026(){
       if(!saved){S=anterior;renderAll();toast('Não foi possível aplicar a atualização. Seus dados foram restaurados.');return;}
       renderAll();
       toast('Atualização financeira de julho aplicada.');
+    },false);
+}
+function aplicarPlanoSegundoSemestre2026(){
+  if(!canMutateNow())return;
+  if(S.mig14Feito){toast('O plano financeiro jul–dez/2026 já foi aplicado.');return;}
+  askConfirm('Aplicar plano financeiro jul–dez/2026?',
+    'Um backup será baixado antes. O plano atualiza metas e regras das caixinhas, coloca odontologia em avaliação, registra a Ademicon como gasto fixo do Bradesco e preserva todos os saldos e lançamentos existentes.',
+    async function(){
+      if(!canMutateNow())return;
+      var anterior=JSON.parse(JSON.stringify(S));
+      downloadJson(anterior,'financas-gs-antes-plano-jul-dez-2026-'+getTodayKeySP()+'.json');
+      if(!S.cxDef)S.cxDef={fixas:dfCxFixas(),uso:dfCxUso()};
+      if(!S.cxDef.fixas)S.cxDef.fixas=[];
+      if(!S.cxDef.uso)S.cxDef.uso=[];
+      if(!S.cx)S.cx={};
+      var upsertCx=function(tipo,dados){
+        var lista=tipo==='fixa'?S.cxDef.fixas:S.cxDef.uso;
+        var i=lista.findIndex(function(c){return c&&c.id===dados.id;});
+        if(i>=0)lista[i]=Object.assign({},lista[i],dados);else lista.push(dados);
+      };
+      upsertCx('fixa',{id:'reserva',e:'🔒',n:'Reserva Emergência',m:40000,ap:0,fim:'2026-12',r:'Usar só para emergências reais. Não usar para viagem, carta do carro ou multa da Localiza.',o:'meta R$40.000 · plano jul–dez/2026',tipo:'fixa'});
+      upsertCx('fixa',{id:'obrigacao',e:'⚱️',n:'Obrigação 3 anos',m:7000,ap:632.12,fim:'2027-06',r:'Usar somente na obrigação planejada.',o:'retomar aporte em out/2026',tipo:'fixa'});
+      upsertCx('fixa',{id:'carro_2028',e:'🚗',n:'Troca do carro 2028/29',m:70000,ap:0,fim:'2028-08',r:'Não aportar antes de a Reserva chegar a R$40 mil e de reavaliar a carta com a Ademicon. Cobre complemento, TDA Localiza e custos iniciais.',o:'meta condicional · sem aporte por enquanto',tipo:'fixa'});
+      upsertCx('uso',{id:'imprevistos',e:'🚨',n:'Imprevistos',m:3000,ap:300,fim:'',r:'Saúde, família, carro, casa. Acima de R$3.000: decisão consciente.',o:'meta R$3.000 · retomar em out/2026',tipo:'uso'});
+      upsertCx('uso',{id:'estetica',e:'💇',n:'Estética',m:880,ap:440,fim:'',r:'Igor e Karolina. Não usar para outros fins.',o:'retomar aporte em out/2026',tipo:'uso'});
+      upsertCx('uso',{id:'psiquiatra',e:'🧠',n:'Psiquiatra',m:950,ap:238,fim:'',r:'Reiniciar após cada consulta.',o:'retomar aporte em out/2026',tipo:'uso'});
+      upsertCx('uso',{id:'odontologia_planejada',e:'🦷',n:'Odontologia',m:0,ap:0,fim:'',r:'Em avaliação: possível correção ortodôntica antes do tratamento. Não criar gasto ou aporte até ter orçamento, forma de pagamento e data.',o:'aguardando definição clínica',tipo:'uso'});
+      if(!S.fixosPix)S.fixosPix=[];
+      var localiza=S.fixosPix.find(function(f){return f&&f.id==='localiza';});
+      if(localiza)localiza.obs='Contrato 48 meses · IGP-M · término estimado ago/2029 · TDA: 15% das mensalidades restantes';
+      S.fixosPix.forEach(function(f){
+        if(f&&(f.id==='dentista'||/dentista|odontologia/i.test(String(f.n||'')))){
+          f.id='dentista';f.n='Odontologia (em avaliação)';f.v=0;f.ativo=false;f.enc='';f.obs='Possível correção ortodôntica antes do tratamento. Sem valor ou data definidos.';
+        }
+      });
+      if(!S.fixosAss)S.fixosAss=[];
+      S.parcExtras=(S.parcExtras||[]).filter(function(p){return !/ademicon|cons[oó]rcio carro/i.test(String((p&&p.n)||''));});
+      var ademicon=S.fixosAss.find(function(f){return f&&f.id==='ademicon';});
+      var dadosAdemicon={id:'ademicon',e:'🚗',n:'Ademicon Veículos',v:1556.50,cartao:'BR',obs:'Pré-contemplação · revisar para R$2.033,50 no mês da contemplação',ativo:true};
+      if(ademicon)Object.assign(ademicon,dadosAdemicon);else S.fixosAss.push(dadosAdemicon);
+      S.planoAportes={
+        versao:1,
+        meses:[
+          {m:'2026-07',aportes:{'Reserva':5000},nota:'aplicar quando o saldo real no MP for atualizado'},
+          {m:'2026-08',aportes:{},nota:'sem novos aportes — euros, roupas e contas do mês'},
+          {m:'2026-09',aportes:{'Reserva':3000},nota:'após a viagem; demais caixinhas pausadas'},
+          {m:'2026-10',aportes:{'Reserva':8000,'Obrigação':632.12,'Psiquiatra':238,'Imprevistos':300,'Estética':440},nota:'retomar caixinhas essenciais'},
+          {m:'2026-11',aportes:{'Reserva':8000,'Obrigação':632.12,'Psiquiatra':238,'Imprevistos':300,'Estética':440},nota:'manter ritmo'},
+          {m:'2026-12',aportes:{'Reserva':11511.83,'Obrigação':632.12,'Psiquiatra':238,'Imprevistos':300,'Estética':440},nota:'Reserva chega a R$40.000'}
+        ]
+      };
+      S.mig14Feito=true;
+      S.mig14AplicadaEm=Date.now();
+      var saved=await save();
+      if(!saved){S=anterior;renderAll();toast('Não foi possível aplicar o plano. Seus dados foram restaurados.');return;}
+      renderAll();
+      toast('Plano financeiro jul–dez/2026 aplicado.');
     },false);
 }
 function assinaturaParcela(p){
