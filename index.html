@@ -412,7 +412,7 @@ button,.card,.month-event,.tab,.home-action{touch-action:manipulation}@media (pr
           <button class="btn bg bsm mt8 btn-with-icon" onclick="openOvl('ovl-faturas')"><span class="ui-icon" data-icon="edit" data-icon-size="13" aria-hidden="true"></span><span>Faturas</span></button>
         </div>
         <div class="p">
-          <div class="alert ab mb8"><span class="ui-icon" data-icon="info" data-icon-size="16" aria-hidden="true"></span><div style="font-size:.72rem">Valores puxados dos Gastos Fixos. Toque em <strong>Faturas</strong> para informar os valores reais do mês.</div></div>
+          <div class="alert ab mb8"><span class="ui-icon" data-icon="info" data-icon-size="16" aria-hidden="true"></span><div style="font-size:.72rem">Informe em <strong>Faturas</strong> os valores atuais em aberto. Pagamentos já quitados não devem permanecer aqui.</div></div>
           <div class="card mb8" id="pix-resumo"></div>
           <div class="d-eq">
             <div>
@@ -804,8 +804,8 @@ button,.card,.month-event,.tab,.home-action{touch-action:manipulation}@media (pr
 
   <div class="ovl" id="ovl-faturas" onclick="closeOvl('ovl-faturas')">
     <div class="modal" onclick="event.stopPropagation()">
-      <div class="mhdl"></div><div class="mtitle btn-with-icon" style="justify-content:flex-start"><span class="ui-icon" data-icon="edit" data-icon-size="16" aria-hidden="true"></span><span>Faturas do mês</span></div>
-      <div class="alert ay mb8"><span class="ui-icon" data-icon="lightbulb" data-icon-size="16" aria-hidden="true"></span><div style="font-size:.72rem">Informe os valores reais das faturas fechadas este mês.</div></div>
+      <div class="mhdl"></div><div class="mtitle btn-with-icon" style="justify-content:flex-start"><span class="ui-icon" data-icon="edit" data-icon-size="16" aria-hidden="true"></span><span>Faturas em aberto</span></div>
+      <div class="alert ay mb8"><span class="ui-icon" data-icon="lightbulb" data-icon-size="16" aria-hidden="true"></span><div style="font-size:.72rem">Informe os valores atuais que ainda serão pagos no próximo vencimento.</div></div>
       <label>Fatura Nubank CC (R$)</label><input type="number" class="inp inp-mono" id="fat-nu" placeholder="6200">
       <label>Fatura Bradesco CC (R$)</label><input type="number" class="inp inp-mono" id="fat-br" placeholder="4817">
       <div class="g2 mt16"><button class="btn bg" onclick="closeOvl('ovl-faturas')">Cancelar</button><button class="btn bp" onclick="saveFaturas()">Salvar</button></div>
