@@ -2400,7 +2400,14 @@ var AGORA_EVENTOS=[
     {t:'Próximo mês: voltar ao ritmo normal',s:'Um mês ruim não desfaz o plano.',a:''},
   ]},
 ];
-var _agoraTab=0,_agoraCk={};
+var _agoraTab=0;
+// O checklist faz parte do planejamento: precisa acompanhar o mesmo documento no
+// Firestore, e não apenas a sessão aberta no navegador. O campo é criado apenas
+// quando necessário, preservando checklists já marcados em qualquer dispositivo.
+function getAgoraCk(){
+  if(!S.agoraChecklist||typeof S.agoraChecklist!=='object'||Array.isArray(S.agoraChecklist))S.agoraChecklist={};
+  return S.agoraChecklist;
+}
 function getAgoraEventos(){
   var estrategia=getStrategiaMes(),fat=S.faturas||{};
   var porDia=function(dias){return(S.fixosPix||[]).filter(function(f){return itemAtivoNoMes(f)&&dias.indexOf(String(f.dia))>=0;});};
@@ -2425,7 +2432,7 @@ function rAgora(){
   var agoraEventos=getAgoraEventos();if(_agoraTab>=agoraEventos.length)_agoraTab=0;
   var tabs='';agoraEventos.forEach(function(ev,i){tabs+='<button class="tab btn-with-icon'+(i===_agoraTab?' on':'')+'" onclick="setAgoraTab('+i+')">'+icon(ev.icon,13)+'<span>'+esc(ev.lbl)+'</span></button>';});
   if(Q('agora-tabs'))Q('agora-tabs').innerHTML=tabs;
-  var ev=agoraEventos[_agoraTab];var ck=_agoraCk[ev.id]||{};
+  var ev=agoraEventos[_agoraTab];var ck=getAgoraCk()[ev.id]||{};
   var done=ev.passos.filter(function(_,i){return ck[i];}).length;
   var pct=ev.passos.length?Math.round(done/ev.passos.length*100):0;
   if(Q('agora-progress'))Q('agora-progress').innerHTML='<div class="card agora-hero mb12"><div class="fsb"><div><div class="ctitle">Plano de resposta</div><div style="font:500 1.22rem Fraunces,serif;margin:3px 0 5px;display:flex;align-items:center;gap:7px">'+icon(ev.icon,18)+'<span>'+esc(ev.lbl)+'</span></div><p>Execute uma etapa por vez. As ações abaixo abrem o lugar certo no app.</p></div><div style="text-align:right"><div style="font:500 1.35rem DM Mono,monospace">'+pct+'%</div><div class="agora-choice">concluído</div></div></div><div class="agora-progress-bar"><span style="width:'+pct+'%"></span></div></div>';
@@ -2438,8 +2445,20 @@ function rAgora(){
   if(Q('agora-content'))Q('agora-content').innerHTML=h;
 }
 function setAgoraTab(i){_agoraTab=i;rAgora();}
-function toggleAgoraCk(ev,i){if(!_agoraCk[ev])_agoraCk[ev]={};_agoraCk[ev][i]=!_agoraCk[ev][i];rAgora();}
-function resetAgoraCk(ev){_agoraCk[ev]={};rAgora();}
+async function toggleAgoraCk(ev,i){
+  if(!canMutateNow())return;
+  var checklist=getAgoraCk();
+  if(!checklist[ev])checklist[ev]={};
+  checklist[ev][i]=!checklist[ev][i];
+  rAgora();
+  await save();
+}
+async function resetAgoraCk(ev){
+  if(!canMutateNow())return;
+  getAgoraCk()[ev]={};
+  rAgora();
+  await save();
+}
 
 // ═══════════════════════════════════════════════
 // GASTOS FIXOS
