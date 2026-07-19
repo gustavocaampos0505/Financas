@@ -1359,18 +1359,28 @@ function loadData(){
   }
 }
 function applyRemoteSnapshot(remoteData,remoteRevision){
+  var precisaCorrigirSaldos=false;
   _applyingRemoteState=true;
   try{
     S=remoteData;
     initDefaults();
     _serverRevision=remoteRevision;
     _lastConfirmedCloudState=JSON.parse(JSON.stringify(S));
+    // Correção autorizada pelo Gustavo em 19/jul/2026. É idempotente e salva
+    // em seguida via a transação normal, sem sobrescrever alterações paralelas.
+    precisaCorrigirSaldos=aplicarCorrecaoSaldosJulho2026();
     try{localStorage.setItem('financas-gs-lastsnapshot-'+DOC,JSON.stringify(S));}catch(e){}
     hideConnErrorScreen();
     if(_entered)renderAll();
     setConnState(navigator.onLine===false?'offline':'synced');
   } finally {
     _applyingRemoteState=false;
+  }
+  if(precisaCorrigirSaldos){
+    setTimeout(async function(){
+      var saved=await save();
+      if(saved){renderAll();toast('Saldos de quitação do Itaú e saldo do Santander atualizados.');}
+    },0);
   }
 }
 // Um snapshot remoto recebido enquanto _saving/_savePending estava ativo fica em espera aqui.
@@ -1464,6 +1474,29 @@ function initDefaults(){
   var _mesHojeSP=getMonthKeySP();
   if(!S._lastMes)S._lastMes=_mesHojeSP;
   // O fechamento do mês (parcelas + arquivamento) continua manual, via Config → Dados → "Fechar mês".
+}
+
+function aplicarCorrecaoSaldosJulho2026(){
+  if(S.mig15SaldosReaisFeito)return false;
+  var divs=S.dividas;
+  if(!Array.isArray(divs))return false;
+  var i1=divs.find(function(d){return d.id==='itau1';});
+  var i2=divs.find(function(d){return d.id==='itau2';});
+  var san=divs.find(function(d){return d.id==='santander';});
+  if(!i1||!i2||!san)return false;
+  i1.v=8160.89;
+  i1.obs='Quitação antecipada em 19/jul/2026 · 18 parcelas';
+  i2.v=3654.07;
+  i2.obs='Quitação antecipada em 19/jul/2026 · 9 parcelas';
+  // Santander está em dia: registra a parcela de julho e reduz somente esse
+  // valor do saldo que já estava salvo, conforme orientação do usuário.
+  san.v=Math.max(0,(+san.v||0)-972);
+  san.obs='R$972/mês · 0,49%/mês · parcela de jul/2026 registrada';
+  if(!Array.isArray(san.pags))san.pags=[];
+  if(!san.pags.some(function(p){return String(p.data||'')==='2026-07-04'&&+p.v===972;}))san.pags.push({v:972,tipo:'parcela',data:'2026-07-04'});
+  S.mig15SaldosReaisFeito=true;
+  S.mig15SaldosReaisAplicadaEm=Date.now();
+  return true;
 }
 
 var _pendingResolvers=[];
@@ -1571,9 +1604,9 @@ function dfCxUso(){return[
 ];}
 function dfDividas(){return[
   {id:'c6',n:'C6 Bank',v:0,m:0,obs:'QUITADO jun/2026 · R$15.692,48 · desconto ~85%',urgencia:0,pags:[]},
-  {id:'itau1',n:'Itaú Renegociação 1',v:8113,m:510.23,obs:'1,29%/mês · quitar quando reserva > R$20k',urgencia:2,pags:[]},
-  {id:'itau2',n:'Itaú Boleto 2',v:3877,m:423,obs:'Quitar quando possível',urgencia:2,pags:[]},
-  {id:'santander',n:'Santander',v:77845,m:972,obs:'R$972/mês · 0,49%/mês · Set/2034',urgencia:1,pags:[]},
+  {id:'itau1',n:'Itaú Renegociação 1',v:8160.89,m:510.23,obs:'Quitação antecipada em 19/jul/2026 · 18 parcelas',urgencia:2,pags:[]},
+  {id:'itau2',n:'Itaú Boleto 2',v:3654.07,m:423,obs:'Quitação antecipada em 19/jul/2026 · 9 parcelas',urgencia:2,pags:[]},
+  {id:'santander',n:'Santander',v:76873,m:972,obs:'R$972/mês · 0,49%/mês · parcela de jul/2026 registrada',urgencia:1,pags:[{v:972,tipo:'parcela',data:'2026-07-04'}]},
 ];}
 function dfEnvs(){return[
   {id:'delivery',e:'🍽️',n:'Alimentação fora',lim:700,tipo:'envelope',usado:0},
@@ -2459,6 +2492,7 @@ function rAgora(){
     h+='<div class="agora-step'+(checked?' done':'')+'"><button class="agora-check'+(checked?' done':'')+'" aria-label="Marcar etapa '+(i+1)+'" onclick="toggleAgoraCk(\''+ev.id+'\',\''+escJs(stepKey)+'\')">'+(checked?icon('check',13):'')+'</button><div style="flex:1"><div class="agora-step-title">'+(i+1)+'. '+esc(p.t)+'</div><div class="agora-step-copy">'+esc(p.s)+'</div>'+(p.a?'<button class="btn bg bsm mt8 btn-with-icon" onclick="go(\''+p.a+'\')"><span>Abrir ação</span>'+icon('chevronRight',11)+'</button>':'')+'</div></div>';
   });
   h+='</div></div>';
+  h+='<button class="btn bp bsm btn-with-icon" onclick="saveAgoraCk()">'+icon('save',13)+'<span>Salvar checklist</span></button>';
   if(done>0)h+='<button class="btn bg bsm btn-with-icon" onclick="resetAgoraCk(\''+ev.id+'\')">'+icon('refreshCw',13)+'<span>Reiniciar checklist</span></button>';
   if(Q('agora-content'))Q('agora-content').innerHTML=h;
 }
@@ -2472,6 +2506,11 @@ async function toggleAgoraCk(ev,stepKey){
   rAgora();
   var saved=await save();
   if(saved)toast('Checklist salvo.');
+}
+async function saveAgoraCk(){
+  if(!canMutateNow())return;
+  var saved=await save();
+  if(saved)toast('Checklist salvo no seu plano.');
 }
 async function resetAgoraCk(ev){
   if(!canMutateNow())return;
