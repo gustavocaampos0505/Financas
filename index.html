@@ -1810,10 +1810,22 @@ function rHome(){
   var ent_prox=(S.entradas||[]).filter(function(e){return e.s==='pendente'&&e.m===MES;}).reduce(function(a,e){return a+(+e.v||0);},0);
   if(Q('home-grid'))Q('home-grid').innerHTML='<button class="card metric-card" onclick="go(\'pix\')" style="margin:0;--metric:rgba(40,212,120,.14)"><div class="metric-label">Margem após compromissos</div><div class="metric-value '+(sobra>=0?'tg':'tr')+'">'+fmt(sobra)+'</div><div class="metric-note">inclui faturas e envelopes · ver plano</div></button><button class="card metric-card" onclick="go(\'dividas\')" style="margin:0;--metric:rgba(240,64,96,.13)"><div class="metric-label">Dívidas</div><div class="metric-value tr">'+fmt(div_tot)+'</div><div class="metric-note">toque para acompanhar</div></button><button class="card metric-card" onclick="go(\'caixinhas\')" style="margin:0;--metric:rgba(56,176,240,.13)"><div class="metric-label">Caixinhas</div><div class="metric-value tb">'+fmt(cx_tot)+'</div><div class="metric-note">patrimônio guardado</div></button><button class="card metric-card" onclick="go(\'entradas\')" style="margin:0;--metric:rgba(232,192,48,.13)"><div class="metric-label">Entradas previstas</div><div class="metric-value ty">'+fmt((S.entradas||[]).filter(function(e){return e.s==='pendente';}).reduce(function(a,e){return a+(+e.v||0);},0))+'</div><div class="metric-note">'+fmt(ent_prox)+' este mês</div></button>';
 
-  // Comparação com o mês anterior
-  var somaMes=function(obj){return(obj.gastos||[]).reduce(function(a,x){return a+(+x.val||0);},0)+(obj.extras||[]).reduce(function(a,x){return a+(+x.v||0);},0)+(obj.eventuais||[]).reduce(function(a,x){return a+(+x.v||0);},0);};
+  // Comparação com o mês anterior. Antes ela considerava somente gastos avulsos
+  // cadastrados e ignorava PIX, assinaturas, contas variáveis e faturas — por isso
+  // julho parecia artificialmente baixo mesmo depois de vários pagamentos.
+  var somaMes=function(obj){
+    var fix=obj.fixos||{};
+    var pix=(fix.fixosPix||obj.fixosPix||[]).filter(function(x){return x&&x.ativo!==false;}).reduce(function(a,x){return a+(+x.v||0);},0);
+    var ass=(fix.fixosAss||obj.fixosAss||[]).filter(function(x){return x&&x.ativo!==false;}).reduce(function(a,x){return a+(+x.v||0);},0);
+    var variaveis=Object.values(fix.fixosVar||obj.fixosVar||{}).reduce(function(a,x){return a+(+x||0);},0);
+    var faturas=(obj.faturas||{});var cartoes=(+faturas.nu||0)+(+faturas.br||0);
+    return (obj.gastos||[]).reduce(function(a,x){return a+(+x.val||0);},0)
+      +(obj.extras||[]).reduce(function(a,x){return a+(+x.v||0);},0)
+      +(obj.eventuais||[]).reduce(function(a,x){return a+(+x.v||0);},0)
+      +pix+ass+variaveis+cartoes;
+  };
   var atualTotal=somaMes(S),chaveAnt=getMesAnt(),antObj=(S.histMeses||{})[chaveAnt]||{},antTotal=somaMes(antObj),maxComp=Math.max(atualTotal,antTotal,1),delta=antTotal?Math.round((atualTotal-antTotal)/antTotal*100):null;
-  if(Q('home-marco'))Q('home-marco').innerHTML='<div class="fsb mb4"><div class="ctitle" style="margin:0">Comparação mensal</div>'+(delta===null?'<span class="chip cb">sem histórico</span>':'<span class="chip '+(delta<=0?'cg':'cr')+'">'+(delta>0?'+':'')+delta+'%</span>')+'</div><div class="compare-row"><div class="compare-label">Este mês</div><div class="compare-track"><div class="compare-fill" style="width:'+Math.round(atualTotal/maxComp*100)+'%"></div></div><div class="compare-val">'+fmt(atualTotal)+'</div></div><div class="compare-row"><div class="compare-label">'+ml(chaveAnt)+'</div><div class="compare-track"><div class="compare-fill prev" style="width:'+Math.round(antTotal/maxComp*100)+'%"></div></div><div class="compare-val">'+fmt(antTotal)+'</div></div><div style="font-size:.65rem;color:var(--muted);margin-top:8px">Inclui gastos, extras e eventuais registrados.</div>';
+  if(Q('home-marco'))Q('home-marco').innerHTML='<div class="fsb mb4"><div class="ctitle" style="margin:0">Saídas do mês · comparação</div>'+(delta===null?'<span class="chip cb">sem histórico</span>':'<span class="chip '+(delta<=0?'cg':'cr')+'">'+(delta>0?'+':'')+delta+'%</span>')+'</div><div class="compare-row"><div class="compare-label">Este mês</div><div class="compare-track"><div class="compare-fill" style="width:'+Math.round(atualTotal/maxComp*100)+'%"></div></div><div class="compare-val">'+fmt(atualTotal)+'</div></div><div class="compare-row"><div class="compare-label">'+ml(chaveAnt)+'</div><div class="compare-track"><div class="compare-fill prev" style="width:'+Math.round(antTotal/maxComp*100)+'%"></div></div><div class="compare-val">'+fmt(antTotal)+'</div></div><div style="font-size:.65rem;color:var(--muted);margin-top:8px">Inclui gastos registrados, PIX, assinaturas, contas variáveis e faturas cadastradas.</div>';
 
   // Entradas próximas
   var prox=(S.entradas||[]).filter(function(e){return e.s==='pendente'&&e.m===MES;});
@@ -2682,7 +2694,7 @@ function rParcelas(){
     var card='<div class="card mb8" style="'+(ativa?'':'opacity:.42')+'">'
       +'<div style="display:flex;gap:10px;align-items:center">'+ring
       +'<div style="flex:1"><div class="fsb"><div style="font-size:.84rem;font-weight:500">'+esc(p.n)+(isFinal?'<span style="font-size:.6rem;color:var(--yellow);margin-left:6px"><span class="status-dot" style="background:var(--yellow)"></span>encerrando em breve</span>':'')+'</div>'
-      +'<span class="chip '+(ativa?'cg':'bdg-m')+'">'+(ativa?cpAdj+'× rest.':icon('check',10)+' quitada')+'</span></div>'
+      +'<div style="display:flex;align-items:center;gap:5px"><span class="chip '+(ativa?'cg':'bdg-m')+'">'+(ativa?cpAdj+'× rest.':icon('check',10)+' quitada')+'</span><button class="fix-del" title="Remover parcela" aria-label="Remover parcela" onclick="delParc(\''+escJs(k)+'\',\''+escJs(p.n)+'\','+(ativa?'true':'false')+')">'+icon('trash',14)+'</button></div></div>'
       +'<div style="font-size:.65rem;color:var(--muted);margin-top:2px">'+esc(p.b)+' · '+fmtd(p.vp)+'/mês · '+(p.tp-cpAdj)+'/'+p.tp+' pagas · até '+p.f+'</div>'
       +'</div></div></div>';
     if(ativa)hAtiv+=card;else hDone+=card;
@@ -2821,12 +2833,27 @@ async function restauraParc(k){if(!canMutateNow())return;
   if(!saved)return;
   rParcelas();
 }
-async function delParcExtra(id){if(!canMutateNow())return;if(!S.parcExtras)return;
+function delParc(k,nome,aindaAtiva){if(!canMutateNow())return;
+  if(!S.parc||!S.parc[k])return;
+  var texto=aindaAtiva
+    ?'Isso remove “'+nome+'” dos totais, do gráfico e das próximas faturas. Use apenas se ela já foi quitada, cancelada ou lançada por engano.'
+    :'Isso remove “'+nome+'” da lista, do gráfico e das projeções futuras. O histórico de meses fechados não será alterado.';
+  askConfirm('Remover parcela?',texto,async function(){
+    delete S.parc[k];
+    var saved=await save();
+    if(!saved)return;
+    toast('Parcela removida do planejamento.');
+    rParcelas();
+  },false);
+}
+function delParcExtra(id){if(!canMutateNow())return;if(!S.parcExtras)return;
   var vinculada=(S.extras||[]).find(function(x){return x.installmentId===id;});
-  if(vinculada&&!confirm('Excluir esta parcela também removerá o gasto extra vinculado. Continuar?'))return;
-  S.parcExtras=S.parcExtras.filter(function(p){return p.id!==id;});
-  if(vinculada)S.extras=S.extras.filter(function(x){return x.installmentId!==id;});
-  var saved=await save();if(!saved)return;rParcelas();rExtras();
+  askConfirm('Remover parcela?',vinculada?'Ela e o gasto extra vinculado serão removidos dos totais, do gráfico e das projeções futuras.':'Ela será removida dos totais, do gráfico e das projeções futuras.',async function(){
+    S.parcExtras=S.parcExtras.filter(function(p){return p.id!==id;});
+    if(vinculada)S.extras=S.extras.filter(function(x){return x.installmentId!==id;});
+    var saved=await save();if(!saved)return;
+    toast('Parcela removida do planejamento.');rParcelas();rExtras();
+  },false);
 }
 function npPreview(){var v=+Q('np-v')?.value||0,t=+Q('np-t')?.value||1;if(Q('np-prev'))Q('np-prev').textContent=t>1?t+'× de '+fmtd(v/t):'À vista';}
 async function regNovaParc(){if(!canMutateNow())return;
