@@ -873,6 +873,8 @@ button,.card,.month-event,.tab,.home-action{touch-action:manipulation}@media (pr
         <option value="quitacao">Quitação total</option>
       </select>
       <label>Valor pago (R$)</label><input type="number" class="inp inp-mono" id="dp-val" placeholder="0,00" step="0.01">
+      <label>Saldo após pagamento (opcional)</label><input type="number" class="inp inp-mono" id="dp-saldo" placeholder="Informe o saldo real do banco" step="0.01" min="0">
+      <div style="font-size:.67rem;color:var(--muted);margin-top:4px">Se você informar o saldo do banco, ele substitui o cálculo estimado e mantém a dívida exata.</div>
       <label>Data</label><input type="date" class="inp" id="dp-data">
       <div id="dp-preview" style="font-size:.72rem;color:var(--green);font-family:'DM Mono',monospace;margin-top:8px;min-height:16px"></div>
       <div class="g2 mt16"><button class="btn bg" onclick="closeOvl('ovl-div-pag')">Cancelar</button><button class="btn bp" onclick="regDivPag()">Registrar</button></div>
@@ -1451,6 +1453,9 @@ function initDefaults(){
   if(!S.entradas)S.entradas=dfEntradas();
   if(!S.snapshots)S.snapshots=[];
   if(!S.confissoes)S.confissoes=[];
+  // Checklist da aba "E agora?": dado de planejamento, persistido no mesmo
+  // documento financeiro e inicializado uma única vez ao carregar o perfil.
+  if(!S.agoraChecklist||typeof S.agoraChecklist!=='object'||Array.isArray(S.agoraChecklist))S.agoraChecklist={};
   if(!S.faturas)S.faturas={nu:6200,br:4817};
   // migracaoJunho2026()/migracaoJunho2026b()/runMigration1-12()/importarMaio()/importarJunho()
   // foram REMOVIDAS por completo do código — não existem mais no arquivo.
@@ -2175,9 +2180,15 @@ function rPix(){
   if(Q('pix-resumo')){var sobraPix=sal-totalPix;Q('pix-resumo').className='card section-pulse mb8';Q('pix-resumo').innerHTML='<div class="fsb mb8"><div><div class="ctitle" style="margin:0 0 5px">Sobra estimada do mês</div><div class="pulse-value '+(sobraPix>=0?'tg':'tr')+'">'+fmt(sobraPix)+'</div><div class="pulse-caption">Após PIX, boletos e faturas já cadastrados.</div></div><button class="btn bg bsm btn-with-icon" onclick="openOvl(\'ovl-faturas\')">'+icon('edit',13)+'<span>Revisar faturas</span></button></div><div class="row" style="padding:6px 0"><span style="font-size:.74rem">Renda total</span><span class="val vsm tg">'+fmt(sal)+'</span></div><div class="row" style="padding:6px 0"><span style="font-size:.74rem">Contas e cartões</span><span class="val vsm tr">−'+fmt(totalPix)+'</span></div>';}
 }
 
-function pixRow(iconName,n,v,obs,enc){
+function pixRow(iconName,n,v,obs,enc,dividaId){
   var hoje=getMonthKeySP();var venc=enc&&enc<hoje;
-  return'<div class="row" style="padding:5px 0"><div><div style="font-size:.78rem;display:flex;align-items:center;gap:5px">'+(iconName?icon(iconName,13):'')+esc(n)+(enc?'<span style="font-size:.58rem;margin-left:4px;color:'+(venc?'var(--muted)':'var(--red)')+'">até '+ml(enc)+'</span>':'')+'</div>'+(obs?'<div style="font-size:.6rem;color:var(--muted)">'+esc(obs)+'</div>':'')+' </div><span class="val vsm tr">−'+fmt(v)+'</span></div>';
+  var divida=dividaId&&(S.dividas||[]).find(function(d){return d.id===dividaId&&(+d.v||0)>0;});
+  var pagoNoMes=divida&&(divida.pags||[]).some(function(p){return String(p.data||'').slice(0,7)===MES&&p.tipo==='parcela';});
+  var acao=divida?(pagoNoMes
+    ?'<span class="chip cg" style="font-size:.58rem">'+icon('check',10)+' Pago</span>'
+    :'<button class="btn bg bsm" onclick="openDivPag(\''+escJs(divida.id)+'\',\''+escJs(divida.n)+'\','+(+v||0)+')">Paguei</button>')
+    :'';
+  return'<div class="row" style="padding:5px 0"><div><div style="font-size:.78rem;display:flex;align-items:center;gap:5px">'+(iconName?icon(iconName,13):'')+esc(n)+(enc?'<span style="font-size:.58rem;margin-left:4px;color:'+(venc?'var(--muted)':'var(--red)')+'">até '+ml(enc)+'</span>':'')+'</div>'+(obs?'<div style="font-size:.6rem;color:var(--muted)">'+esc(obs)+'</div>':'')+' </div><div style="display:flex;align-items:center;gap:7px"><span class="val vsm tr">−'+fmt(v)+'</span>'+acao+'</div></div>';
 }
 
 function buildPix15(){
@@ -2187,12 +2198,12 @@ function buildPix15(){
   h+='<div class="row" style="padding:5px 0"><span style="font-size:.78rem;color:var(--green);display:flex;align-items:center;gap:5px">'+icon('dollarSign',13)+'Salário (adiantamento)</span><span class="val vsm tg">+'+fmt(+cfg.sal15||16000)+'</span></div>';
   if(fat.nu){h+=pixRow('card','Fatura Nubank CC',fat.nu,'fechada');tot+=+fat.nu;}
   if(fat.br){h+=pixRow('card','Fatura Bradesco CC',fat.br,'fechada');tot+=+fat.br;}
-  (S.fixosPix||[]).filter(function(f){return itemAtivoNoMes(f)&&String(f.dia).includes('15');}).forEach(function(f,i){h+=pixRow(fixoIconMap[f.id]||'card',f.n,f.v,f.obs,f.enc,i,'pix');tot+=+(f.v||0);});
+  (S.fixosPix||[]).filter(function(f){return itemAtivoNoMes(f)&&String(f.dia).includes('15');}).forEach(function(f){h+=pixRow(fixoIconMap[f.id]||'card',f.n,f.v,f.obs,f.enc,f.id);tot+=+(f.v||0);});
   return{html:h,tot};
 }
 function buildPix22(){
   var h='',tot=0;
-  (S.fixosPix||[]).filter(function(f){return itemAtivoNoMes(f)&&String(f.dia)==='22';}).forEach(function(f,i){h+=pixRow(fixoIconMap[f.id]||'card',f.n,f.v,f.obs,f.enc,i,'pix');tot+=+(f.v||0);});
+  (S.fixosPix||[]).filter(function(f){return itemAtivoNoMes(f)&&String(f.dia)==='22';}).forEach(function(f){h+=pixRow(fixoIconMap[f.id]||'card',f.n,f.v,f.obs,f.enc,f.id);tot+=+(f.v||0);});
   if(!h)h='<div style="font-size:.74rem;color:var(--muted);padding:5px 0">Nenhum</div>';
   return{html:h,tot};
 }
@@ -2200,7 +2211,7 @@ function buildPix30(){
   var h='',tot=0;
   var cfg=S.cfg||{};
   h+='<div class="row" style="padding:5px 0"><span style="font-size:.78rem;color:var(--green);display:flex;align-items:center;gap:5px">'+icon('dollarSign',13)+'Salário (complemento)</span><span class="val vsm tg">+'+fmt(+cfg.sal30||13432)+'</span></div>';
-  (S.fixosPix||[]).filter(function(f){return itemAtivoNoMes(f)&&(String(f.dia)==='30'||String(f.dia)==='4');}).forEach(function(f,i){h+=pixRow(fixoIconMap[f.id]||'card',f.n,f.v,f.obs,f.enc,i,'pix');tot+=+(f.v||0);});
+  (S.fixosPix||[]).filter(function(f){return itemAtivoNoMes(f)&&(String(f.dia)==='30'||String(f.dia)==='4');}).forEach(function(f){h+=pixRow(fixoIconMap[f.id]||'card',f.n,f.v,f.obs,f.enc,f.id);tot+=+(f.v||0);});
   return{html:h,tot};
 }
 
@@ -2408,6 +2419,12 @@ function getAgoraCk(){
   if(!S.agoraChecklist||typeof S.agoraChecklist!=='object'||Array.isArray(S.agoraChecklist))S.agoraChecklist={};
   return S.agoraChecklist;
 }
+function agoraStepKey(p,i){
+  // Não usamos a posição da etapa: faturas e PIX podem entrar/sair da lista
+  // durante o mês. A chave textual preserva a marcação da mesma ação.
+  var t=String((p&&p.t)||'').toLowerCase().replace(/r\$\s*[\d.,]+/g,'r$').replace(/\s+/g,' ').trim();
+  return String((p&&p.a)||'sem-acao')+'|'+t;
+}
 function getAgoraEventos(){
   var estrategia=getStrategiaMes(),fat=S.faturas||{};
   var porDia=function(dias){return(S.fixosPix||[]).filter(function(f){return itemAtivoNoMes(f)&&dias.indexOf(String(f.dia))>=0;});};
@@ -2433,25 +2450,28 @@ function rAgora(){
   var tabs='';agoraEventos.forEach(function(ev,i){tabs+='<button class="tab btn-with-icon'+(i===_agoraTab?' on':'')+'" onclick="setAgoraTab('+i+')">'+icon(ev.icon,13)+'<span>'+esc(ev.lbl)+'</span></button>';});
   if(Q('agora-tabs'))Q('agora-tabs').innerHTML=tabs;
   var ev=agoraEventos[_agoraTab];var ck=getAgoraCk()[ev.id]||{};
-  var done=ev.passos.filter(function(_,i){return ck[i];}).length;
+  var done=ev.passos.filter(function(p,i){return ck[agoraStepKey(p,i)];}).length;
   var pct=ev.passos.length?Math.round(done/ev.passos.length*100):0;
   if(Q('agora-progress'))Q('agora-progress').innerHTML='<div class="card agora-hero mb12"><div class="fsb"><div><div class="ctitle">Plano de resposta</div><div style="font:500 1.22rem Fraunces,serif;margin:3px 0 5px;display:flex;align-items:center;gap:7px">'+icon(ev.icon,18)+'<span>'+esc(ev.lbl)+'</span></div><p>Execute uma etapa por vez. As ações abaixo abrem o lugar certo no app.</p></div><div style="text-align:right"><div style="font:500 1.35rem DM Mono,monospace">'+pct+'%</div><div class="agora-choice">concluído</div></div></div><div class="agora-progress-bar"><span style="width:'+pct+'%"></span></div></div>';
   var h='<div class="card mb8"><div class="fsb mb8"><div class="ctitle" style="margin:0">Checklist de ação</div><div class="chip '+(done===ev.passos.length?'cg':'cy')+'">'+done+' de '+ev.passos.length+'</div></div><div class="agora-checklist">';
   ev.passos.forEach(function(p,i){
-    h+='<div class="agora-step'+(ck[i]?' done':'')+'"><button class="agora-check'+(ck[i]?' done':'')+'" aria-label="Marcar etapa '+(i+1)+'" onclick="toggleAgoraCk(\''+ev.id+'\','+i+')">'+(ck[i]?icon('check',13):'')+'</button><div style="flex:1"><div class="agora-step-title">'+(i+1)+'. '+esc(p.t)+'</div><div class="agora-step-copy">'+esc(p.s)+'</div>'+(p.a?'<button class="btn bg bsm mt8 btn-with-icon" onclick="go(\''+p.a+'\')"><span>Abrir ação</span>'+icon('chevronRight',11)+'</button>':'')+'</div></div>';
+    var stepKey=agoraStepKey(p,i),checked=!!ck[stepKey];
+    h+='<div class="agora-step'+(checked?' done':'')+'"><button class="agora-check'+(checked?' done':'')+'" aria-label="Marcar etapa '+(i+1)+'" onclick="toggleAgoraCk(\''+ev.id+'\',\''+escJs(stepKey)+'\')">'+(checked?icon('check',13):'')+'</button><div style="flex:1"><div class="agora-step-title">'+(i+1)+'. '+esc(p.t)+'</div><div class="agora-step-copy">'+esc(p.s)+'</div>'+(p.a?'<button class="btn bg bsm mt8 btn-with-icon" onclick="go(\''+p.a+'\')"><span>Abrir ação</span>'+icon('chevronRight',11)+'</button>':'')+'</div></div>';
   });
   h+='</div></div>';
   if(done>0)h+='<button class="btn bg bsm btn-with-icon" onclick="resetAgoraCk(\''+ev.id+'\')">'+icon('refreshCw',13)+'<span>Reiniciar checklist</span></button>';
   if(Q('agora-content'))Q('agora-content').innerHTML=h;
 }
 function setAgoraTab(i){_agoraTab=i;rAgora();}
-async function toggleAgoraCk(ev,i){
+async function toggleAgoraCk(ev,stepKey){
   if(!canMutateNow())return;
   var checklist=getAgoraCk();
   if(!checklist[ev])checklist[ev]={};
-  checklist[ev][i]=!checklist[ev][i];
+  if(checklist[ev][stepKey])delete checklist[ev][stepKey];
+  else checklist[ev][stepKey]=true;
   rAgora();
-  await save();
+  var saved=await save();
+  if(saved)toast('Checklist salvo.');
 }
 async function resetAgoraCk(ev){
   if(!canMutateNow())return;
@@ -2641,10 +2661,11 @@ function rParcelas(){
     } else {
       iniDate=new Date(NOW.getFullYear(),NOW.getMonth(),1);
     }
-    // O saldo é atualizado exclusivamente pelo fechamento. Aqui, mudar de mês
-    // apenas projeta o que restará — sem descontar uma segunda vez as novas parcelas.
-    var mesesDesdeInicio=p.mesInicio?Math.max(0,monthDistance(p.mesInicio,getMonthKeySP())):ciclo;
-    var cpAdj=cicloDate>=iniDate?Math.max(0,(+p.cp||0)-mesesDesdeInicio):0;
+    // `cp` já é o saldo remanescente no ciclo atual. A versão anterior também
+    // descontava os meses desde o início e fazia o gráfico/lista "pularem"
+    // parcelas depois de cada fatura paga. Só projetamos os ciclos à frente.
+    var mesesAteInicio=p.mesInicio?Math.max(0,monthDistance(getMonthKeySP(),p.mesInicio)):0;
+    var cpAdj=cicloDate>=iniDate?Math.max(0,(+p.cp||0)-Math.max(0,ciclo-mesesAteInicio)):0;
     if(cpAdj>0){if(p.b==='Nubank CC')nuMes+=vp;else if(p.b==='Bradesco CC')brMes+=vp;else piMes+=vp;}
     var feitas=(p.tp||1)-cpAdj;var prog=Math.round(Math.max(0,feitas/(p.tp||1))*100);
     var r=18,circ=Math.PI*2*r;var dash=Math.round(prog/100*circ);
@@ -2682,7 +2703,8 @@ function rParcGrafico(parc, extras){
         var cicloGraf=new Date(hoje.getFullYear(),hoje.getMonth()+m,1);
         var partesG=p.mesInicio.split('-');
         var iniGraf=new Date(+partesG[0],+partesG[1]-1,1);
-        if(cicloGraf>=iniGraf)c=Math.max(0,(+p.cp||0)-monthDistance(p.mesInicio,addMonths(getMonthKeySP(),m)));
+        var mesesAteInicioGraf=Math.max(0,monthDistance(getMonthKeySP(),p.mesInicio));
+        if(cicloGraf>=iniGraf)c=Math.max(0,(+p.cp||0)-Math.max(0,m-mesesAteInicioGraf));
       } else {
         c=Math.max(0,(+p.cp||0)-m);
       }
@@ -2955,17 +2977,27 @@ function editDivSaldo(id){
   if(Q('ds-id'))Q('ds-id').value=d.id;if(Q('ds-nome'))Q('ds-nome').textContent=d.n;if(Q('ds-val'))Q('ds-val').value=d.v;
   openOvl('ovl-div-saldo');
 }
-async function saveDivSaldo(){if(!canMutateNow())return;var id=Q('ds-id')?.value,v=parseFloat(Q('ds-val')?.value||'');if(!id||isNaN(v)||v<0){toast('Informe um saldo válido.');return;}var divs=S.dividas||dfDividas(),d=divs.find(function(x){return x.id===id;});if(!d)return;d.v=v;S.dividas=divs;var saved=await save();if(!saved)return;closeOvl('ovl-div-saldo');toast('Saldo da dívida atualizado.');rDividas();}
-function openDivPag(id,nome){_divEditId=id;if(Q('dp-nome'))Q('dp-nome').textContent=nome;if(Q('dp-data'))Q('dp-data').value=hoje();if(Q('dp-val'))Q('dp-val').value='';openOvl('ovl-div-pag');}
+async function saveDivSaldo(){if(!canMutateNow())return;var id=Q('ds-id')?.value,v=parseFloat(Q('ds-val')?.value||'');if(!id||isNaN(v)||v<0){toast('Informe um saldo válido.');return;}var divs=S.dividas||dfDividas(),d=divs.find(function(x){return x.id===id;});if(!d)return;d.v=v;S.dividas=divs;var saved=await save();if(!saved)return;closeOvl('ovl-div-saldo');toast('Saldo da dívida atualizado.');rDividas();rPix();}
+function openDivPag(id,nome,valorSugerido){
+  _divEditId=id;
+  if(Q('dp-nome'))Q('dp-nome').textContent=nome;
+  if(Q('dp-data'))Q('dp-data').value=hoje();
+  if(Q('dp-val'))Q('dp-val').value=valorSugerido||'';
+  if(Q('dp-saldo'))Q('dp-saldo').value='';
+  if(Q('dp-tipo'))Q('dp-tipo').value='parcela';
+  openOvl('ovl-div-pag');
+}
 async function regDivPag(){if(!canMutateNow())return;
   var v=+Q('dp-val')?.value||0,tipo=Q('dp-tipo')?.value,data=Q('dp-data')?.value||hoje();
+  var saldoInformado=Q('dp-saldo')?.value===''?null:parseFloat(Q('dp-saldo')?.value);
   if(!v||!_divEditId)return;
+  if(saldoInformado!==null&&(isNaN(saldoInformado)||saldoInformado<0)){toast('Informe um saldo válido ou deixe o campo em branco.');return;}
   var divs=S.dividas||dfDividas();var d=divs.find(function(d){return d.id===_divEditId;});
   if(!d)return;if(!d.pags)d.pags=[];
   d.pags.push({v,tipo,data});
-  if(tipo==='quitacao'||tipo==='antecipado')d.v=Math.max(0,d.v-v);
-  else d.v=Math.max(0,d.v-v);
   if(tipo==='quitacao')d.v=0;
+  else if(saldoInformado!==null)d.v=saldoInformado;
+  else d.v=Math.max(0,d.v-v);
   S.dividas=divs;
   var quitouAgora=(d.v===0);
   if(quitouAgora)appendTimelineAuto(d.n+' quitado.',d.id==='c6'?107000:+d.pags.reduce(function(a,p){return a+p.v;},0));
@@ -2973,6 +3005,7 @@ async function regDivPag(){if(!canMutateNow())return;
   if(!saved)return;
   closeOvl('ovl-div-pag');
   rDividas();
+  rPix();
   toast(quitouAgora?'Dívida quitada!':'Pagamento registrado.');
 }
 function quitarDiv(id){if(!canMutateNow())return;
@@ -2982,7 +3015,7 @@ function quitarDiv(id){if(!canMutateNow())return;
     appendTimelineAuto(d.n+' quitado.',oldV);
     var saved=await save();
     if(!saved)return;
-    toast('Dívida marcada como quitada.');rDividas();
+    toast('Dívida marcada como quitada.');rDividas();rPix();
   },false);
 }
 // appendTimelineAuto: alteração puramente local (item 13). Não chama save(), renderAll(), toast() ou
