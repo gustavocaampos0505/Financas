@@ -725,7 +725,7 @@ button,.card,.month-event,.tab,.home-action{touch-action:manipulation}@media (pr
               <button class="btn bg bfull mt8 btn-with-icon" onclick="exportDados()"><span class="ui-icon" data-icon="download" data-icon-size="14" aria-hidden="true"></span><span>Exportar JSON</span></button>
               <input type="file" id="import-file" accept="application/json,.json" class="hidden" onchange="importDados(event)">
               <button class="btn bg bfull mt8 btn-with-icon" onclick="Q('import-file').click()"><span class="ui-icon" data-icon="upload" data-icon-size="14" aria-hidden="true"></span><span>Importar backup JSON</span></button>
-              <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarAtualizacaoJulho2026()"><span class="ui-icon" data-icon="refreshCw" data-icon-size="14" aria-hidden="true"></span><span>Aplicar atualização financeira jul/2026</span></button>
+              <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarConciliacaoExtratos25072026()"><span class="ui-icon" data-icon="refreshCw" data-icon-size="14" aria-hidden="true"></span><span>Conciliar extratos de 25/jul/2026</span></button>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarPlanoSegundoSemestre2026()"><span class="ui-icon" data-icon="calendar" data-icon-size="14" aria-hidden="true"></span><span>Aplicar plano jul–dez/2026</span></button>
               <button class="btn bo bfull mt8 btn-with-icon" onclick="limparParcelasDuplicadas()"><span class="ui-icon" data-icon="tool" data-icon-size="14" aria-hidden="true"></span><span>Corrigir parcelas duplicadas</span></button>
               <button class="btn bo bfull mt8 btn-with-icon" onclick="go('fechamento')"><span class="ui-icon" data-icon="checkSquare" data-icon-size="14" aria-hidden="true"></span><span>Fechamento guiado do mês</span></button>
@@ -810,6 +810,7 @@ button,.card,.month-event,.tab,.home-action{touch-action:manipulation}@media (pr
       <div class="alert ay mb8"><span class="ui-icon" data-icon="lightbulb" data-icon-size="16" aria-hidden="true"></span><div style="font-size:.72rem">Informe os valores atuais que ainda serão pagos no próximo vencimento.</div></div>
       <label>Fatura Nubank CC (R$)</label><input type="number" class="inp inp-mono" id="fat-nu" placeholder="6200">
       <label>Fatura Bradesco CC (R$)</label><input type="number" class="inp inp-mono" id="fat-br" placeholder="4817">
+      <label>Vencimento destas faturas</label><input type="date" class="inp" id="fat-vence">
       <div class="g2 mt16"><button class="btn bg" onclick="closeOvl('ovl-faturas')">Cancelar</button><button class="btn bp" onclick="saveFaturas()">Salvar</button></div>
     </div>
   </div>
@@ -1466,7 +1467,7 @@ function initDefaults(){
   // Checklist da aba "E agora?": dado de planejamento, persistido no mesmo
   // documento financeiro e inicializado uma única vez ao carregar o perfil.
   if(!S.agoraChecklist||typeof S.agoraChecklist!=='object'||Array.isArray(S.agoraChecklist))S.agoraChecklist={};
-  if(!S.faturas)S.faturas={nu:6200,br:4817};
+  if(!S.faturas)S.faturas={nu:3660.55,br:9337.20,vence:'2026-08-15'};
   // migracaoJunho2026()/migracaoJunho2026b()/runMigration1-12()/importarMaio()/importarJunho()
   // foram REMOVIDAS por completo do código — não existem mais no arquivo.
   // initDefaults() não dispara migrações, save(), confirm() ou alert() durante a sincronização normal.
@@ -1653,7 +1654,7 @@ function dfFixosPix(){return[
   {id:'seg_res',e:'🏠',n:'Seguro Residencial',v:162.90,dia:'15',obs:'Bradesco',enc:''},
 ];}
 function dfFixosAss(){return[
-  {id:'ademicon',e:'🚗',n:'Ademicon Veículos',v:1556.50,cartao:'BR',obs:'Pré-contemplação · revisar para R$2.033,50 no mês da contemplação',ativo:true},
+  {id:'ademicon',e:'🚗',n:'Ademicon Veículos',v:1556.50,cartao:'NU',obs:'Pré-contemplação · cobrança no Nubank · revisar para R$2.033,50 no mês da contemplação',ativo:true},
   {id:'wellhub',e:'🏃',n:'Wellhub',v:239.90,cartao:'BR',obs:''},
   {id:'google',e:'🔵',n:'Google One',v:14.99,cartao:'BR',obs:''},
   {id:'pier',e:'📱',n:'Pier seguro iPhone',v:184.50,cartao:'BR',obs:''},
@@ -1730,12 +1731,27 @@ function renderScreen(id){
 // Leitura estratégica única: não altera dados e não presume que dinheiro reservado em
 // caixinhas esteja disponível para gastar. Todas as telas de decisão usam estes números.
 function itemAtivoNoMes(item){return !!item&&item.ativo!==false&&(!item.enc||item.enc>=MES);}
+function faturaVenceNoMes(){
+  var vence=String(((S.faturas||{}).vence)||'');
+  // Faturas antigas, sem vencimento registrado, mantêm o comportamento anterior.
+  return !vence||vence.slice(0,7)===MES;
+}
+function getFaturasDoMes(){
+  if(!faturaVenceNoMes())return 0;
+  var f=S.faturas||{};
+  return (+f.nu||0)+(+f.br||0);
+}
+function getCaixaOperacional(){
+  var c=S.caixaOperacional;
+  if(!c||String(c.data||'').slice(0,7)!==MES)return null;
+  return Object.values(c.contasBRL||{}).reduce(function(a,v){return a+(+v||0);},0);
+}
 function getStrategiaMes(){
   var cfg=S.cfg||{}, renda=(+cfg.sal15||0)+(+cfg.sal30||0);
   var pix=(S.fixosPix||[]).filter(itemAtivoNoMes).reduce(function(a,x){return a+(+x.v||0);},0);
   var assinaturas=(S.fixosAss||[]).filter(itemAtivoNoMes).reduce(function(a,x){return a+(+x.v||0);},0);
   var variaveis=getTotVar();
-  var faturas=(+((S.faturas||{}).nu||0))+(+((S.faturas||{}).br||0));
+  var faturas=getFaturasDoMes();
   var envelopes=(S.envDef||[]).filter(function(e){return e.tipo==='envelope';});
   var orcado=envelopes.reduce(function(a,e){return a+(+e.lim||0);},0);
   var usado=envelopes.reduce(function(a,e){return a+(+e.usado||0);},0);
@@ -1760,7 +1776,8 @@ function rHome(){
   var diasRest=Math.max(1,diasMes-DIA+1);
   var envMes=(S.envDef||[]).filter(function(e){return e.tipo==='envelope';});
   var envRest=envMes.reduce(function(a,e){return a+Math.max(0,(+e.lim||0)-(+e.usado||0));},0);
-  var podeHoje=estrategia.referenciaDia;
+  var caixaOperacional=getCaixaOperacional();
+  var podeHoje=caixaOperacional===null?estrategia.referenciaDia:Math.min(estrategia.referenciaDia,Math.max(0,caixaOperacional));
   if(Q('home-date'))Q('home-date').textContent=MESES[NOW.getMonth()]+' '+NOW.getFullYear()+' · dia '+DIA;
 
   // Badges de pendência nas abas
@@ -1773,7 +1790,7 @@ function rHome(){
   var score=calcHealthScore();
   var scoreCor=score>=70?'var(--green)':score>=50?'var(--yellow)':'var(--red)';
   var scoreLabel=score>=70?'<span class="status-dot" style="background:var(--green)"></span>Saudável':score>=50?'<span class="status-dot" style="background:var(--yellow)"></span>Atenção':'<span class="status-dot" style="background:var(--red)"></span>Risco';
-  if(Q('home-score-card')){Q('home-score-card').className='card decision-hero mb8';Q('home-score-card').innerHTML='<div class="fsb mobile-stack"><div><div class="decision-label">Limite seguro para hoje</div><div class="decision-value">'+fmt(podeHoje)+'</div><div class="decision-sub">Considera faturas, contas já cadastradas e o orçamento que ainda resta nos envelopes.</div><div class="home-inline-tag mt8">'+icon(sobra>=0?'checkCircle':'alertTriangle',11)+' '+(sobra>=0?fmt(sobra)+' ainda planejado no mês':'Faltam '+fmt(Math.abs(sobra))+' para fechar o plano do mês')+'</div></div><div style="min-width:92px;text-align:right"><div style="font-size:.62rem;color:var(--muted)">Saúde financeira</div><div class="val vlg" style="color:'+scoreCor+'">'+score+'/100</div><div class="chip '+(score>=70?'cg':score>=50?'cy':'cr')+' mt4">'+scoreLabel+'</div></div></div>';}
+  if(Q('home-score-card')){Q('home-score-card').className='card decision-hero mb8';Q('home-score-card').innerHTML='<div class="fsb mobile-stack"><div><div class="decision-label">Limite seguro para hoje</div><div class="decision-value">'+fmt(podeHoje)+'</div><div class="decision-sub">'+(caixaOperacional===null?'Planejamento: considera faturas, contas e envelopes.':'Caixa operacional confirmado em '+String(S.caixaOperacional.data||'').split('-').reverse().join('/')+': '+fmt(caixaOperacional)+'. Reserva e caixinhas não entram como dinheiro livre.')+'</div><div class="home-inline-tag mt8">'+icon(sobra>=0?'checkCircle':'alertTriangle',11)+' '+(sobra>=0?fmt(sobra)+' ainda planejado no mês':'Faltam '+fmt(Math.abs(sobra))+' para fechar o plano do mês')+'</div></div><div style="min-width:92px;text-align:right"><div style="font-size:.62rem;color:var(--muted)">Saúde financeira</div><div class="val vlg" style="color:'+scoreCor+'">'+score+'/100</div><div class="chip '+(score>=70?'cg':score>=50?'cy':'cr')+' mt4">'+scoreLabel+'</div></div></div>';}
 
   // Alertas que levam a uma ação direta. O painel mostra no máximo três para não virar ruído.
   var alertas=[];
@@ -2212,8 +2229,9 @@ function getTotVar(){var v=S.fixosVar||{};return Object.values(v).reduce(functio
 function rPix(){
   if(Q('pix-mes'))Q('pix-mes').textContent=MESES[NOW.getMonth()]+' '+NOW.getFullYear()+' · ciclo 08/'+String(NOW.getMonth()+1).padStart(2,'0')+' → 08/'+String(NOW.getMonth()+2).padStart(2,'0');
   // Zero é um valor válido após o fechamento; não o substitua pelos valores iniciais.
-  if(Q('fat-nu')&&S.faturas)Q('fat-nu').value=S.faturas.nu==null?6200:S.faturas.nu;
-  if(Q('fat-br')&&S.faturas)Q('fat-br').value=S.faturas.br==null?4817:S.faturas.br;
+  if(Q('fat-nu')&&S.faturas)Q('fat-nu').value=S.faturas.nu==null?0:S.faturas.nu;
+  if(Q('fat-br')&&S.faturas)Q('fat-br').value=S.faturas.br==null?0:S.faturas.br;
+  if(Q('fat-vence')&&S.faturas)Q('fat-vence').value=S.faturas.vence||'';
   var q15=buildPix15();var q22=buildPix22();var q30=buildPix30();
   if(Q('pix-d15'))Q('pix-d15').innerHTML=q15.html+'<div class="div" style="margin:6px 0"></div><div class="fsb"><span style="font-size:.74rem;color:var(--muted)">Total saindo dia 15</span><span class="val vsm tr">−'+fmt(q15.tot)+'</span></div>';
   if(Q('pix-d22'))Q('pix-d22').innerHTML=q22.html+'<div class="div" style="margin:6px 0"></div><div class="fsb"><span style="font-size:.74rem;color:var(--muted)">Total dia 22</span><span class="val vsm tr">−'+fmt(q22.tot)+'</span></div>';
@@ -2221,7 +2239,7 @@ function rPix(){
   rEventuais();
   var cfg=S.cfg||{};var sal=+(cfg.sal15||16000)+(+cfg.sal30||13432);
   var totalPix=q15.tot+q22.tot+q30.tot;
-  var fat=(S.faturas||{});var totalFat=(+fat.nu||0)+(+fat.br||0);
+  var totalFat=getFaturasDoMes();
   if(Q('pix-resumo')){var sobraPix=sal-totalPix;Q('pix-resumo').className='card section-pulse mb8';Q('pix-resumo').innerHTML='<div class="fsb mb8"><div><div class="ctitle" style="margin:0 0 5px">Sobra estimada do mês</div><div class="pulse-value '+(sobraPix>=0?'tg':'tr')+'">'+fmt(sobraPix)+'</div><div class="pulse-caption">Após PIX, boletos e faturas já cadastrados.</div></div><button class="btn bg bsm btn-with-icon" onclick="openOvl(\'ovl-faturas\')">'+icon('edit',13)+'<span>Revisar faturas</span></button></div><div class="row" style="padding:6px 0"><span style="font-size:.74rem">Renda total</span><span class="val vsm tg">'+fmt(sal)+'</span></div><div class="row" style="padding:6px 0"><span style="font-size:.74rem">Contas e cartões</span><span class="val vsm tr">−'+fmt(totalPix)+'</span></div>';}
 }
 
@@ -2241,8 +2259,8 @@ function buildPix15(){
   var fat=S.faturas||{};
   var cfg=S.cfg||{};
   h+='<div class="row" style="padding:5px 0"><span style="font-size:.78rem;color:var(--green);display:flex;align-items:center;gap:5px">'+icon('dollarSign',13)+'Salário (adiantamento)</span><span class="val vsm tg">+'+fmt(+cfg.sal15||16000)+'</span></div>';
-  if(fat.nu){h+=pixRow('card','Fatura Nubank CC',fat.nu,'fechada');tot+=+fat.nu;}
-  if(fat.br){h+=pixRow('card','Fatura Bradesco CC',fat.br,'fechada');tot+=+fat.br;}
+  if(faturaVenceNoMes()&&fat.nu){h+=pixRow('card','Fatura Nubank CC',fat.nu,'fechada');tot+=+fat.nu;}
+  if(faturaVenceNoMes()&&fat.br){h+=pixRow('card','Fatura Bradesco CC',fat.br,'fechada');tot+=+fat.br;}
   (S.fixosPix||[]).filter(function(f){return itemAtivoNoMes(f)&&String(f.dia).includes('15');}).forEach(function(f){h+=pixRow(fixoIconMap[f.id]||'card',f.n,f.v,f.obs,f.enc,f.id);tot+=+(f.v||0);});
   return{html:h,tot};
 }
@@ -2264,6 +2282,7 @@ async function saveFaturas(){if(!canMutateNow())return;
   if(!S.faturas)S.faturas={};
   S.faturas.nu=+Q('fat-nu')?.value||0;
   S.faturas.br=+Q('fat-br')?.value||0;
+  S.faturas.vence=Q('fat-vence')?.value||'';
   var saved=await save();
   if(!saved)return;
   closeOvl('ovl-faturas');rPix();
@@ -2476,8 +2495,8 @@ function getAgoraEventos(){
   var passosPix=function(lista){return lista.map(function(f){return {t:'PIX: '+f.n+' '+fmt(f.v),s:'Vencimento dia '+f.dia+(f.obs?' · '+f.obs:''),a:'pix'};});};
   var d15=passosPix(porDia(['15'])),d22=passosPix(porDia(['22'])),d30=passosPix(porDia(['30','4']));
   var passos15=[];
-  if(+fat.nu>0)passos15.push({t:'Pagar fatura Nubank '+fmt(fat.nu),s:'Valor atual cadastrado na aba PIX. Evite parcelar a fatura.',a:'pix'});
-  if(+fat.br>0)passos15.push({t:'Pagar fatura Bradesco '+fmt(fat.br),s:'Valor atual cadastrado na aba PIX. Evite parcelar a fatura.',a:'pix'});
+  if(faturaVenceNoMes()&&+fat.nu>0)passos15.push({t:'Pagar fatura Nubank '+fmt(fat.nu),s:'Valor atual cadastrado na aba PIX. Evite parcelar a fatura.',a:'pix'});
+  if(faturaVenceNoMes()&&+fat.br>0)passos15.push({t:'Pagar fatura Bradesco '+fmt(fat.br),s:'Valor atual cadastrado na aba PIX. Evite parcelar a fatura.',a:'pix'});
   passos15=passos15.concat(d15,d22);
   var odontologiaAtiva=(S.fixosPix||[]).some(function(f){return /dentista|odontologia/i.test(String(f.n||''))&&itemAtivoNoMes(f)&&(+f.v||0)>0;});
   if(!odontologiaAtiva){passos15.push({t:'Odontologia em avaliação',s:'Possível correção ortodôntica antes do tratamento. Não reservar nem lançar parcelas até ter orçamento, forma de pagamento e data.',a:'caixinhas'});}
@@ -3489,6 +3508,50 @@ function aplicarAtualizacaoJulho2026(){
       toast('Atualização financeira de julho aplicada.');
     },false);
 }
+// Conciliação deliberada dos documentos enviados em 25/jul. Não cria gastos
+// individuais: os extratos trazem transferências entre contas e caixinhas que
+// seriam duplicadas sem a classificação manual de cada destinatário.
+function aplicarConciliacaoExtratos25072026(){
+  if(!canMutateNow())return;
+  if(S.mig16Conciliacao2507Feita){toast('Os extratos de 25/jul/2026 já foram conciliados.');return;}
+  askConfirm('Conciliar extratos de 25/jul/2026?',
+    'Um backup será baixado. Atualiza apenas saldos confirmados, faturas abertas para 15/ago e o caixa operacional. Não apaga gastos, parcelas nem lança PIX em duplicidade.',
+    async function(){
+      if(!canMutateNow())return;
+      var anterior=JSON.parse(JSON.stringify(S));
+      downloadJson(anterior,'financas-gs-antes-conciliacao-25-jul-2026-'+getTodayKeySP()+'.json');
+      if(!S.cx)S.cx={};
+      S.cx.reserva=2747.75;
+      S.cx.imprevistos=47.04;
+      S.faturas=Object.assign({},S.faturas||{}, {nu:3660.55,br:9337.20,vence:'2026-08-15',atualizadaEm:'2026-07-25'});
+      var ademicon=(S.fixosAss||[]).find(function(f){return f&&f.id==='ademicon';});
+      if(ademicon){ademicon.cartao='NU';ademicon.obs='Pré-contemplação · cobrança confirmada no Nubank em jul/2026 · revisar para R$2.033,50 no mês da contemplação';}
+      S.caixaOperacional={
+        data:'2026-07-25',
+        contasBRL:{bradesco:0,nubank:0.04,itau:0,mercadoPagoConta:0},
+        observacao:'Caixa livre em conta. Cofrinhos não entram aqui.'
+      };
+      S.saldoRevolut={data:'2026-07-25',moeda:'EUR',saldo:29.42,observacao:'Viagem: transporte pendente conhecido de €237; não conta como reserva em reais.'};
+      S.conciliacaoExtratos={
+        data:'2026-07-25',
+        fontes:['Bradesco conta e cartões','Nubank OFX','Mercado Pago','Revolut'],
+        observacao:'Transferências entre contas/caixinhas preservadas fora de gastos para evitar duplicidade.'
+      };
+      if(S.planoAportes&&Array.isArray(S.planoAportes.meses)){
+        S.planoAportes.meses=S.planoAportes.meses.map(function(m){
+          if(m.m==='2026-07')return {m:'2026-07',aportes:{},nota:'sem novo aporte: caixa operacional zerado na conciliação de 25/jul'};
+          if(m.m==='2026-09')return {m:'2026-09',aportes:{},nota:'viagem; caixinhas pausadas e reavaliar após retorno'};
+          return m;
+        });
+      }
+      S.mig16Conciliacao2507Feita=true;
+      S.mig16Conciliacao2507AplicadaEm=Date.now();
+      var saved=await save();
+      if(!saved){S=anterior;renderAll();toast('Não foi possível concluir a conciliação. Seus dados foram restaurados.');return;}
+      renderAll();
+      toast('Extratos conciliados: caixa, faturas e reserva atualizados.');
+    },false);
+}
 function aplicarPlanoSegundoSemestre2026(){
   if(!canMutateNow())return;
   if(S.mig14Feito){toast('O plano financeiro jul–dez/2026 já foi aplicado.');return;}
@@ -3525,14 +3588,14 @@ function aplicarPlanoSegundoSemestre2026(){
       if(!S.fixosAss)S.fixosAss=[];
       S.parcExtras=(S.parcExtras||[]).filter(function(p){return !/ademicon|cons[oó]rcio carro/i.test(String((p&&p.n)||''));});
       var ademicon=S.fixosAss.find(function(f){return f&&f.id==='ademicon';});
-      var dadosAdemicon={id:'ademicon',e:'🚗',n:'Ademicon Veículos',v:1556.50,cartao:'BR',obs:'Pré-contemplação · revisar para R$2.033,50 no mês da contemplação',ativo:true};
+      var dadosAdemicon={id:'ademicon',e:'🚗',n:'Ademicon Veículos',v:1556.50,cartao:'NU',obs:'Pré-contemplação · cobrança no Nubank · revisar para R$2.033,50 no mês da contemplação',ativo:true};
       if(ademicon)Object.assign(ademicon,dadosAdemicon);else S.fixosAss.push(dadosAdemicon);
       S.planoAportes={
         versao:1,
         meses:[
-          {m:'2026-07',aportes:{'Reserva':5000},nota:'aplicar quando o saldo real no MP for atualizado'},
+          {m:'2026-07',aportes:{},nota:'sem novo aporte: caixa operacional já comprometido'},
           {m:'2026-08',aportes:{},nota:'sem novos aportes — euros, roupas e contas do mês'},
-          {m:'2026-09',aportes:{'Reserva':3000},nota:'após a viagem; demais caixinhas pausadas'},
+          {m:'2026-09',aportes:{},nota:'viagem; caixinhas pausadas e reavaliar após retorno'},
           {m:'2026-10',aportes:{'Reserva':8000,'Obrigação':632.12,'Psiquiatra':238,'Imprevistos':300,'Estética':440},nota:'retomar caixinhas essenciais'},
           {m:'2026-11',aportes:{'Reserva':8000,'Obrigação':632.12,'Psiquiatra':238,'Imprevistos':300,'Estética':440},nota:'manter ritmo'},
           {m:'2026-12',aportes:{'Reserva':11511.83,'Obrigação':632.12,'Psiquiatra':238,'Imprevistos':300,'Estética':440},nota:'Reserva chega a R$40.000'}
