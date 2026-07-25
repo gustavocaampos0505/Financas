@@ -730,6 +730,7 @@ button,.card,.month-event,.tab,.home-action{touch-action:manipulation}@media (pr
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarAuditoriaParcelas25072026()"><span class="ui-icon" data-icon="checkCircle" data-icon-size="14" aria-hidden="true"></span><span>Aplicar auditoria de parcelas — jul/2026</span></button>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="corrigirAuditoriaParcelasParte3()"><span class="ui-icon" data-icon="refreshCw" data-icon-size="14" aria-hidden="true"></span><span>Corrigir auditoria de parcelas — parte 3</span></button>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="corrigirMeliMegaParte4()"><span class="ui-icon" data-icon="refreshCw" data-icon-size="14" aria-hidden="true"></span><span>Corrigir Meli+ e Meli Mega — parte 4</span></button>
+              <button class="btn bp bfull mt8 btn-with-icon" onclick="corrigirParcelaAdemicon145250()"><span class="ui-icon" data-icon="refreshCw" data-icon-size="14" aria-hidden="true"></span><span>Corrigir parcela do consórcio — R$ 1.452,50</span></button>
               <button class="btn bo bfull mt8 btn-with-icon" onclick="limparParcelasDuplicadas()"><span class="ui-icon" data-icon="tool" data-icon-size="14" aria-hidden="true"></span><span>Corrigir parcelas duplicadas</span></button>
               <button class="btn bo bfull mt8 btn-with-icon" onclick="go('fechamento')"><span class="ui-icon" data-icon="checkSquare" data-icon-size="14" aria-hidden="true"></span><span>Fechamento guiado do mês</span></button>
               <button class="btn bd bfull mt8 btn-with-icon" onclick="resetTudo()"><span class="ui-icon" data-icon="alertTriangle" data-icon-size="14" aria-hidden="true"></span><span>Reset completo</span></button>
@@ -1654,7 +1655,7 @@ function dfFixosPix(){return[
   {id:'personal',e:'🏋️',n:'Personal Rafael',v:2720,dia:'30',obs:'',enc:''},
   {id:'itau2',e:'🏦',n:'Itaú 2',v:423,dia:'22',obs:'Quitar quando possível',enc:''},
   {id:'itau1',e:'🏦',n:'Itaú 1',v:510.23,dia:'30',obs:'Quitar quando reserva > R$20k · 1,29%/mês',enc:''},
-  {id:'ademicon',e:'🚗',n:'Ademicon Veículos',v:1557,dia:'15',inicio:'2026-09',obs:'Pré-contemplação · antes cobrado no cartão Nubank · ago/2026 já foi antecipado na fatura de jul · revisar para R$2.033,50 no mês da contemplação',enc:''},
+  {id:'ademicon',e:'🚗',n:'Ademicon Veículos',v:1452.50,dia:'15',inicio:'2026-09',obs:'Pré-contemplação · antes cobrado no cartão Nubank · ago/2026 já foi antecipado na fatura de jul · revisar para R$2.033,50 no mês da contemplação',enc:''},
   {id:'energia_solar',e:'☀️',n:'Energia Solar (ASC Engenharia Elétrica)',v:966.68,dia:'17',inicio:'2026-08',obs:'Financiamento solar 4/4 parcelas · entrada de R$15.000 paga pelo pai, fora do fluxo',enc:'2026-11'},
   {id:'spotify',e:'🎵',n:'Spotify Obatobi',v:14,dia:'15',obs:'',enc:''},
   {id:'seg_res',e:'🏠',n:'Seguro Residencial',v:162.90,dia:'15',obs:'Bradesco',enc:''},
@@ -3496,7 +3497,7 @@ function aplicarAtualizacaoJulho2026(){
       var adicionar=function(nome,banco,valor,total,fim){
         if(!jaExiste(nome))S.parcExtras.push({id:uid(),n:nome,b:banco,vp:valor,tp:total,cp:total,f:fim,s:'ativa',mesInicio:'2026-07',origem:'atualizacao-jul-2026'});
       };
-      adicionar('Ademicon Veículos (consórcio carro)','Nubank CC',1557,24,'—');
+      adicionar('Ademicon Veículos (consórcio carro)','Nubank CC',1452.50,24,'—');
       adicionar('Óculos novos (Pb*Lahtref)','Nubank CC',159.20,6,'Dez/2026');
       adicionar('Clínica Dr. Wandemberg (intestino)','Nubank CC',375,4,'Out/2026');
       if(S.parc&&S.parc.exame_bact)S.parc.exame_bact.b='NU';
@@ -3588,7 +3589,7 @@ function aplicarAjustesFinanceiros25072026Parte1(){
         var item=S.fixosPix.find(function(f){return f&&f.id===dados.id;});
         if(item)Object.assign(item,dados);else S.fixosPix.push(dados);
       };
-      upsertPix({id:'ademicon',e:'🚗',n:'Ademicon Veículos',v:1557,dia:'15',inicio:'2026-09',enc:'',ativo:true,obs:'Pré-contemplação · antes cobrado no cartão Nubank · ago/2026 já foi antecipado na fatura de jul · revisar para R$2.033,50 no mês da contemplação'});
+      upsertPix({id:'ademicon',e:'🚗',n:'Ademicon Veículos',v:1452.50,dia:'15',inicio:'2026-09',enc:'',ativo:true,obs:'Pré-contemplação · antes cobrado no cartão Nubank · ago/2026 já foi antecipado na fatura de jul · revisar para R$2.033,50 no mês da contemplação'});
       upsertPix({id:'energia_solar',e:'☀️',n:'Energia Solar (ASC Engenharia Elétrica)',v:966.68,dia:'17',inicio:'2026-08',enc:'2026-11',ativo:true,obs:'Financiamento solar 4/4 parcelas · entrada de R$15.000 paga pelo pai, fora do fluxo'});
 
       S.fixosVar.luz=388;
@@ -3655,6 +3656,26 @@ function aplicarAuditoriaParcelas25072026(){
 }
 function corrigirAuditoriaParcelasParte3(){if(!canMutateNow())return;if(S.mig19AuditoriaParte3){toast('A correção da auditoria já foi aplicada.');return;}askConfirm('Corrigir auditoria de parcelas?', 'Um backup será baixado. Reverte somente o Exame Bactérias sem evidência, ajusta ML Som e inclui Óculos/Wandemberg.',async function(){var anterior=JSON.parse(JSON.stringify(S));downloadJson(anterior,'financas-gs-antes-correcao-auditoria-25-jul-2026-'+getTodayKeySP()+'.json');if(!S.parc)S.parc={};if(!S.parcExtras)S.parcExtras=[];var ex=S.parc.exame_bact;if(ex){ex.cp=4;ex.cur_p=4;ex.f='Nov/2026';delete ex.s;}var ml=S.parc.ml_som;if(ml){ml.cp=5;ml.cur_p=5;ml.f='Dez/2026';}var add=function(id,n,vp,tp,cp,f){if(!S.parcExtras.some(function(p){return p.id===id;}))S.parcExtras.push({id:id,n:n,b:'Nubank CC',vp:vp,tp:tp,cp:cp,cur_p:cp,f:f,s:'ativa',mesInicio:'2026-07',origem:'auditoria-parte-3'});};add('audit_oculos','Óculos (Pb*Lahtref)',159.20,6,5,'Dez/2026');add('audit_wandemberg','Clínica Dr. Wandemberg',375,4,3,'Out/2026');var m=(S.fixosAss||[]).find(function(f){return f&&f.id==='melimais';});if(m){m.v=74.90;m.obs='Meli Mega · valor mensal cheio; jul/2026 teve cobrança parcial.';}S.mig19AuditoriaParte3=true;var ok=await save();if(!ok){S=anterior;renderAll();toast('Não foi possível salvar a correção.');return;}renderAll();toast('Correção da auditoria aplicada.');},false);}
 function corrigirMeliMegaParte4(){if(!canMutateNow())return;if(S.mig20MeliMegaParte4){toast('A correção Meli+ já foi aplicada.');return;}askConfirm('Corrigir assinatura Meli+ Mega?', 'Um backup será baixado. Remove o antigo ML+Disney e mantém somente Meli+ Mega de R$74,90 no Bradesco.',async function(){var anterior=JSON.parse(JSON.stringify(S));downloadJson(anterior,'financas-gs-antes-correcao-meli-25-jul-2026-'+getTodayKeySP()+'.json');if(!S.fixosAss)S.fixosAss=[];S.fixosAss=S.fixosAss.filter(function(f){return !(f&&f.id==='melimais');});var mega=S.fixosAss.find(function(f){return f&&f.id==='meli_mega';});var dmega={id:'meli_mega',e:'🛒',n:'Meli+ Mega',v:74.90,cartao:'BR',ativo:true,obs:'Substituiu ML+Disney; R$66,28 em jul/2026 foi cobrança parcial de transição.'};if(mega)Object.assign(mega,dmega);else S.fixosAss.push(dmega);S.mig20MeliMegaParte4=true;var ok=await save();if(!ok){S=anterior;renderAll();toast('Não foi possível salvar a correção.');return;}renderAll();toast('Meli+ Mega corrigido.');},false);}
+function corrigirParcelaAdemicon145250(){
+  if(!canMutateNow())return;
+  if(S.mig21Ademicon145250Feita){toast('A parcela do consórcio já está em R$ 1.452,50.');return;}
+  askConfirm('Corrigir parcela do consórcio?', 'Um backup será baixado. Atualiza somente a Ademicon para R$ 1.452,50; a revisão para R$ 2.033,50 continua condicionada à contemplação.', async function(){
+    var anterior=JSON.parse(JSON.stringify(S));
+    downloadJson(anterior,'financas-gs-antes-correcao-ademicon-25-jul-2026-'+getTodayKeySP()+'.json');
+    if(!S.fixosPix)S.fixosPix=[];
+    if(!S.fixosAss)S.fixosAss=[];
+    var dados={v:1452.50,obs:'Pré-contemplação · antes cobrado no cartão Nubank · ago/2026 já foi antecipado na fatura de jul · revisar para R$2.033,50 no mês da contemplação'};
+    var achou=false;
+    [S.fixosPix,S.fixosAss].forEach(function(lista){lista.forEach(function(item){if(item&&(item.id==='ademicon'||/ademicon/i.test(String(item.n||'')))){Object.assign(item,dados);achou=true;}});});
+    if(!achou)S.fixosPix.push({id:'ademicon',e:'🚗',n:'Ademicon Veículos',v:1452.50,dia:'15',inicio:'2026-09',enc:'',ativo:true,obs:dados.obs});
+    S.mig21Ademicon145250Feita=true;
+    S.mig21Ademicon145250AplicadaEm=Date.now();
+    var saved=await save();
+    if(!saved){S=anterior;renderAll();toast('Não foi possível salvar a correção.');return;}
+    renderAll();
+    toast('Parcela do consórcio atualizada para R$ 1.452,50.');
+  },false);
+}
 function aplicarPlanoSegundoSemestre2026(){
   if(!canMutateNow())return;
   if(S.mig14Feito){toast('O plano financeiro jul–dez/2026 já foi aplicado.');return;}
@@ -3691,7 +3712,7 @@ function aplicarPlanoSegundoSemestre2026(){
       if(!S.fixosAss)S.fixosAss=[];
       S.parcExtras=(S.parcExtras||[]).filter(function(p){return !/ademicon|cons[oó]rcio carro/i.test(String((p&&p.n)||''));});
       var ademicon=S.fixosAss.find(function(f){return f&&f.id==='ademicon';});
-      var dadosAdemicon={id:'ademicon',e:'🚗',n:'Ademicon Veículos',v:1556.50,cartao:'NU',obs:'Pré-contemplação · cobrança no Nubank · revisar para R$2.033,50 no mês da contemplação',ativo:true};
+      var dadosAdemicon={id:'ademicon',e:'🚗',n:'Ademicon Veículos',v:1452.50,cartao:'NU',obs:'Pré-contemplação · cobrança no Nubank · revisar para R$2.033,50 no mês da contemplação',ativo:true};
       if(ademicon)Object.assign(ademicon,dadosAdemicon);else S.fixosAss.push(dadosAdemicon);
       S.planoAportes={
         versao:1,
