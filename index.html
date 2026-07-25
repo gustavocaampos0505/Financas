@@ -420,7 +420,7 @@ button,.card,.month-event,.tab,.home-action{touch-action:manipulation}@media (pr
               <div class="card" style="padding:8px 14px" id="pix-d15"></div>
             </div>
             <div>
-              <div class="ctitle" style="display:flex;align-items:center;gap:6px"><span class="ui-icon" data-icon="calendar" data-icon-size="14" aria-hidden="true"></span>Dia 22 — Boletos</div>
+              <div class="ctitle" style="display:flex;align-items:center;gap:6px"><span class="ui-icon" data-icon="calendar" data-icon-size="14" aria-hidden="true"></span>Dias 16–29 — Boletos</div>
               <div class="card" style="padding:8px 14px" id="pix-d22"></div>
               <div class="ctitle mt8" style="display:flex;align-items:center;gap:6px"><span class="ui-icon" data-icon="calendar" data-icon-size="14" aria-hidden="true"></span>Dia 30 — Fixos</div>
               <div class="card" style="padding:8px 14px" id="pix-d30"></div>
@@ -726,7 +726,7 @@ button,.card,.month-event,.tab,.home-action{touch-action:manipulation}@media (pr
               <input type="file" id="import-file" accept="application/json,.json" class="hidden" onchange="importDados(event)">
               <button class="btn bg bfull mt8 btn-with-icon" onclick="Q('import-file').click()"><span class="ui-icon" data-icon="upload" data-icon-size="14" aria-hidden="true"></span><span>Importar backup JSON</span></button>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarConciliacaoExtratos25072026()"><span class="ui-icon" data-icon="refreshCw" data-icon-size="14" aria-hidden="true"></span><span>Conciliar extratos de 25/jul/2026</span></button>
-              <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarPlanoSegundoSemestre2026()"><span class="ui-icon" data-icon="calendar" data-icon-size="14" aria-hidden="true"></span><span>Aplicar plano jul–dez/2026</span></button>
+              <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarAjustesFinanceiros25072026Parte1()"><span class="ui-icon" data-icon="sliders" data-icon-size="14" aria-hidden="true"></span><span>Aplicar ajustes financeiros — parte 1</span></button>
               <button class="btn bo bfull mt8 btn-with-icon" onclick="limparParcelasDuplicadas()"><span class="ui-icon" data-icon="tool" data-icon-size="14" aria-hidden="true"></span><span>Corrigir parcelas duplicadas</span></button>
               <button class="btn bo bfull mt8 btn-with-icon" onclick="go('fechamento')"><span class="ui-icon" data-icon="checkSquare" data-icon-size="14" aria-hidden="true"></span><span>Fechamento guiado do mês</span></button>
               <button class="btn bd bfull mt8 btn-with-icon" onclick="resetTudo()"><span class="ui-icon" data-icon="alertTriangle" data-icon-size="14" aria-hidden="true"></span><span>Reset completo</span></button>
@@ -1461,6 +1461,7 @@ function initDefaults(){
   if(!S.fixosPix)S.fixosPix=dfFixosPix();
   if(!S.fixosAss)S.fixosAss=dfFixosAss();
   if(!S.fixosVar)S.fixosVar={luz:0,agua:0,gas:0};
+  if(!S.fixosVarNotas)S.fixosVarNotas={};
   if(!S.entradas)S.entradas=dfEntradas();
   if(!S.snapshots)S.snapshots=[];
   if(!S.confissoes)S.confissoes=[];
@@ -1592,7 +1593,7 @@ async function save(){
 
 // DEFAULTS
 function dfCxFixas(){return[
-  {id:'reserva',e:'🔒',n:'Reserva Emergência',m:40000,ap:0,fim:'2026-12',r:'Usar só para emergências reais. Não usar para viagem, carta do carro ou multa da Localiza.',o:'meta R$40.000 · plano jul–dez/2026',tipo:'fixa'},
+  {id:'reserva',e:'🔒',n:'Reserva Emergência',m:40000,ap:0,fim:'2027-03',r:'Usar só para emergências reais. Não usar para viagem, carta do carro ou multa da Localiza.',o:'meta R$40.000 · revisada para fev-mar/2027 (base caiu de R$10.737 estimados para R$2.747,75 reais em jul/2026)',tipo:'fixa'},
   {id:'viagem',e:'✈️',n:'Viagem Portugal+Grécia',m:14200,ap:2500,fim:'2026-09',r:'Pagar tudo à vista. Não parcelar nada na viagem.',o:'set/2026',tipo:'fixa'},
   {id:'obrigacao',e:'⚱️',n:'Obrigação 3 anos',m:7000,ap:632.12,fim:'2027-06',r:'Usar somente na obrigação planejada.',o:'retomar aporte em out/2026',tipo:'fixa'},
   {id:'carro_2028',e:'🚗',n:'Troca do carro 2028/29',m:70000,ap:0,fim:'2028-08',r:'Não aportar antes de a Reserva chegar a R$40 mil e de reavaliar a carta com a Ademicon. Cobre complemento, TDA Localiza e custos iniciais.',o:'meta condicional · sem aporte por enquanto',tipo:'fixa'},
@@ -1605,8 +1606,8 @@ function dfCxUso(){return[
 ];}
 function dfDividas(){return[
   {id:'c6',n:'C6 Bank',v:0,m:0,obs:'QUITADO jun/2026 · R$15.692,48 · desconto ~85%',urgencia:0,pags:[]},
-  {id:'itau1',n:'Itaú Renegociação 1',v:8160.89,m:510.23,obs:'Quitação antecipada em 19/jul/2026 · 18 parcelas',urgencia:2,pags:[]},
-  {id:'itau2',n:'Itaú Boleto 2',v:3654.07,m:423,obs:'Quitação antecipada em 19/jul/2026 · 9 parcelas',urgencia:2,pags:[]},
+  {id:'itau1',n:'Itaú Renegociação 1',v:8160.89,m:510.23,obs:'Parcela adiantada em 19/jul/2026 (não é quitação total da dívida) · 18 parcelas',urgencia:2,pags:[]},
+  {id:'itau2',n:'Itaú Boleto 2',v:3654.07,m:423,obs:'Parcela adiantada em 19/jul/2026 (não é quitação total da dívida) · 9 parcelas',urgencia:2,pags:[]},
   {id:'santander',n:'Santander',v:76873,m:972,obs:'R$972/mês · 0,49%/mês · parcela de jul/2026 registrada',urgencia:1,pags:[{v:972,tipo:'parcela',data:'2026-07-04'}]},
 ];}
 function dfEnvs(){return[
@@ -1621,12 +1622,12 @@ function dfEnvs(){return[
 ];}
 function dfParc(){return{
   tassia:{n:'Tassia Devecchi',b:'NU',vp:465,tp:6,cp:3,f:'Out/2026'},
-  exame_bact:{n:'Exame Bacterias',b:'NU',vp:465,tp:6,cp:4,f:'Nov/2026'},
+  exame_bact:{n:'Exame Bacterias',b:'NU',vp:465,tp:6,cp:4,f:'Set/2026'},
   carro:{n:'Funilaria',b:'NU',vp:480,tp:5,cp:2,f:'Ago/2026'},
   ml_som:{n:'ML Som',b:'NU',vp:55.90,tp:10,cp:6,f:'Dez/2026'},
   ticket:{n:'Ticketmaster',b:'NU',vp:113.63,tp:7,cp:1,f:'Jul/2026'},
-  mp_ali:{n:'AliExpress',b:'NU',vp:52.96,tp:10,cp:2,f:'Ago/2026'},
-  shopee_v:{n:'Shopee Verdemania',b:'NU',vp:62.70,tp:10,cp:2,f:'Ago/2026'},
+  mp_ali:{n:'AliExpress',b:'NU',vp:52.96,tp:10,cp:9,f:'Ago/2026'},
+  shopee_v:{n:'Shopee Verdemania',b:'NU',vp:62.70,tp:10,cp:9,f:'Ago/2026'},
   ml_merc:{n:'ML Mercadol',b:'NU',vp:31.75,tp:4,cp:1,f:'Jul/2026'},
   actual:{n:'Actual Pharma',b:'NU',vp:130,tp:3,cp:0,f:'Jun/2026'},
   tiktok:{n:'TikTok Shop',b:'NU',vp:41.97,tp:3,cp:1,f:'Jul/2026'},
@@ -1650,11 +1651,13 @@ function dfFixosPix(){return[
   {id:'personal',e:'🏋️',n:'Personal Rafael',v:2720,dia:'30',obs:'',enc:''},
   {id:'itau2',e:'🏦',n:'Itaú 2',v:423,dia:'22',obs:'Quitar quando possível',enc:''},
   {id:'itau1',e:'🏦',n:'Itaú 1',v:510.23,dia:'30',obs:'Quitar quando reserva > R$20k · 1,29%/mês',enc:''},
+  {id:'ademicon',e:'🚗',n:'Ademicon Veículos',v:1557,dia:'15',inicio:'2026-09',obs:'Pré-contemplação · antes cobrado no cartão Nubank · ago/2026 já foi antecipado na fatura de jul · revisar para R$2.033,50 no mês da contemplação',enc:''},
+  {id:'energia_solar',e:'☀️',n:'Energia Solar (ASC Engenharia Elétrica)',v:966.68,dia:'17',inicio:'2026-08',obs:'Financiamento solar 4/4 parcelas · entrada de R$15.000 paga pelo pai, fora do fluxo',enc:'2026-11'},
   {id:'spotify',e:'🎵',n:'Spotify Obatobi',v:14,dia:'15',obs:'',enc:''},
   {id:'seg_res',e:'🏠',n:'Seguro Residencial',v:162.90,dia:'15',obs:'Bradesco',enc:''},
 ];}
 function dfFixosAss(){return[
-  {id:'ademicon',e:'🚗',n:'Ademicon Veículos',v:1556.50,cartao:'NU',obs:'Pré-contemplação · cobrança no Nubank · revisar para R$2.033,50 no mês da contemplação',ativo:true},
+  {id:'netflix',e:'📺',n:'Netflix',v:59.90,cartao:'NU',obs:'Cancelado jul/2026 — reembolso solicitado',ativo:false},
   {id:'wellhub',e:'🏃',n:'Wellhub',v:239.90,cartao:'BR',obs:''},
   {id:'google',e:'🔵',n:'Google One',v:14.99,cartao:'BR',obs:''},
   {id:'pier',e:'📱',n:'Pier seguro iPhone',v:184.50,cartao:'BR',obs:''},
@@ -1673,7 +1676,7 @@ function dfFixosAss(){return[
 var fixoIconMap={
   localiza:'car',santander:'bank',dentista:'activity',psicologa:'activity',
   rose:'users',rose2:'users',personal:'activity',itau2:'bank',itau1:'bank',
-  spotify:'music',seg_res:'shield',
+  ademicon:'car',energia_solar:'zap',spotify:'music',seg_res:'shield',
   wellhub:'activity',google:'cloud',pier:'smartphone',apple_ic:'cloud',
   apple_li:'briefcase',seg_sup:'shield',oab:'briefcase',youtube:'play',
   melimais:'shoppingCart',ifc:'utensils',conectcar:'car',estac:'car',
@@ -1730,7 +1733,7 @@ function renderScreen(id){
 }
 // Leitura estratégica única: não altera dados e não presume que dinheiro reservado em
 // caixinhas esteja disponível para gastar. Todas as telas de decisão usam estes números.
-function itemAtivoNoMes(item){return !!item&&item.ativo!==false&&(!item.enc||item.enc>=MES);}
+function itemAtivoNoMes(item){return !!item&&item.ativo!==false&&(!item.inicio||item.inicio<=MES)&&(!item.enc||item.enc>=MES);}
 function faturaVenceNoMes(){
   var vence=String(((S.faturas||{}).vence)||'');
   // Faturas antigas, sem vencimento registrado, mantêm o comportamento anterior.
@@ -1795,7 +1798,7 @@ function rHome(){
   // Alertas que levam a uma ação direta. O painel mostra no máximo três para não virar ruído.
   var alertas=[];
   var days=+(cfg.a_days||3);
-  var proximas=(S.fixosPix||[]).filter(function(f){var d=+(f.dia||0);return !isNaN(d)&&d>=DIA;}).sort(function(a,b){return (+a.dia||0)-(+b.dia||0);});
+  var proximas=(S.fixosPix||[]).filter(function(f){var d=+(f.dia||0);return itemAtivoNoMes(f)&&!isNaN(d)&&d>=DIA;}).sort(function(a,b){return (+a.dia||0)-(+b.dia||0);});
   var proxConta=proximas[0];
 
   // Quinzena
@@ -1814,7 +1817,7 @@ function rHome(){
 
   // Calendário compacto: o que entra e vence no mês, em ordem de dia.
   var eventos=[{dia:15,n:'Salário',v:+cfg.sal15||16000,t:'income',ic:'arrowDownCircle'},{dia:30,n:'Salário',v:+cfg.sal30||13432,t:'income',ic:'arrowDownCircle'}];
-  (S.fixosPix||[]).forEach(function(f){if(+f.dia>0)eventos.push({dia:+f.dia,n:f.n||'Conta',v:+f.v||0,t:'bill',ic:'arrowUpCircle'});});
+  (S.fixosPix||[]).forEach(function(f){if(itemAtivoNoMes(f)&&+f.dia>0)eventos.push({dia:+f.dia,n:f.n||'Conta',v:+f.v||0,t:'bill',ic:'arrowUpCircle'});});
   (S.entradas||[]).forEach(function(e){if(e.s==='pendente'&&e.m===MES){var diaEnt=+(String(e.data||'').slice(-2));if(diaEnt>0)eventos.push({dia:diaEnt,n:e.d||'Entrada',v:+e.v||0,t:'entry',ic:'arrowDownCircle'});}});
   eventos.sort(function(a,b){return a.dia-b.dia;});
   var cal='';eventos.slice(0,8).forEach(function(ev){cal+='<div class="month-event '+ev.t+(ev.dia===DIA?' today':'')+'"><div class="month-day">DIA '+ev.dia+(ev.dia===DIA?' · HOJE':'')+'</div><div class="month-name" style="display:flex;align-items:center;gap:4px">'+icon(ev.ic,13)+esc(ev.n)+'</div><div class="month-value">'+fmt(ev.v)+'</div></div>';});
@@ -2234,7 +2237,7 @@ function rPix(){
   if(Q('fat-vence')&&S.faturas)Q('fat-vence').value=S.faturas.vence||'';
   var q15=buildPix15();var q22=buildPix22();var q30=buildPix30();
   if(Q('pix-d15'))Q('pix-d15').innerHTML=q15.html+'<div class="div" style="margin:6px 0"></div><div class="fsb"><span style="font-size:.74rem;color:var(--muted)">Total saindo dia 15</span><span class="val vsm tr">−'+fmt(q15.tot)+'</span></div>';
-  if(Q('pix-d22'))Q('pix-d22').innerHTML=q22.html+'<div class="div" style="margin:6px 0"></div><div class="fsb"><span style="font-size:.74rem;color:var(--muted)">Total dia 22</span><span class="val vsm tr">−'+fmt(q22.tot)+'</span></div>';
+  if(Q('pix-d22'))Q('pix-d22').innerHTML=q22.html+'<div class="div" style="margin:6px 0"></div><div class="fsb"><span style="font-size:.74rem;color:var(--muted)">Total dias 16–29</span><span class="val vsm tr">−'+fmt(q22.tot)+'</span></div>';
   if(Q('pix-d30'))Q('pix-d30').innerHTML=q30.html+'<div class="div" style="margin:6px 0"></div><div class="fsb"><span style="font-size:.74rem;color:var(--muted)">Total dia 30</span><span class="val vsm tr">−'+fmt(q30.tot)+'</span></div>';
   rEventuais();
   var cfg=S.cfg||{};var sal=+(cfg.sal15||16000)+(+cfg.sal30||13432);
@@ -2266,7 +2269,7 @@ function buildPix15(){
 }
 function buildPix22(){
   var h='',tot=0;
-  (S.fixosPix||[]).filter(function(f){return itemAtivoNoMes(f)&&String(f.dia)==='22';}).forEach(function(f){h+=pixRow(fixoIconMap[f.id]||'card',f.n,f.v,f.obs,f.enc,f.id);tot+=+(f.v||0);});
+  (S.fixosPix||[]).filter(function(f){var dia=+f.dia;return itemAtivoNoMes(f)&&dia>=16&&dia<=29;}).forEach(function(f){h+=pixRow(fixoIconMap[f.id]||'card',f.n,f.v,f.obs,f.enc,f.id);tot+=+(f.v||0);});
   if(!h)h='<div style="font-size:.74rem;color:var(--muted);padding:5px 0">Nenhum</div>';
   return{html:h,tot};
 }
@@ -2493,7 +2496,7 @@ function getAgoraEventos(){
   var estrategia=getStrategiaMes(),fat=S.faturas||{};
   var porDia=function(dias){return(S.fixosPix||[]).filter(function(f){return itemAtivoNoMes(f)&&dias.indexOf(String(f.dia))>=0;});};
   var passosPix=function(lista){return lista.map(function(f){return {t:'PIX: '+f.n+' '+fmt(f.v),s:'Vencimento dia '+f.dia+(f.obs?' · '+f.obs:''),a:'pix'};});};
-  var d15=passosPix(porDia(['15'])),d22=passosPix(porDia(['22'])),d30=passosPix(porDia(['30','4']));
+  var d15=passosPix(porDia(['15'])),d22=passosPix((S.fixosPix||[]).filter(function(f){var dia=+f.dia;return itemAtivoNoMes(f)&&dia>=16&&dia<=29;})),d30=passosPix(porDia(['30','4']));
   var passos15=[];
   if(faturaVenceNoMes()&&+fat.nu>0)passos15.push({t:'Pagar fatura Nubank '+fmt(fat.nu),s:'Valor atual cadastrado na aba PIX. Evite parcelar a fatura.',a:'pix'});
   if(faturaVenceNoMes()&&+fat.br>0)passos15.push({t:'Pagar fatura Bradesco '+fmt(fat.br),s:'Valor atual cadastrado na aba PIX. Evite parcelar a fatura.',a:'pix'});
@@ -2562,8 +2565,8 @@ function rFixos(){
 function rFixosPix(){
   var l=S.fixosPix||[];var h='';
   l.forEach(function(f,i){
-    var hoje=getMonthKeySP();var venc=f.enc&&f.enc<hoje;var ativo=f.ativo!==false;
-    h+='<div class="fix-item" style="'+(ativo?'':'opacity:.4')+'"><span style="font-size:.9rem;cursor:pointer" onclick="toggleFixoAtivo(\'pix\','+i+')" title="'+(ativo?'Desativar':'Ativar')+'">'+icon(fixoIconMap[f.id]||'card',16)+'</span><div style="flex:1"><div style="font-size:.8rem">'+(venc?'<s>':'')+esc(f.n)+(venc?'</s>':'')+' <span style="font-size:.6rem;color:'+(ativo?'var(--green)':'var(--muted)')+'">dia '+f.dia+' <span class="status-dot" style="background:'+(ativo?'var(--green)':'var(--muted)')+'"></span></span>'+(f.enc?'<span style="font-size:.58rem;color:'+(venc?'var(--muted)':'var(--orange)')+'"> até '+ml(f.enc)+'</span>':'')+'</div>'+(f.obs?'<div style="font-size:.6rem;color:var(--muted)">'+esc(f.obs)+'</div>':'')+' </div><input type="number" value="'+f.v+'" onchange="updateFixo(\'pix\','+i+',this.value)" step="0.01"><button class="fix-del" onclick="delFixo(\'pix\','+i+')">'+icon('trash',14)+'</button></div>';
+    var hoje=getMonthKeySP();var venc=f.enc&&f.enc<hoje;var futuro=f.inicio&&f.inicio>hoje;var ativo=f.ativo!==false;
+    h+='<div class="fix-item" style="'+(ativo?'':'opacity:.4')+'"><span style="font-size:.9rem;cursor:pointer" onclick="toggleFixoAtivo(\'pix\','+i+')" title="'+(ativo?'Desativar':'Ativar')+'">'+icon(fixoIconMap[f.id]||'card',16)+'</span><div style="flex:1"><div style="font-size:.8rem">'+(venc?'<s>':'')+esc(f.n)+(venc?'</s>':'')+' <span style="font-size:.6rem;color:'+(ativo?'var(--green)':'var(--muted)')+'">dia '+f.dia+' <span class="status-dot" style="background:'+(ativo?'var(--green)':'var(--muted)')+'"></span></span>'+(f.inicio?'<span style="font-size:.58rem;color:'+(futuro?'var(--blue)':'var(--muted)')+'"> a partir de '+ml(f.inicio)+'</span>':'')+(f.enc?'<span style="font-size:.58rem;color:'+(venc?'var(--muted)':'var(--orange)')+'"> até '+ml(f.enc)+'</span>':'')+'</div>'+(f.obs?'<div style="font-size:.6rem;color:var(--muted)">'+esc(f.obs)+'</div>':'')+' </div><input type="number" value="'+f.v+'" onchange="updateFixo(\'pix\','+i+',this.value)" step="0.01"><button class="fix-del" onclick="delFixo(\'pix\','+i+')">'+icon('trash',14)+'</button></div>';
   });
   if(Q('fix-pix'))Q('fix-pix').innerHTML=h||'<div style="font-size:.74rem;color:var(--muted);padding:8px">Nenhum item</div>';
 }
@@ -2572,7 +2575,7 @@ function rFixosAss(){
   var nuTot=0,brTot=0;
   l.forEach(function(f,i){
     var ativo=f.ativo!==false;
-    if(ativo){if(f.cartao==='NU')nuTot+=+(f.v||0);else brTot+=+(f.v||0);}
+    if(itemAtivoNoMes(f)){if(f.cartao==='NU')nuTot+=+(f.v||0);else brTot+=+(f.v||0);}
     h+='<div class="fix-item" style="'+(ativo?'':'opacity:.4')+'">'
       +'<span style="font-size:.9rem;cursor:pointer" onclick="toggleFixoAtivo(\'ass\','+i+')" title="'+(ativo?'Desativar':'Ativar')+'">'+icon(fixoIconMap[f.id]||'smartphone',16)+'</span>'
       +'<div style="flex:1"><div style="font-size:.8rem">'+esc(f.n)+' <span style="font-size:.6rem;color:'+(ativo?'var(--green)':'var(--muted)')+'">'+( f.cartao||'')+' <span class="status-dot" style="background:'+(ativo?'var(--green)':'var(--muted)')+'"></span></span></div>'
@@ -2591,9 +2594,9 @@ async function toggleFixoAtivo(tipo,i){if(!canMutateNow())return;
   rFixos();
 }
 function rFixosVar(){
-  var v=S.fixosVar||{};
+  var v=S.fixosVar||{},notas=S.fixosVarNotas||{};
   var itens=[{k:'luz',ic:'zap',n:'ENEL (luz)'},{k:'agua',ic:'droplet',n:'Sabesp (água)'},{k:'gas',ic:'flame',n:'Gás'}];
-  var h='';itens.forEach(function(it){h+='<div class="fix-item"><span>'+icon(it.ic,16)+'</span><div style="flex:1;font-size:.8rem">'+it.n+'</div><input type="number" value="'+(v[it.k]||0)+'" onchange="updateFixoVar(\''+it.k+'\',this.value)" step="0.01"></div>';});
+  var h='';itens.forEach(function(it){h+='<div class="fix-item"><span>'+icon(it.ic,16)+'</span><div style="flex:1"><div style="font-size:.8rem">'+it.n+'</div>'+(notas[it.k]?'<div style="font-size:.6rem;color:var(--muted);margin-top:2px">'+esc(notas[it.k])+'</div>':'')+'</div><input type="number" value="'+(v[it.k]||0)+'" onchange="updateFixoVar(\''+it.k+'\',this.value)" step="0.01"></div>';});
   if(Q('fix-var'))Q('fix-var').innerHTML=h;
 }
 async function delFixo(tipo,i){if(!canMutateNow())return;var l=tipo==='pix'?S.fixosPix:S.fixosAss;if(l){var item=l[i];if(item&&item.id){var key=tipo==='pix'?'_fixosPixRemovidos':'_fixosAssRemovidos';if(!S[key])S[key]=[];if(S[key].indexOf(item.id)===-1)S[key].push(item.id);}l.splice(i,1);}var saved=await save();if(!saved)return;rFixos();}
@@ -3531,7 +3534,7 @@ function aplicarConciliacaoExtratos25072026(){
         contasBRL:{bradesco:0,nubank:0.04,itau:0,mercadoPagoConta:0},
         observacao:'Caixa livre em conta. Cofrinhos não entram aqui.'
       };
-      S.saldoRevolut={data:'2026-07-25',moeda:'EUR',saldo:29.42,observacao:'Viagem: transporte pendente conhecido de €237; não conta como reserva em reais.'};
+      S.saldoRevolut={data:'2026-07-25',moeda:'EUR',saldo:29.42,observacao:'Viagem: ferry pendente confirmado de €157; não conta como reserva em reais.'};
       S.conciliacaoExtratos={
         data:'2026-07-25',
         fontes:['Bradesco conta e cartões','Nubank OFX','Mercado Pago','Revolut'],
@@ -3550,6 +3553,80 @@ function aplicarConciliacaoExtratos25072026(){
       if(!saved){S=anterior;renderAll();toast('Não foi possível concluir a conciliação. Seus dados foram restaurados.');return;}
       renderAll();
       toast('Extratos conciliados: caixa, faturas e reserva atualizados.');
+    },false);
+}
+// Ajustes confirmados após revisão dos extratos e do fluxo de caixa em 25/jul.
+// Não cria gastos nem parcelas de cartão; somente corrige cadastros recorrentes,
+// contadores e metas. Pode ser aplicada uma vez e sempre gera backup antes.
+function aplicarAjustesFinanceiros25072026Parte1(){
+  if(!canMutateNow())return;
+  if(S.mig17AjustesParte1Feita){toast('Os ajustes financeiros — parte 1 já foram aplicados.');return;}
+  askConfirm('Aplicar ajustes financeiros — parte 1?',
+    'Um backup será baixado. Corrige Ademicon, energia solar, Netflix, ENEL, parcelas, Revolut e metas; não apaga histórico nem cria cobranças duplicadas.',
+    async function(){
+      if(!canMutateNow())return;
+      var anterior=JSON.parse(JSON.stringify(S));
+      downloadJson(anterior,'financas-gs-antes-ajustes-parte-1-25-jul-2026-'+getTodayKeySP()+'.json');
+      if(!S.fixosAss)S.fixosAss=[];
+      if(!S.fixosPix)S.fixosPix=[];
+      if(!S.fixosVar)S.fixosVar={};
+      if(!S.fixosVarNotas)S.fixosVarNotas={};
+      if(!S._fixosAssRemovidos)S._fixosAssRemovidos=[];
+
+      // Netflix permanece no histórico de assinaturas, mas deixa de compor cartões.
+      var netflix=S.fixosAss.find(function(f){return f&&(f.id==='netflix'||/netflix/i.test(String(f.n||'')));});
+      var dadosNetflix={id:'netflix',e:'📺',n:'Netflix',v:59.90,cartao:'NU',ativo:false,obs:'Cancelado jul/2026 — reembolso solicitado'};
+      if(netflix)Object.assign(netflix,dadosNetflix);else S.fixosAss.push(dadosNetflix);
+
+      // Ademicon deixa de compor a fatura; agosto já veio antecipado na fatura de julho.
+      S.fixosAss=S.fixosAss.filter(function(f){return !(f&&(f.id==='ademicon'||/ademicon/i.test(String(f.n||''))));});
+      if(S._fixosAssRemovidos.indexOf('ademicon')===-1)S._fixosAssRemovidos.push('ademicon');
+      var upsertPix=function(dados){
+        var item=S.fixosPix.find(function(f){return f&&f.id===dados.id;});
+        if(item)Object.assign(item,dados);else S.fixosPix.push(dados);
+      };
+      upsertPix({id:'ademicon',e:'🚗',n:'Ademicon Veículos',v:1557,dia:'15',inicio:'2026-09',enc:'',ativo:true,obs:'Pré-contemplação · antes cobrado no cartão Nubank · ago/2026 já foi antecipado na fatura de jul · revisar para R$2.033,50 no mês da contemplação'});
+      upsertPix({id:'energia_solar',e:'☀️',n:'Energia Solar (ASC Engenharia Elétrica)',v:966.68,dia:'17',inicio:'2026-08',enc:'2026-11',ativo:true,obs:'Financiamento solar 4/4 parcelas · entrada de R$15.000 paga pelo pai, fora do fluxo'});
+
+      S.fixosVar.luz=388;
+      S.fixosVarNotas.luz='Pré-solar. Sistema liga previsto set/2026. Início do verão pode elevar consumo antes da geração compensar — não presumir queda automática.';
+
+      var divs=S.dividas||[];
+      var itau1=divs.find(function(d){return d&&d.id==='itau1';});
+      var itau2=divs.find(function(d){return d&&d.id==='itau2';});
+      if(itau1){itau1.m=510.23;itau1.obs='Parcela adiantada em 19/jul/2026 (não é quitação total da dívida) · 18 parcelas';}
+      if(itau2)itau2.obs='Parcela adiantada em 19/jul/2026 (não é quitação total da dívida) · 9 parcelas';
+      S.dividas=divs;
+
+      if(!S.parc)S.parc={};
+      if(S.parc.exame_bact){S.parc.exame_bact.cp=4;S.parc.exame_bact.cur_p=4;S.parc.exame_bact.f='Set/2026';}
+      if(S.parc.mp_ali){S.parc.mp_ali.cp=9;S.parc.mp_ali.cur_p=9;S.parc.mp_ali.f='Ago/2026';}
+      if(S.parc.shopee_v){S.parc.shopee_v.cp=9;S.parc.shopee_v.cur_p=9;S.parc.shopee_v.f='Ago/2026';}
+
+      if(S.saldoRevolut){S.saldoRevolut.observacao='Viagem: ferry pendente confirmado de €157; não conta como reserva em reais.';}
+      else S.saldoRevolut={data:'2026-07-25',moeda:'EUR',saldo:29.42,observacao:'Viagem: ferry pendente confirmado de €157; não conta como reserva em reais.'};
+
+      S.planoAportes={versao:2,meses:[
+        {m:'2026-07',aportes:{'Reserva':2000},nota:'aporte decidido'},
+        {m:'2026-08',aportes:{'Reserva':1500},nota:'aporte decidido'},
+        {m:'2026-09',aportes:{'Reserva':2000},nota:'aporte decidido'},
+        {m:'2026-10',aportes:{'Reserva':3500},nota:'aporte decidido'},
+        {m:'2026-11',aportes:{'Reserva':4000},nota:'aporte decidido'},
+        {m:'2026-12',aportes:{'Reserva':17000},nota:'aporte do 13º'}
+      ]};
+
+      if(!S.cxDef)S.cxDef={fixas:[],uso:[]};
+      if(!S.cxDef.fixas)S.cxDef.fixas=[];
+      var reserva=S.cxDef.fixas.find(function(c){return c&&c.id==='reserva';});
+      var dadosReserva={id:'reserva',e:'🔒',n:'Reserva Emergência',m:40000,ap:0,fim:'2027-03',r:'Usar só para emergências reais. Não usar para viagem, carta do carro ou multa da Localiza.',o:'meta R$40.000 · revisada para fev-mar/2027 (base caiu de R$10.737 estimados para R$2.747,75 reais em jul/2026)',tipo:'fixa'};
+      if(reserva)Object.assign(reserva,dadosReserva);else S.cxDef.fixas.push(dadosReserva);
+
+      S.mig17AjustesParte1Feita=true;
+      S.mig17AjustesParte1AplicadaEm=Date.now();
+      var saved=await save();
+      if(!saved){S=anterior;renderAll();toast('Não foi possível aplicar os ajustes. Seus dados foram restaurados.');return;}
+      renderAll();
+      toast('Ajustes financeiros — parte 1 aplicados.');
     },false);
 }
 function aplicarPlanoSegundoSemestre2026(){
