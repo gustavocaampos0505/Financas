@@ -727,6 +727,7 @@ button,.card,.month-event,.tab,.home-action{touch-action:manipulation}@media (pr
               <button class="btn bg bfull mt8 btn-with-icon" onclick="Q('import-file').click()"><span class="ui-icon" data-icon="upload" data-icon-size="14" aria-hidden="true"></span><span>Importar backup JSON</span></button>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarConciliacaoExtratos25072026()"><span class="ui-icon" data-icon="refreshCw" data-icon-size="14" aria-hidden="true"></span><span>Conciliar extratos de 25/jul/2026</span></button>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarAjustesFinanceiros25072026Parte1()"><span class="ui-icon" data-icon="sliders" data-icon-size="14" aria-hidden="true"></span><span>Aplicar ajustes financeiros — parte 1</span></button>
+              <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarAuditoriaParcelas25072026()"><span class="ui-icon" data-icon="checkCircle" data-icon-size="14" aria-hidden="true"></span><span>Aplicar auditoria de parcelas — jul/2026</span></button>
               <button class="btn bo bfull mt8 btn-with-icon" onclick="limparParcelasDuplicadas()"><span class="ui-icon" data-icon="tool" data-icon-size="14" aria-hidden="true"></span><span>Corrigir parcelas duplicadas</span></button>
               <button class="btn bo bfull mt8 btn-with-icon" onclick="go('fechamento')"><span class="ui-icon" data-icon="checkSquare" data-icon-size="14" aria-hidden="true"></span><span>Fechamento guiado do mês</span></button>
               <button class="btn bd bfull mt8 btn-with-icon" onclick="resetTudo()"><span class="ui-icon" data-icon="alertTriangle" data-icon-size="14" aria-hidden="true"></span><span>Reset completo</span></button>
@@ -3627,6 +3628,27 @@ function aplicarAjustesFinanceiros25072026Parte1(){
       if(!saved){S=anterior;renderAll();toast('Não foi possível aplicar os ajustes. Seus dados foram restaurados.');return;}
       renderAll();
       toast('Ajustes financeiros — parte 1 aplicados.');
+    },false);
+}
+function aplicarAuditoriaParcelas25072026(){
+  if(!canMutateNow())return;
+  if(S.mig18AuditoriaParcelasFeita){toast('A auditoria de parcelas de jul/2026 já foi aplicada.');return;}
+  askConfirm('Aplicar auditoria de parcelas de jul/2026?',
+    'Um backup será baixado. Corrige saldos remanescentes pelo OFX, inclui novas parcelas e registra a multa avulsa da Localiza sem criar item recorrente.',
+    async function(){
+      var anterior=JSON.parse(JSON.stringify(S));
+      downloadJson(anterior,'financas-gs-antes-auditoria-parcelas-25-jul-2026-'+getTodayKeySP()+'.json');
+      if(!S.parc)S.parc={}; if(!S.parcExtras)S.parcExtras=[]; if(!S.fixosAss)S.fixosAss=[]; if(!S.eventuais)S.eventuais=[];
+      var set=function(id,cp,f){if(S.parc[id]){S.parc[id].cp=cp;S.parc[id].cur_p=cp;S.parc[id].f=f;if(cp===0)S.parc[id].s='quitada';}};
+      set('carro',1,'Ago/2026');set('tassia',2,'Set/2026');set('mp_ali',1,'Ago/2026');set('shopee_v',1,'Ago/2026');
+      set('ticket',0,'Jul/2026');set('ml_merc',0,'Jul/2026');set('tiktok',0,'Jul/2026');
+      var add=function(id,n,vp,tp,cp,f){if(!S.parcExtras.some(function(p){return p.id===id;}))S.parcExtras.push({id:id,n:n,b:'Nubank CC',vp:vp,tp:tp,cp:cp,cur_p:cp,f:f,s:'ativa',mesInicio:'2026-07',origem:'auditoria-ofx-2026-07'});};
+      add('audit_alpargatas','Alpargatas',61.45,2,1,'Ago/2026');add('audit_ml2','ML 2º parcelamento',55.90,10,5,'Dez/2026');add('audit_amazon_v','Amazon BR V',31.87,8,6,'Jan/2027');add('audit_amazon_vi','Amazon BR VI',105.69,12,10,'Mai/2027');
+      var meli=S.fixosAss.find(function(f){return f&&f.id==='melimais';});if(meli){meli.v=74.90;meli.cartao='NU';meli.obs='Meli Mega · valor mensal cheio; jul/2026 teve cobrança parcial.';}
+      var well=S.fixosAss.find(function(f){return f&&f.id==='wellhub';});if(well)well.v=220;
+      if(!S.eventuais.some(function(e){return e&&e.id==='localiza_multa_km_2026_07';}))S.eventuais.push({id:'localiza_multa_km_2026_07',p:'outro',v:273.78,desc:'Multa/km excedente Localiza — cobrança avulsa jul/2026, não confundir com mensalidade fixa de R$2.980',ts:new Date('2026-07-13T12:00:00-03:00').getTime(),origem:'auditoria-ofx'});
+      S.mig18AuditoriaParcelasFeita=true;S.mig18AuditoriaParcelasAplicadaEm=Date.now();
+      var saved=await save();if(!saved){S=anterior;renderAll();toast('Não foi possível aplicar a auditoria. Seus dados foram restaurados.');return;}renderAll();toast('Auditoria de parcelas aplicada.');
     },false);
 }
 function aplicarPlanoSegundoSemestre2026(){
