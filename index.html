@@ -3082,17 +3082,13 @@ function rDividas(){
 
     // Auto-calc on render
     setTimeout(function(){calcC6Simul();},50);
-  } else {
-    c6Html='<div class="card mb8" style="border-color:rgba(40,212,120,.3)">'
-      +'<div class="fsb"><div><div style="font-size:.9rem;font-weight:600;display:flex;align-items:center;gap:5px">'+icon('bank',15)+'C6 Bank</div>'
-      +'<div style="font-size:.68rem;color:var(--green);display:flex;align-items:center;gap:4px">'+icon('checkCircle',12)+'Quitado · Nome limpo no Serasa</div></div>'
-      +'<div class="val vmd tg">R$0</div></div></div>';
   }
   if(Q('div-c6'))Q('div-c6').innerHTML=c6Html;
 
-  // Outras dívidas (sem C6)
+  // Dívidas ativas e quitadas. O C6 só fica no bloco especial enquanto houver saldo;
+  // depois de quitado, entra na mesma lista histórica das demais dívidas encerradas.
   var h='',hq='';
-  divs.filter(function(d){return d.id!=='c6';}).forEach(function(d){
+  divs.filter(function(d){return d.id!=='c6'||(+d.v||0)===0;}).sort(function(a,b){return a.id==='c6'?-1:b.id==='c6'?1:0;}).forEach(function(d){
     var q=+d.v===0;
     var cor=d.urgencia===2?'var(--yellow)':'var(--green)';
     var card='<div class="card mb8" style="'+(q?'opacity:.4;border-style:dashed':'border-color:'+cor+'33')+'">'
