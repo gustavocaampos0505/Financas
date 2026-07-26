@@ -3255,7 +3255,7 @@ function rEntradas(){
     h+='<div class="card mb8"><div class="fsb mb4"><div><div style="font-size:.88rem;font-weight:500">'+esc(e.d)+'</div><div style="font-size:.68rem;color:var(--muted)">'+esc(e.o)+'</div></div><div style="text-align:right"><div class="val vmd tg">'+fmt(e.v)+'</div><div style="font-size:.62rem;color:'+cor+'">'+( e.m?ml(e.m):'Sem data')+'</div></div></div><div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><button class="btn bp bsm btn-with-icon" onclick="receberEntrada('+idx+')">'+icon('check',13)+'<span>Recebi</span></button><button class="btn bg bsm btn-with-icon" onclick="editEntrada('+idx+')">'+icon('edit',13)+'<span>Editar</span></button><button class="btn bd bsm" onclick="delEntrada('+idx+')">'+icon('trash',13)+'</button></div></div>';
   });
   if(Q('ent-lista'))Q('ent-lista').innerHTML=h||emptyState('dollarSign','Nenhuma entrada prevista','Cadastre uma entrada extra para acompanhar aqui.');
-  var hr='';rec.forEach(function(e){hr+='<div class="card mb8" style="opacity:.5"><div class="fsb"><div style="font-size:.82rem">'+esc(e.d)+'</div><div class="val vsm tg" style="display:flex;align-items:center;gap:4px">'+fmt(e.v)+' '+icon('check',12)+'</div></div></div>';});
+  var hr='';rec.forEach(function(e){var idx=ent.indexOf(e);hr+='<div class="card mb8" style="opacity:.65"><div class="fsb"><div style="font-size:.82rem">'+esc(e.d)+'</div><div class="val vsm tg" style="display:flex;align-items:center;gap:4px">'+fmt(e.v)+' '+icon('check',12)+'</div></div><div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="btn bg bsm" onclick="desfazerRecebimentoEntrada('+idx+')">Desfazer recebimento</button></div></div>';});
   if(Q('ent-recebidas'))Q('ent-recebidas').innerHTML=hr||emptyState('checkCircle','Nenhuma entrada recebida ainda','Entradas confirmadas aparecem aqui.');
 }
 async function receberEntrada(i){if(!canMutateNow())return;
@@ -3265,6 +3265,14 @@ async function receberEntrada(i){if(!canMutateNow())return;
   if(!saved)return;
   rEntradas();
   toast('Entrada recebida.');
+}
+async function desfazerRecebimentoEntrada(i){if(!canMutateNow())return;
+  var e=(S.entradas||[])[i];if(!e)return;
+  e.s='pendente';
+  var saved=await save();
+  if(!saved)return;
+  rEntradas();
+  toast('Recebimento desfeito. A entrada voltou para pendente.');
 }
 async function delEntrada(i){if(!canMutateNow())return;S.entradas?.splice(i,1);var saved=await save();if(!saved)return;rEntradas();}
 function newEntrada(){if(Q('nen-id'))Q('nen-id').value='';if(Q('nen-title'))Q('nen-title').innerHTML=icon('trendingUp',16)+'<span>Nova entrada extra</span>';if(Q('nen-save'))Q('nen-save').textContent='Registrar';['nen-d','nen-v','nen-o'].forEach(function(id){if(Q(id))Q(id).value='';});if(Q('nen-m'))Q('nen-m').value=MES;openOvl('ovl-nova-entrada');}
