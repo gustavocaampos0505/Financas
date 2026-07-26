@@ -373,6 +373,7 @@ button,.card,.month-event,.tab,.home-action{touch-action:manipulation}@media (pr
         <div class="sh"><h2 id="home-greeting">Olá, Gustavo</h2><p id="home-date">—</p></div>
         <div class="p">
           <div id="home-score-card" class="card mb8"></div>
+          <div id="home-ciclo" class="card mb8"></div>
           <div id="home-acao" class="card mb8"></div>
           <div id="home-alertas"></div>
           <div id="home-quinzena" class="card mb8"></div>
@@ -721,8 +722,15 @@ button,.card,.month-event,.tab,.home-action{touch-action:manipulation}@media (pr
             </div>
           </div>
           <div id="cfg-dados" class="hidden">
+            <div class="card mb8" style="border-color:rgba(11,107,95,.3)">
+              <div class="ctitle">Uso diário</div>
+              <div style="font:500 1.05rem Fraunces,serif;color:var(--text);margin-bottom:5px">Controle o ciclo sem mexer no histórico</div>
+              <div style="font-size:.7rem;color:var(--muted);line-height:1.5">Atualize o saldo das contas de uso e acompanhe o plano em “E agora?”. As ferramentas abaixo são só para manutenção orientada.</div>
+              <div class="g2 mt12"><button class="btn bp btn-with-icon" onclick="atualizarCaixaLivre()"><span class="ui-icon" data-icon="wallet" data-icon-size="14" aria-hidden="true"></span><span>Atualizar saldo</span></button><button class="btn bg btn-with-icon" onclick="go('agora')"><span class="ui-icon" data-icon="clock" data-icon-size="14" aria-hidden="true"></span><span>Ver meu plano</span></button></div>
+            </div>
             <div class="card mb8">
-              <div class="ctitle">Gerenciar dados</div>
+              <div class="ctitle">Manutenção e backups</div>
+              <div style="font-size:.7rem;color:var(--muted);line-height:1.5">Use apenas quando eu orientar. Isso evita reaplicar correções antigas ou alterar um histórico já conciliado.</div>
               <div class="div"></div>
               <button class="btn bg bfull mt8 btn-with-icon" onclick="exportDados()"><span class="ui-icon" data-icon="download" data-icon-size="14" aria-hidden="true"></span><span>Exportar JSON</span></button>
               <input type="file" id="import-file" accept="application/json,.json" class="hidden" onchange="importDados(event)">
@@ -820,6 +828,19 @@ button,.card,.month-event,.tab,.home-action{touch-action:manipulation}@media (pr
       <label>Fatura Bradesco CC (R$)</label><input type="number" class="inp inp-mono" id="fat-br" placeholder="4817">
       <label>Vencimento destas faturas</label><input type="date" class="inp" id="fat-vence">
       <div class="g2 mt16"><button class="btn bg" onclick="closeOvl('ovl-faturas')">Cancelar</button><button class="btn bp" onclick="saveFaturas()">Salvar</button></div>
+    </div>
+  </div>
+
+  <div class="ovl" id="ovl-caixa-livre" onclick="closeOvl('ovl-caixa-livre')">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="mhdl"></div><div class="mtitle btn-with-icon" style="justify-content:flex-start"><span class="ui-icon" data-icon="wallet" data-icon-size="16" aria-hidden="true"></span><span>Saldo das contas de uso</span></div>
+      <div class="alert ab mb8"><span class="ui-icon" data-icon="info" data-icon-size="16" aria-hidden="true"></span><div style="font-size:.72rem">Informe apenas dinheiro disponível nas contas. Não inclua Reserva, Obrigação, envelopes ou outras caixinhas do Mercado Pago.</div></div>
+      <label>Bradesco (R$)</label><input type="number" class="inp inp-mono" id="cx-livre-br" step="0.01" min="0" placeholder="0" oninput="atualizarTotalCaixaLivre()">
+      <label>Nubank conta (R$)</label><input type="number" class="inp inp-mono" id="cx-livre-nu" step="0.01" min="0" placeholder="0" oninput="atualizarTotalCaixaLivre()">
+      <label>Itaú / demais contas (R$)</label><input type="number" class="inp inp-mono" id="cx-livre-outros" step="0.01" min="0" placeholder="0" oninput="atualizarTotalCaixaLivre()">
+      <label>Mercado Pago disponível fora das caixinhas (R$)</label><input type="number" class="inp inp-mono" id="cx-livre-mp" step="0.01" min="0" placeholder="0" oninput="atualizarTotalCaixaLivre()">
+      <div class="fsb mt12"><span style="font-size:.75rem;color:var(--muted)">Total em contas</span><strong class="val vsm tg" id="cx-livre-total">R$0,00</strong></div>
+      <div class="g2 mt16"><button class="btn bg" onclick="closeOvl('ovl-caixa-livre')">Cancelar</button><button class="btn bp" onclick="saveCaixaLivre()">Salvar saldo</button></div>
     </div>
   </div>
 
@@ -1798,11 +1819,19 @@ function getCaixaLivreVerdade(){
   return {disponivel:Math.max(0,caixa-total),bruto:caixa,compromissos:compromissos,total:total,prox:prox,data:S.caixaOperacional.data};
 }
 async function atualizarCaixaLivre(){
+  var c=(S.caixaOperacional||{}).contasBRL||{};
+  if(Q('cx-livre-br'))Q('cx-livre-br').value=c.bradesco||0;
+  if(Q('cx-livre-nu'))Q('cx-livre-nu').value=c.nubank||0;
+  if(Q('cx-livre-outros'))Q('cx-livre-outros').value=c.outros||0;
+  if(Q('cx-livre-mp'))Q('cx-livre-mp').value=c.mercadoPagoDisponivel||0;
+  atualizarTotalCaixaLivre();openOvl('ovl-caixa-livre');
+}
+function atualizarTotalCaixaLivre(){var total=['cx-livre-br','cx-livre-nu','cx-livre-outros','cx-livre-mp'].reduce(function(a,id){return a+(+Q(id)?.value||0);},0);if(Q('cx-livre-total'))Q('cx-livre-total').textContent=fmt(total);}
+async function saveCaixaLivre(){
   if(!canMutateNow())return;
-  var atual=getCaixaOperacional(),texto=prompt('Saldo disponível hoje nas contas de uso (não inclua caixinhas MP, reserva ou valores já separados):',atual===null?'':String(atual));
-  if(texto===null)return;var v=Number(String(texto).replace(/\./g,'').replace(',','.'));if(isNaN(v)||v<0){toast('Informe um valor válido.');return;}
-  S.caixaOperacional={data:getTodayKeySP(),contasBRL:{contasDeUso:v},obs:'Atualizado manualmente para cálculo do dinheiro livre.'};
-  var ok=await save();if(ok){renderAll();toast('Saldo em conta atualizado.');}
+  var contas={bradesco:+Q('cx-livre-br')?.value||0,nubank:+Q('cx-livre-nu')?.value||0,outros:+Q('cx-livre-outros')?.value||0,mercadoPagoDisponivel:+Q('cx-livre-mp')?.value||0};
+  S.caixaOperacional={data:getTodayKeySP(),contasBRL:contas,obs:'Atualizado manualmente por conta; caixinhas ficam fora do dinheiro livre.'};
+  var ok=await save();if(ok){closeOvl('ovl-caixa-livre');renderAll();toast('Saldo em conta atualizado.');}
 }
 function getStrategiaMes(){
   var cfg=S.cfg||{}, renda=(+cfg.sal15||0)+(+cfg.sal30||0);
@@ -1851,6 +1880,7 @@ function rHome(){
   var scoreCor=score>=70?'var(--green)':score>=50?'var(--yellow)':'var(--red)';
   var scoreLabel=score>=70?'<span class="status-dot" style="background:var(--green)"></span>Saudável':score>=50?'<span class="status-dot" style="background:var(--yellow)"></span>Atenção':'<span class="status-dot" style="background:var(--red)"></span>Risco';
   if(Q('home-score-card')){var livreTxt=caixaLivre.disponivel===null?'—':fmt(caixaLivre.disponivel);Q('home-score-card').className='card decision-hero mb8';Q('home-score-card').innerHTML='<div class="fsb mobile-stack"><div><div class="decision-label">Dinheiro livre de verdade</div><div class="decision-value">'+livreTxt+'</div><div class="decision-sub">'+(caixaLivre.disponivel===null?'Atualize o saldo das contas para o app descontar os compromissos até o próximo salário.':'Saldo em conta '+fmt(caixaLivre.bruto)+' − '+fmt(caixaLivre.total)+' já comprometidos até '+caixaLivre.prox.rotulo+'. Caixinhas e reserva não entram como livre.')+'</div><div class="home-inline-tag mt8"><button class="btn bg bsm" onclick="atualizarCaixaLivre()">'+icon('edit',12)+' Atualizar saldo em conta</button></div></div><div style="min-width:92px;text-align:right"><div style="font-size:.62rem;color:var(--muted)">Saúde financeira</div><div class="val vlg" style="color:'+scoreCor+'">'+score+'/100</div><div class="chip '+(score>=70?'cg':score>=50?'cy':'cr')+' mt4">'+scoreLabel+'</div></div></div>';}
+  if(Q('home-ciclo')){var projHome=getProjecaoFatura(),itensCiclo=(caixaLivre.compromissos||[]).slice(0,4);Q('home-ciclo').innerHTML='<div class="fsb mb8"><div><div class="ctitle" style="margin-bottom:4px">Próximos 15 dias</div><div style="font-size:.76rem;font-weight:600">'+(caixaLivre.prox?'Até o salário de '+caixaLivre.prox.rotulo:'Atualize o saldo para iniciar')+'</div></div><button class="btn bg bsm" onclick="go(\'agora\')">Ver plano</button></div>'+(itensCiclo.length?itensCiclo.map(function(x){return '<div class="row" style="padding:7px 0"><span style="font-size:.72rem">'+esc(x.n)+'</span><span class="val vsm tr">−'+fmt(x.v)+'</span></div>';}).join(''):'<div style="font-size:.7rem;color:var(--muted);line-height:1.5">Informe o saldo das contas para o app listar o que já está comprometido.</div>')+'<div class="row" style="padding:7px 0;border-bottom:0"><div><div style="font-size:.72rem">Próxima fatura projetada</div><div style="font-size:.6rem;color:var(--muted)">Localiza + assinaturas + parcelas</div></div><span class="val vsm ty">'+fmt(projHome.total)+'</span></div>';}
 
   // Alertas que levam a uma ação direta. O painel mostra no máximo três para não virar ruído.
   var alertas=[];
@@ -2577,7 +2607,7 @@ function rAgora(){
   var ev=agoraEventos[_agoraTab];var ck=getAgoraCk()[ev.id]||{};
   var done=ev.passos.filter(function(p,i){return ck[agoraStepKey(p,i)];}).length;
   var pct=ev.passos.length?Math.round(done/ev.passos.length*100):0;
-  if(Q('agora-progress'))Q('agora-progress').innerHTML='<div class="card agora-hero mb12"><div class="fsb"><div><div class="ctitle">Plano de resposta</div><div style="font:500 1.22rem Fraunces,serif;margin:3px 0 5px;display:flex;align-items:center;gap:7px">'+icon(ev.icon,18)+'<span>'+esc(ev.lbl)+'</span></div><p>Execute uma etapa por vez. As ações abaixo abrem o lugar certo no app.</p></div><div style="text-align:right"><div style="font:500 1.35rem DM Mono,monospace">'+pct+'%</div><div class="agora-choice">concluído</div></div></div><div class="agora-progress-bar"><span style="width:'+pct+'%"></span></div></div>';
+  if(Q('agora-progress')){var ciclo=getCaixaLivreVerdade(),proj=getProjecaoFatura(),cicloLivre=ciclo.disponivel===null?'—':fmt(ciclo.disponivel),compromissos=(ciclo.compromissos||[]).slice(0,3).map(function(x){return esc(x.n)+' '+fmt(x.v);}).join(' · ');Q('agora-progress').innerHTML='<div class="card agora-hero mb12"><div class="fsb"><div><div class="ctitle">Plano de resposta</div><div style="font:500 1.22rem Fraunces,serif;margin:3px 0 5px;display:flex;align-items:center;gap:7px">'+icon(ev.icon,18)+'<span>'+esc(ev.lbl)+'</span></div><p>Execute uma etapa por vez. As ações abaixo abrem o lugar certo no app.</p></div><div style="text-align:right"><div style="font:500 1.35rem DM Mono,monospace">'+pct+'%</div><div class="agora-choice">concluído</div></div></div><div class="agora-progress-bar"><span style="width:'+pct+'%"></span></div></div><div class="card mb12" style="border-color:rgba(11,107,95,.25)"><div class="fsb mb8"><div><div class="ctitle" style="margin-bottom:4px">Seu ciclo até o próximo salário</div><div style="font-size:.7rem;color:var(--muted)">'+(ciclo.prox?'Próxima entrada: '+ciclo.prox.rotulo:'Atualize o saldo para calcular')+'</div></div><button class="btn bg bsm" onclick="atualizarCaixaLivre()">'+icon('edit',12)+' Atualizar</button></div><div class="dg3" style="gap:8px"><div style="background:var(--s3);border-radius:9px;padding:9px"><div style="font-size:.58rem;color:var(--muted)">Livre real</div><div class="val vsm tg" style="margin-top:4px">'+cicloLivre+'</div></div><div style="background:var(--s3);border-radius:9px;padding:9px"><div style="font-size:.58rem;color:var(--muted)">Comprometido</div><div class="val vsm tr" style="margin-top:4px">'+(ciclo.disponivel===null?'—':fmt(ciclo.total))+'</div></div><div style="background:var(--s3);border-radius:9px;padding:9px"><div style="font-size:.58rem;color:var(--muted)">Próx. fatura</div><div class="val vsm ty" style="margin-top:4px">'+fmt(proj.total)+'</div></div></div><div style="font-size:.62rem;color:var(--muted);line-height:1.45;margin-top:9px">'+(compromissos||'Atualize o saldo das contas para ver os compromissos do ciclo.')+'</div></div>';}
   var h='<div class="card mb8"><div class="fsb mb8"><div class="ctitle" style="margin:0">Checklist de ação</div><div class="chip '+(done===ev.passos.length?'cg':'cy')+'">'+done+' de '+ev.passos.length+'</div></div><div class="agora-checklist">';
   ev.passos.forEach(function(p,i){
     var stepKey=agoraStepKey(p,i),checked=!!ck[stepKey];
