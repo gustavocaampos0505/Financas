@@ -531,6 +531,8 @@ button,.card,.month-event,.tab,.home-action{touch-action:manipulation}@media (pr
         </div>
         <div class="p">
           <div id="cx-plano" class="mb8"></div>
+          <div class="fsb mb8"><span class="btn-with-icon" style="font-size:.78rem;font-weight:500"><span class="ui-icon" data-icon="lock" data-icon-size="14" aria-hidden="true"></span>Provisões de curto prazo</span><button class="btn bp bsm" onclick="criarProvisoesCiclo()">Criar provisão</button></div>
+          <div id="cx-provisoes" class="mb8"></div>
           <div class="fsb mb8"><span class="btn-with-icon" style="font-size:.78rem;font-weight:500"><span class="ui-icon" data-icon="lock" data-icon-size="14" aria-hidden="true"></span>Metas de longo prazo</span><button class="btn bg bsm" onclick="novaCx('fixa')">+ Nova</button></div>
           <div id="cx-fixas" class="mb8"></div>
           <div class="fsb mb8"><span class="btn-with-icon" style="font-size:.78rem;font-weight:500"><span class="ui-icon" data-icon="zap" data-icon-size="14" aria-hidden="true"></span>Caixinhas de uso</span><button class="btn bg bsm" onclick="novaCx('uso')">+ Nova</button></div>
@@ -731,6 +733,7 @@ button,.card,.month-event,.tab,.home-action{touch-action:manipulation}@media (pr
               <button class="btn bp bfull mt8 btn-with-icon" onclick="corrigirAuditoriaParcelasParte3()"><span class="ui-icon" data-icon="refreshCw" data-icon-size="14" aria-hidden="true"></span><span>Corrigir auditoria de parcelas — parte 3</span></button>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="corrigirMeliMegaParte4()"><span class="ui-icon" data-icon="refreshCw" data-icon-size="14" aria-hidden="true"></span><span>Corrigir Meli+ e Meli Mega — parte 4</span></button>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="corrigirParcelaAdemicon145250()"><span class="ui-icon" data-icon="refreshCw" data-icon-size="14" aria-hidden="true"></span><span>Corrigir parcela do consórcio — R$ 1.452,50</span></button>
+              <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarOrganizacaoCaixinhas26072026()"><span class="ui-icon" data-icon="piggyBank" data-icon-size="14" aria-hidden="true"></span><span>Aplicar organização de caixinhas e obrigação</span></button>
               <button class="btn bo bfull mt8 btn-with-icon" onclick="limparParcelasDuplicadas()"><span class="ui-icon" data-icon="tool" data-icon-size="14" aria-hidden="true"></span><span>Corrigir parcelas duplicadas</span></button>
               <button class="btn bo bfull mt8 btn-with-icon" onclick="go('fechamento')"><span class="ui-icon" data-icon="checkSquare" data-icon-size="14" aria-hidden="true"></span><span>Fechamento guiado do mês</span></button>
               <button class="btn bd bfull mt8 btn-with-icon" onclick="resetTudo()"><span class="ui-icon" data-icon="alertTriangle" data-icon-size="14" aria-hidden="true"></span><span>Reset completo</span></button>
@@ -1424,7 +1427,8 @@ async function ensureInitialDoc(){
 function initDefaults(){
   if(!S.cfg)S.cfg={sal15:16000,sal30:13192,va:780,flash_c:400,flash_i:180,lim_nu:3500,lim_br:2000,m_res:51472,m_viag:20000,m_score:800,a_nu:2800,a_res:5000,a_days:3,nome:'Gustavo',inicio:'2026-05-08',bruto:40000,serasa_score:735};
   if(!S.cx)S.cx={};
-  if(!S.cxDef)S.cxDef={fixas:dfCxFixas(),uso:dfCxUso()};
+  if(!S.cxDef)S.cxDef={fixas:dfCxFixas(),uso:dfCxUso(),provisoes:[]};
+  if(!Array.isArray(S.cxDef.provisoes))S.cxDef.provisoes=[];
   // DÍVIDAS: só cria quando totalmente ausente. Se já existir (mesmo array vazio), é preservada
   // exatamente como está — nunca mescla itens do catálogo que o usuário não tenha.
   if(!S.dividas){
@@ -1599,7 +1603,7 @@ async function save(){
 function dfCxFixas(){return[
   {id:'reserva',e:'🔒',n:'Reserva Emergência',m:40000,ap:0,fim:'2027-03',r:'Usar só para emergências reais. Não usar para viagem, carta do carro ou multa da Localiza.',o:'meta R$40.000 · revisada para fev-mar/2027 (base caiu de R$10.737 estimados para R$2.747,75 reais em jul/2026)',tipo:'fixa'},
   {id:'viagem',e:'✈️',n:'Viagem Portugal+Grécia',m:14200,ap:2500,fim:'2026-09',r:'Pagar tudo à vista. Não parcelar nada na viagem.',o:'set/2026',tipo:'fixa'},
-  {id:'obrigacao',e:'⚱️',n:'Obrigação 3 anos',m:7000,ap:632.12,fim:'2027-06',r:'Usar somente na obrigação planejada.',o:'retomar aporte em out/2026',tipo:'fixa'},
+  {id:'obrigacao',e:'⚱️',n:'Obrigação',m:5000,ap:707.58,fim:'2027-04',r:'Manter separado. Meta de R$5.000 antes de abril/2027; não usar para outros gastos.',o:'setembro/2026 pausado · aporte de R$707,58 em ago e out–mar',tipo:'fixa'},
   {id:'carro_2028',e:'🚗',n:'Troca do carro 2028/29',m:70000,ap:0,fim:'2028-08',r:'Não aportar antes de a Reserva chegar a R$40 mil e de reavaliar a carta com a Ademicon. Cobre complemento, TDA Localiza e custos iniciais.',o:'meta condicional · sem aporte por enquanto',tipo:'fixa'},
 ];}
 function dfCxUso(){return[
@@ -2631,9 +2635,24 @@ function rCaixinhas(){
   var cx=S.cx||{};var tot=Object.values(cx).reduce(function(a,v){return a+(+v||0);},0);
   if(Q('cx-total'))Q('cx-total').textContent=fmt(tot);
   rPlanoAportes();
-  var def=S.cxDef||{fixas:dfCxFixas(),uso:dfCxUso()};
+  var def=S.cxDef||{fixas:dfCxFixas(),uso:dfCxUso(),provisoes:[]};
+  if(!Array.isArray(def.provisoes))def.provisoes=[];
+  rCxGrupo('cx-provisoes',def.provisoes,cx);
   rCxGrupo('cx-fixas',def.fixas||[],cx);
   rCxGrupo('cx-uso',def.uso||[],cx);
+}
+function valorFaturasCadastradas(){var f=S.faturas||{};return (+f.nu||0)+(+f.br||0);}
+async function criarProvisoesCiclo(){
+  if(!canMutateNow())return;
+  if(!S.cxDef)S.cxDef={fixas:dfCxFixas(),uso:dfCxUso(),provisoes:[]};
+  if(!Array.isArray(S.cxDef.provisoes))S.cxDef.provisoes=[];
+  var ja=S.cxDef.provisoes.find(function(c){return c.id==='provisao_fatura';});
+  if(ja){toast('A provisão da próxima fatura já existe. Atualize o saldo real nela.');return;}
+  var valor=valorFaturasCadastradas();
+  S.cxDef.provisoes.push({id:'provisao_fatura',e:'🧾',n:'Próxima fatura',m:valor,ap:0,fim:'',r:'Dinheiro comprometido com a próxima fatura. Não usar para gastos novos; atualize a meta quando a fatura fechar.',o:valor?'Meta inicial: faturas cadastradas para o próximo vencimento.':'Defina a meta quando a fatura fechar.',tipo:'provisao'});
+  if(!S.cx)S.cx={};if(S.cx.provisao_fatura===undefined)S.cx.provisao_fatura=0;
+  var saved=await save();if(!saved)return;
+  rCaixinhas();toast('Provisão criada. Informe o saldo que você separar no MP.');
 }
 function rPlanoAportes(){
   var plano=S.planoAportes||{},meses=plano.meses||[];
@@ -2650,10 +2669,10 @@ function rPlanoAportes(){
 }
 function rCxGrupo(elId,lista,cx){
   var h='';
-  if(!lista.length){if(Q(elId))Q(elId).innerHTML=emptyState('piggyBank','Nenhuma caixinha aqui ainda','Crie uma para começar a guardar.');return;}
+  if(!lista.length){if(Q(elId))Q(elId).innerHTML=elId==='cx-provisoes'?'<div class="card mb8" style="margin:0"><div class="ctitle">Separe antes de gastar</div><div style="font-size:.72rem;color:var(--muted);line-height:1.5;margin-top:4px">Crie a caixinha da próxima fatura. Ela é provisão, não reserva de emergência e não entra como dinheiro livre.</div></div>':emptyState('piggyBank','Nenhuma caixinha aqui ainda','Crie uma para começar a guardar.');return;}
   lista.forEach(function(c,i){
     var saldo=+(cx[c.id]||0);var pct=c.m?Math.min(Math.round(saldo/c.m*100),100):0;
-    var cor=elId.includes('fixas')?'var(--blue)':'var(--teal)';
+    var cor=elId.includes('fixas')?'var(--blue)':elId.includes('provisoes')?'var(--orange)':'var(--teal)';
     var mesesRestantes=c.ap&&c.m&&saldo<c.m?Math.ceil((c.m-saldo)/c.ap):0;
     h+='<div class="card mb8" style="margin:0"><div class="fsb mb4"><div style="display:flex;gap:8px;align-items:flex-start"><span style="font-size:1.1rem;line-height:1">'+categoryIcon(c,'piggyBank')+'</span><div><div style="font-size:.82rem;font-weight:500">'+esc(c.n)+'</div><div style="font-size:.62rem;color:var(--muted)">'+esc(c.o||'')+'</div></div></div><div style="display:flex;gap:4px;flex-shrink:0"><button class="btn bg bsm" onclick="openAporte(\''+c.id+'\',\''+escJs(c.n)+'\')">'+icon('arrowUpCircle',14)+'</button><button class="btn bg bsm" onclick="editCx(\''+elId+'\','+i+')">'+icon('edit',14)+'</button><button class="fix-del" style="padding:4px 6px" onclick="delCx(\''+elId+'\','+i+')">'+icon('trash',14)+'</button></div></div><div class="val vmd tg">'+fmt(saldo)+'</div>';
     if(c.m){h+='<div class="pt"><div class="pf" style="width:'+pct+'%;background:'+cor+'"></div></div><div class="fsb mt4"><span style="font-size:.62rem;color:var(--muted)">'+pct+'% de '+fmt(c.m)+'</span><span style="font-size:.62rem;color:var(--muted);display:inline-flex;align-items:center;gap:3px">'+(mesesRestantes>0?'~'+mesesRestantes+' meses para meta':icon('checkCircle',11)+'Meta batida!')+'</span></div>';}
@@ -2668,8 +2687,9 @@ function openAporte(id,nome){_acxId2=id;if(Q('acx-nome'))Q('acx-nome').textConte
 async function saveAporte(){if(!canMutateNow())return;var v=+Q('acx-v')?.value||0;if(!_acxId2)return;if(!S.cx)S.cx={};S.cx[_acxId2]=v;var saved=await save();if(!saved)return;closeOvl('ovl-aporte-cx');rCaixinhas();}
 function novaCx(tipo){if(Q('ncx-tipo'))Q('ncx-tipo').value=tipo;if(Q('ncx-edit-id'))Q('ncx-edit-id').value='';if(Q('ncx-title'))Q('ncx-title').innerHTML=icon('piggyBank',16)+' Nova caixinha';['ncx-n','ncx-m','ncx-a','ncx-fim','ncx-r','ncx-o'].forEach(function(id){if(Q(id))Q(id).value='';});openOvl('ovl-nova-cx');}
 function editCx(grp,i){
-  var def=S.cxDef||{fixas:dfCxFixas(),uso:dfCxUso()};
-  var lista=grp.includes('fixas')?def.fixas:def.uso;var c=lista[i];
+  var def=S.cxDef||{fixas:dfCxFixas(),uso:dfCxUso(),provisoes:[]};
+  var grupo=grp.includes('fixas')?'fixas':grp.includes('provisoes')?'provisoes':'uso';
+  var lista=def[grupo]||[];var c=lista[i];
   if(!c)return;
   if(Q('ncx-tipo'))Q('ncx-tipo').value=c.tipo;if(Q('ncx-edit-id'))Q('ncx-edit-id').value=grp+'_'+i;
   if(Q('ncx-title'))Q('ncx-title').innerHTML=icon('edit',16)+' Editar — '+esc(c.n);
@@ -2682,15 +2702,16 @@ function editCx(grp,i){
 async function saveCx(){if(!canMutateNow())return;
   var tipo=Q('ncx-tipo')?.value||'fixa';var editId=Q('ncx-edit-id')?.value||'';
   var c={e:'',n:(Q('ncx-n')?.value||'Nova').trim(),m:Math.max(0,+Q('ncx-m')?.value||0),ap:Math.max(0,+Q('ncx-a')?.value||0),fim:Q('ncx-fim')?.value||'',r:(Q('ncx-r')?.value||'').trim(),o:(Q('ncx-o')?.value||'').trim(),tipo};
-  if(!S.cxDef)S.cxDef={fixas:dfCxFixas(),uso:dfCxUso()};
-  var lista=tipo==='fixa'?S.cxDef.fixas:S.cxDef.uso;
-  if(editId){var p=editId.split('_');var idx=+p[1];var old=lista[idx];c.id=old?old.id:uid();lista[idx]=c;}
+  if(!S.cxDef)S.cxDef={fixas:dfCxFixas(),uso:dfCxUso(),provisoes:[]};
+  if(!Array.isArray(S.cxDef.provisoes))S.cxDef.provisoes=[];
+  var lista=tipo==='fixa'?S.cxDef.fixas:tipo==='provisao'?S.cxDef.provisoes:S.cxDef.uso;
+  if(editId){var p=editId.split('_');var grupo=p[0]==='cx-provisoes'?'provisoes':p[0]==='cx-fixas'?'fixas':'uso';lista=S.cxDef[grupo];var idx=+p[1];var old=lista[idx];c.id=old?old.id:uid();lista[idx]=c;}
   else{c.id=uid();lista.push(c);}
   var saved=await save();
   if(!saved)return;
   closeOvl('ovl-nova-cx');rCaixinhas();
 }
-async function delCx(grp,i){if(!canMutateNow())return;if(!confirm('Excluir esta caixinha?'))return;var def=S.cxDef||{};var lista=grp.includes('fixas')?def.fixas:def.uso;var c=lista[i];if(c&&S.cx)delete S.cx[c.id];lista.splice(i,1);var saved=await save();if(!saved)return;rCaixinhas();}
+async function delCx(grp,i){if(!canMutateNow())return;if(!confirm('Excluir esta caixinha?'))return;var def=S.cxDef||{};var lista=grp.includes('fixas')?def.fixas:grp.includes('provisoes')?def.provisoes:def.uso;var c=lista[i];if(c&&S.cx)delete S.cx[c.id];lista.splice(i,1);var saved=await save();if(!saved)return;rCaixinhas();}
 
 // ═══════════════════════════════════════════════
 // PARCELAS
@@ -3675,6 +3696,40 @@ function corrigirParcelaAdemicon145250(){
     renderAll();
     toast('Parcela do consórcio atualizada para R$ 1.452,50.');
   },false);
+}
+// Organização deliberada das caixinhas após a revisão de caixa de 26/jul.
+// Não cria saldo fictício, não movimenta dinheiro e não altera lançamentos.
+function aplicarOrganizacaoCaixinhas26072026(){
+  if(!canMutateNow())return;
+  if(S.mig22Caixinhas2607Feita){toast('A organização de caixinhas já foi aplicada.');return;}
+  askConfirm('Aplicar organização de caixinhas?',
+    'Um backup será baixado. Atualiza a meta da Obrigação para R$5.000 até abr/2027, com aporte de R$707,58 nos meses ativos; setembro fica pausado. Também habilita a área de provisões. Nenhum saldo, gasto ou parcela será inventado ou apagado.',
+    async function(){
+      var anterior=JSON.parse(JSON.stringify(S));
+      downloadJson(anterior,'financas-gs-antes-caixinhas-26-jul-2026-'+getTodayKeySP()+'.json');
+      if(!S.cxDef)S.cxDef={fixas:[],uso:[],provisoes:[]};
+      if(!Array.isArray(S.cxDef.fixas))S.cxDef.fixas=[];
+      if(!Array.isArray(S.cxDef.uso))S.cxDef.uso=[];
+      if(!Array.isArray(S.cxDef.provisoes))S.cxDef.provisoes=[];
+      var dadosObrigacao={id:'obrigacao',e:'⚱️',n:'Obrigação',m:5000,ap:707.58,fim:'2027-04',r:'Manter separado. Meta de R$5.000 antes de abril/2027; não usar para outros gastos.',o:'setembro/2026 pausado · aporte de R$707,58 em ago e out–mar',tipo:'fixa'};
+      var i=S.cxDef.fixas.findIndex(function(c){return c&&c.id==='obrigacao';});
+      if(i>=0)S.cxDef.fixas[i]=Object.assign({},S.cxDef.fixas[i],dadosObrigacao);else S.cxDef.fixas.push(dadosObrigacao);
+      // Plano é orientação: os saldos das caixinhas continuam sendo informados pelo usuário após a transferência real.
+      S.planoAportes={versao:3,meses:[
+        {m:'2026-07',aportes:{'Reserva':2000},nota:'aporte decidido; caixinhas de categorias começam sem saldo'},
+        {m:'2026-08',aportes:{'Reserva':1500,'Obrigação':707.58},nota:'após fatura e contas prioritárias; categorias são orçamento separado'},
+        {m:'2026-09',aportes:{},nota:'viagem; caixinhas pausadas'},
+        {m:'2026-10',aportes:{'Reserva':3500,'Obrigação':707.58,'Psiquiatra':238,'Imprevistos':300,'Estética':440},nota:'retomar caixinhas essenciais'},
+        {m:'2026-11',aportes:{'Reserva':4000,'Obrigação':707.58,'Psiquiatra':238,'Imprevistos':300,'Estética':440},nota:'manter ritmo'},
+        {m:'2026-12',aportes:{'Reserva':17000,'Obrigação':707.58,'Psiquiatra':238,'Imprevistos':300,'Estética':440},nota:'aporte do 13º; provisionar janeiro antes de considerar qualquer valor livre'}
+      ]};
+      S.mig22Caixinhas2607Feita=true;
+      S.mig22Caixinhas2607AplicadaEm=Date.now();
+      var saved=await save();
+      if(!saved){S=anterior;renderAll();toast('Não foi possível salvar a organização. Seus dados foram restaurados.');return;}
+      renderAll();
+      toast('Caixinhas e meta da Obrigação atualizadas.');
+    },false);
 }
 function aplicarPlanoSegundoSemestre2026(){
   if(!canMutateNow())return;
