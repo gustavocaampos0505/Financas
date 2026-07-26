@@ -293,7 +293,7 @@ button,.card,.month-event,.tab,.home-action{touch-action:manipulation}@media (pr
 .smart-card{background:linear-gradient(135deg,#173f39,#28675c);border-color:#173f39;color:#fffdf8;padding:17px 18px;overflow:hidden;position:relative}.smart-card::after{content:'';position:absolute;width:190px;height:190px;border:1px solid rgba(255,255,255,.14);border-radius:50%;right:-112px;bottom:-125px}.smart-card>*{position:relative;z-index:1}.smart-card .ctitle{color:#b9d9cf}.smart-card-title{font:500 1.05rem Fraunces,serif;margin:3px 0 11px;display:flex;gap:7px;align-items:center}.smart-list{display:grid;gap:7px}.smart-item{display:flex;gap:9px;align-items:flex-start;padding:9px 10px;background:rgba(255,255,255,.09);border-radius:8px}.smart-item .ui-icon{color:#f2d58a;margin-top:1px}.smart-item strong{display:block;font-size:.71rem;color:#fffdf8;margin-bottom:2px}.smart-item span{display:block;font-size:.65rem;line-height:1.42;color:#d8e9e2}.smart-item button{margin-top:6px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.2);color:#fffdf8}
 .scenario-card{background:linear-gradient(120deg,#eef7f2,#fffdf8);border-color:#c9e1d5}.scenario-card .scenario-number{font:500 1.18rem 'DM Mono',monospace;color:#173f39}.scenario-split{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:11px 0}.scenario-split div{background:rgba(255,253,248,.78);border:1px solid #dce8df;border-radius:8px;padding:9px}.scenario-split span{display:block;font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:3px}.scenario-split b{font:500 .75rem 'DM Mono',monospace}
 .gasto-gate{margin-top:10px}.gasto-gate:empty{display:none}.gate-card{border-radius:9px;padding:10px 11px;border:1px solid #d6e5dc;background:#eff8f3;display:flex;gap:8px;align-items:flex-start}.gate-card.warn{border-color:#ead9aa;background:#fff8e8}.gate-card.risk{border-color:#edc9c5;background:#fff3f1}.gate-card .ui-icon{margin-top:1px}.gate-card strong{display:block;font-size:.69rem;margin-bottom:2px}.gate-card span{display:block;font-size:.63rem;color:var(--muted);line-height:1.42}
-.card-success{background:linear-gradient(135deg,#eff8f3,#fffdf8 70%);border-color:#cfe5d9}.card-risk{background:linear-gradient(135deg,#fff1ef,#fffdf8 70%);border-color:#ebcbc7}.closing-hero{background:linear-gradient(135deg,#f7efe2,#fffdf8 70%);border-color:#dcc7a6}
+.card-success{background:linear-gradient(135deg,#eff8f3,#fffdf8 70%);border-color:#cfe5d9}.card-risk{background:linear-gradient(135deg,#fff1ef,#fffdf8 70%);border-color:#ebcbc7}.closing-hero{background:linear-gradient(135deg,#f7efe2,#fffdf8 70%);border-color:#dcc7a6}.closing-hero .closing-total{color:#173f39}.closing-hero .review-metric{background:rgba(255,253,248,.78);border-color:#e2d8c8}.closing-hero .review-metric b{color:#203d38}
 #ovl-menu .modal .btn{min-height:48px;justify-content:flex-start;text-align:left;padding:10px 12px}#ovl-menu .modal .btn svg{color:#0b6b5f}.modal .btn.bfull{min-height:42px}.modal .alert{margin-top:3px}
 .save-state{font-family:'DM Mono',monospace}.toast{border-radius:10px;color:#23413c}.toast button{color:#0b6b5f}.status-dot{box-shadow:0 0 0 3px rgba(11,107,95,.10)}
 </style>
@@ -1802,6 +1802,21 @@ function getMetaCaixinha(id,padrao){
   var item=defs.find(function(x){return x&&x.id===id;});
   return item&&+item.m>0?+item.m:(+padrao||0);
 }
+function getSnapshotsPorMes(){
+  var porMes={};
+  (S.snapshots||[]).forEach(function(s){
+    if(!s||!s.d)return;
+    if(!porMes[s.d]||(+s.ts||0)>+(porMes[s.d].ts||0))porMes[s.d]=s;
+  });
+  return Object.keys(porMes).sort().map(function(k){return porMes[k];});
+}
+function classificarSerasa(valor){
+  var v=+valor||0;
+  if(v>=751)return {rotulo:'Excelente',cor:'var(--green)'};
+  if(v>=651)return {rotulo:'Muito bom',cor:'var(--green)'};
+  if(v>=501)return {rotulo:'Bom',cor:'var(--yellow)'};
+  return {rotulo:'Em recuperação',cor:'var(--red)'};
+}
 function getParcelasCartaoAtivas(){
   var out={NU:0,BR:0};
   function add(p){if(!p||p.s==='quitada'||p.s==='antecipada'||!(+p.cp||+p.cur_p||0))return;var b=String(p.b||'').toUpperCase();if(b.indexOf('NU')>=0)out.NU+=(+p.vp||0);if(b.indexOf('BR')>=0)out.BR+=(+p.vp||0);}
@@ -2081,6 +2096,7 @@ async function executarFechamento(){if(!canMutateNow())return;
   S.faturas={nu:0,br:0};
 
   S.closedMonths[chave]={closedAt:Date.now(),revisionBeforeClose:_serverRevision};
+  appendTimelineAuto('Fechamento de '+fmtMesExtenso(chave)+' concluído.',0);
 
   var saved=await save();
   if(!saved)return;
@@ -3044,8 +3060,8 @@ function rDividas(){
   var diasSerasa=c6v>0?Math.round((Date.now()-new Date(c6Neg.abertura||'2026-05-08').getTime())/(1000*60*60*24)):0;
 
   // Resumo topo
-  var serasaAtual=+(S.cfg&&S.cfg.serasa_score||735);if(Q('div-sub'))Q('div-sub').innerHTML='Serasa: '+serasaAtual+' <span class="status-dot" style="background:'+(serasaAtual>=700?'var(--green)':serasaAtual>=600?'var(--yellow)':'var(--red)')+'"></span>';
-  var scoreTxt=c6v===0?'<span style="color:var(--green);display:inline-flex;align-items:center;gap:4px">'+serasaAtual+' · Score subindo '+icon('trendingUp',13)+'</span>':'<span style="color:var(--yellow)">'+serasaAtual+' · Serasa</span>';
+  var serasaAtual=+(S.cfg&&S.cfg.serasa_score||735),faixaSerasa=classificarSerasa(serasaAtual);if(Q('div-sub'))Q('div-sub').innerHTML='Serasa: '+serasaAtual+' · '+faixaSerasa.rotulo+' <span class="status-dot" style="background:'+faixaSerasa.cor+'"></span>';
+  var scoreTxt='<span style="color:'+faixaSerasa.cor+';display:inline-flex;align-items:center;gap:4px">'+serasaAtual+' · '+faixaSerasa.rotulo+(c6v===0?' '+icon('trendingUp',13):'')+'</span>';
   if(Q('div-resumo')){Q('div-resumo').className='card section-pulse mb8';Q('div-resumo').innerHTML='<div class="fsb"><div><div class="ctitle" style="margin:0 0 5px">Saldo total das dívidas</div><div class="pulse-value tr">'+fmt(tot)+'</div><div class="pulse-caption">Acompanhe o saldo e priorize a próxima quitação.</div></div><div style="text-align:right"><div style="font-size:.68rem;color:var(--muted);margin-bottom:4px">Score Serasa</div><div style="font-size:1rem;font-weight:700">'+scoreTxt+'</div><button class="btn bg bsm mt8 btn-with-icon" onclick="go(\'agora\')">'+icon('target',12)+'<span>Ver plano</span></button></div></div>';}
 
   // C6 card especial
@@ -3251,10 +3267,17 @@ function quitarDiv(id){if(!canMutateNow())return;
 // canMutateNow() — quem compõe a operação decide quando salvar, para que o marco entre na MESMA gravação.
 function appendTimelineAuto(txt,imp){
   if(!S.snapshots)S.snapshots=[];
+  if(!S.tlMarcos)S.tlMarcos=[];
   var cx=S.cx||{};var divs=S.dividas||[];
   var ativos=Object.values(cx).reduce(function(a,v){return a+(+v||0);},0);
   var passivos=divs.reduce(function(a,d){return a+(+d.v||0);},0);
   S.snapshots.push({d:getMonthKeySP(),ativos:ativos,passivos:passivos,score:calcHealthScore(),note:txt,impacto:imp||'',ts:Date.now()});
+  var titulo=String(txt||'Atualização financeira'),data=getTodayKeySP();
+  var jaExiste=S.tlMarcos.some(function(m){return m&&m.auto&&m.t===titulo&&m.data===data;});
+  if(!jaExiste){
+    var quitacao=/quitad/i.test(titulo),receita=/^Recebido:/i.test(titulo);
+    S.tlMarcos.push({id:'auto_'+Date.now()+'_'+uid(),t:titulo,d:'Registrado automaticamente pelo app a partir de uma ação confirmada.',data:data,tipo:quitacao?'quitacao':receita?'receita':'outro',icon:quitacao?'checkCircle':receita?'dollarSign':'calendar',auto:true});
+  }
 }
 
 // ═══════════════════════════════════════════════
@@ -3332,10 +3355,12 @@ function rProgresso(){
     +'<div class="row" style="padding:5px 0"><span style="font-size:.78rem">Quitar Itaú 1</span><span class="val vsm ty" style="display:flex;align-items:center;gap:4px">'+metaItau1Mes+'</span></div>'
     +'<div class="row" style="padding:5px 0"><span style="font-size:.78rem">Tesouro Selic</span><span class="val vsm tb">Out/2026 — reserva > R$20k</span></div>'
     +'<div class="row" style="padding:5px 0;border:none"><span style="font-size:.78rem">Margem potencial para aporte</span><span class="val vsm '+(aporteMensal>0?'tg':'tr')+'">'+fmt(aporteMensal)+'</span></div>';
-  // Comparativo mês anterior
-  var snaps=S.snapshots||[];
-  if(snaps.length>=2){
-    var curr=snaps[snaps.length-1];var prev=snaps[snaps.length-2];
+  // Comparativo: sempre mês anterior fechado → mês atual, nunca dois snapshots do mesmo mês.
+  var snaps=getSnapshotsPorMes();
+  var mesAnterior=getMesAnt(),histAnterior=(S.histMeses||{})[mesAnterior];
+  var curr={d:MES,ativos:ativos,passivos:passivos};
+  var prev=histAnterior?{d:mesAnterior,ativos:Object.values(histAnterior.caixinhas&&histAnterior.caixinhas.saldos||{}).reduce(function(a,v){return a+(+v||0);},0),passivos:(histAnterior.dividas||[]).reduce(function(a,d){return a+(+d.v||0);},0)}:(snaps.length>=2?snaps[snaps.length-2]:null);
+  if(prev){
     var diffAtivos=curr.ativos-prev.ativos;var diffPassivos=curr.passivos-prev.passivos;
     var compHtml='<div class="ctitle" style="display:flex;align-items:center;gap:6px">'+icon('barChart',13)+'vs mês anterior ('+ml(prev.d)+'→'+ml(curr.d)+')</div>'
       +'<div class="row" style="padding:5px 0"><span style="font-size:.78rem">Caixinhas</span><span class="val vsm '+(diffAtivos>=0?'tg':'tr')+'">'+(diffAtivos>=0?'+':'')+fmt(diffAtivos)+'</span></div>'
@@ -3416,7 +3441,9 @@ var REGRAS=[
   },get info(){var n=(S.parcExtras||[]).filter(function(p){return p.s==='ativa'&&p.origem!=='auto';}).length;return n+' parcela'+( n!==1?'s':'')+' nova'+( n!==1?'s':'');}},
   {id:'delivery',icon:'utensils',t:'Alimentação fora — R$700/mês',d:'Delivery + restaurantes',r:'Quando o envelope zera, alimentação fora acabou.',get s(){var env=(S.envDef||[]).find(function(e){return e.id==='delivery';});var u=+(env&&env.usado||0),l=+(env&&env.lim||700);return u/l<0.7?'verde':u/l<0.9?'amarelo':'vermelho';},get info(){var env=(S.envDef||[]).find(function(e){return e.id==='delivery';});return fmt(+(env&&env.usado||0))+' de '+fmt(+(env&&env.lim||700));}},
   {id:'lazer',icon:'party',t:'Lazer — R$500/mês',d:'Shows, bares, saídas',r:'Comprou ingresso? Desconta. Quando zera, acabou.',get s(){var env=(S.envDef||[]).find(function(e){return e.id==='lazer';});var u=+(env&&env.usado||0),l=+(env&&env.lim||500);return u/l<0.7?'verde':u/l<0.9?'amarelo':'vermelho';},get info(){var env=(S.envDef||[]).find(function(e){return e.id==='lazer';});return fmt(+(env&&env.usado||0))+' de '+fmt(+(env&&env.lim||500));}},
-  {id:'fatura',icon:'barChart',t:'Indicador de fatura',d:'Bradesco CC (principal)',r:'Abaixo de R$4k: normal · R$4k–5.5k: atenção · Acima de R$5.5k: congela cartão',get s(){var br=+(S.faturas&&S.faturas.br||0);return br<4000?'verde':br<5500?'amarelo':'vermelho';},get info(){return 'Bradesco: '+fmt(+(S.faturas&&S.faturas.br||0));}},
+  {id:'fatura',icon:'barChart',t:'Fatura do ciclo',d:'Valor já lançado neste mês',r:'Acompanhe a fatura lançada separadamente da projeção das parcelas. Fatura alta não vira autorização para novas compras.',get s(){var br=+(S.faturas&&S.faturas.br||0),nu=+(S.faturas&&S.faturas.nu||0),renda=(+((S.cfg||{}).sal15||16000))+(+((S.cfg||{}).sal30||13192)),pct=(br+nu)/Math.max(1,renda);return pct<.2?'verde':pct<.3?'amarelo':'vermelho';},get info(){var f=S.faturas||{};return 'NU '+fmt(+f.nu||0)+' · BR '+fmt(+f.br||0);}},
+  {id:'limites_cartao',icon:'creditCard',t:'Guardas de cartão pela renda',d:'Limites de orçamento, não limite bancário',r:'Referência do plano: Nubank até 15% e Bradesco até 20% da renda líquida mensal. Revise os alertas em Configurações → Renda quando a renda mudar.',get s(){var c=S.cfg||{},renda=(+c.sal15||16000)+(+c.sal30||13192),p=getProjecaoFatura(),nuMax=Math.max(+c.lim_nu||0,Math.round(renda*.15)),brMax=Math.max(+c.lim_br||0,Math.round(renda*.20)),uso=Math.max(p.NU/Math.max(1,nuMax),p.BR/Math.max(1,brMax));return uso<.75?'verde':uso<.95?'amarelo':'vermelho';},get info(){var c=S.cfg||{},renda=(+c.sal15||16000)+(+c.sal30||13192),p=getProjecaoFatura(),nuMax=Math.max(+c.lim_nu||0,Math.round(renda*.15)),brMax=Math.max(+c.lim_br||0,Math.round(renda*.20));return 'NU '+fmt(p.NU)+'/'+fmt(nuMax)+' · BR '+fmt(p.BR)+'/'+fmt(brMax);}},
+  {id:'parcelas_novas',icon:'card',t:'Novas parcelas',d:'Só com espaço projetado no cartão',r:'Antes de parcelar, confira a projeção acima e a margem do mês. Se alguma guarda estiver vermelha ou a margem ficar negativa, não crie parcela nova.',get s(){var p=getProjecaoFatura(),c=S.cfg||{},renda=(+c.sal15||16000)+(+c.sal30||13192),nuMax=Math.max(+c.lim_nu||0,Math.round(renda*.15)),brMax=Math.max(+c.lim_br||0,Math.round(renda*.20)),margem=getStrategiaMes().livrePlanejado,uso=Math.max(p.NU/Math.max(1,nuMax),p.BR/Math.max(1,brMax));return margem<0||uso>=.95?'vermelho':uso>=.75?'amarelo':'verde';},get info(){var p=getProjecaoFatura();return 'Projetado: NU '+fmt(p.NU)+' · BR '+fmt(p.BR);}},
   {id:'50_50',icon:'dollarSign',t:'Protocolo 50/50',d:'Para dinheiro extra',r:'Éverton, Monique, IR restituição: 50% → reserva emergência · 50% → livre. Itaú 1 quitar quando reserva > R$20k.',s:'azul',info:'Regra preventiva'},
   {id:'meta',icon:'target',t:'Foco 2026 — crescimento',d:'Reserva R$51.472 · Score 800 · Viagem set',r:'C6 quitado · Nome limpo · Serasa 735 · Próximo: Quitar Itaú 1 dez/26 · Tesouro Selic out/26 · Reserva meta dez/26.',get s(){var res=+((S.cx||{}).reserva||0);var itau1=(S.dividas||[]).find(function(d){return d.id==='itau1';});return res>30000&&(!itau1||itau1.v===0)?'verde':res>15000?'amarelo':'vermelho';},get info(){var res=+((S.cx||{}).reserva||0);var pct=Math.round(res/51472*100);return 'Reserva '+pct+'% · Serasa '+(+((S.cfg||{}).serasa_score||735));}},
 ];
@@ -3512,9 +3539,9 @@ function rInsights(){
   var santander=divs.find(function(d){return d.id==='santander';});
   var c6=divs.find(function(d){return d.id==='c6';});
 
-  // Score Serasa
-  if(serasaScore>=700)descs.push({icon:'trendingUp',t:'Serasa '+serasaScore+' — categoria boa no valor cadastrado.',c:'ag'});
-  else if(serasaScore>=600)descs.push({icon:'barChart',t:'Serasa '+serasaScore+' — em evolução. Continue quitando.',c:'ay'});
+  // Score Serasa — faixas oficiais usuais: 751+ excelente; 651–750 muito bom.
+  var faixaScore=classificarSerasa(serasaScore);
+  descs.push({icon:'trendingUp',t:'Serasa '+serasaScore+' — classificação '+faixaScore.rotulo+'.',c:serasaScore>=651?'ag':serasaScore>=501?'ay':'ar'});
 
   // C6 status
   if(!c6||c6.v===0)descs.push({icon:'award',t:'C6 consta como quitado nos seus dados atuais.',c:'ag'});
@@ -3543,7 +3570,7 @@ function rInsights(){
   if(viag>0)descs.push({icon:'plane',t:'Fundo viagem: '+fmt(viag)+'. Portugal + Grécia em setembro.',c:'ab'});
 
   // Comparativo via snapshots
-  var snaps=S.snapshots||[];
+  var snaps=getSnapshotsPorMes();
   if(snaps.length>=2){
     var curr=snaps[snaps.length-1];var prev=snaps[snaps.length-2];
     var diffLiq=(curr.ativos-curr.passivos)-(prev.ativos-prev.passivos);
@@ -4100,11 +4127,11 @@ function rTimeline(){
   var tiposCor={quitacao:'var(--green)',receita:'var(--blue)',meta:'var(--purple)',score:'var(--teal)',outro:'var(--yellow)'};
   marcos.slice().reverse().forEach(function(m){
     var cor=tiposCor[m.tipo]||'var(--muted)';
-    var isCustom=!!(S.tlMarcos||[]).find(function(x){return x.id===m.id;});
+    var isCustom=!!(S.tlMarcos||[]).find(function(x){return x.id===m.id;})&&!m.auto;
     h+='<div class="timeline-item">'
       +'<div class="tl-dot" style="background:'+cor+';margin-top:8px"></div>'
       +'<div class="tl-content">'
-      +'<div class="tl-date">'+fmtDataBR(m.data)+(isCustom?'<button class="fix-del" style="margin-left:8px" onclick="delMarco(\"'+m.id+'\")">'+icon('trash',13)+'</button>':'')+'</div>'
+      +'<div class="tl-date">'+fmtDataBR(m.data)+(m.auto?'<span class="chip cb" style="margin-left:8px">automático</span>':'')+(isCustom?'<button class="fix-del" style="margin-left:8px" onclick="delMarco(\"'+m.id+'\")">'+icon('trash',13)+'</button>':'')+'</div>'
       +'<div class="tl-title" style="display:flex;align-items:center;gap:6px">'+icon(m.icon||'target',15)+'<span>'+esc(m.t)+'</span></div>'
       +'<div style="font-size:.72rem;color:var(--muted);margin-top:2px;line-height:1.5">'+esc(m.d)+'</div>'
       +'</div></div>';
