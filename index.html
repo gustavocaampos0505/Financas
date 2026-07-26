@@ -3753,7 +3753,10 @@ function corrigirParcelaAdemicon145250(){
 // Não cria saldo fictício, não movimenta dinheiro e não altera lançamentos.
 function aplicarOrganizacaoCaixinhas26072026(){
   if(!canMutateNow())return;
-  if(S.mig22Caixinhas2607Feita){toast('A organização de caixinhas já foi aplicada.');return;}
+  // Compatibilidade com a interface anterior: quem já aplicou a organização
+  // encontra a revisão de fluxo no mesmo botão, sem precisar de um novo item
+  // visível na lista de Dados.
+  if(S.mig22Caixinhas2607Feita){aplicarRevisaoFluxo26072026();return;}
   askConfirm('Aplicar organização de caixinhas?',
     'Um backup será baixado. Atualiza a meta da Obrigação para R$5.000 até abr/2027, com aporte de R$707,58 nos meses ativos; setembro fica pausado. Também habilita a área de provisões. Nenhum saldo, gasto ou parcela será inventado ou apagado.',
     async function(){
