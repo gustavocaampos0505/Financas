@@ -413,7 +413,7 @@ button,.card,.month-event,.tab,.home-action{touch-action:manipulation}@media (pr
           <button class="btn bg bsm mt8 btn-with-icon" onclick="openOvl('ovl-faturas')"><span class="ui-icon" data-icon="edit" data-icon-size="13" aria-hidden="true"></span><span>Faturas</span></button>
         </div>
         <div class="p">
-          <div class="alert ab mb8"><span class="ui-icon" data-icon="info" data-icon-size="16" aria-hidden="true"></span><div style="font-size:.72rem">Informe em <strong>Faturas</strong> os valores atuais em aberto. Pagamentos já quitados não devem permanecer aqui.</div></div>
+          <div class="alert ab mb8"><span class="ui-icon" data-icon="info" data-icon-size="16" aria-hidden="true"></span><div style="font-size:.72rem">Informe em <strong>Faturas</strong> os valores atuais em aberto. O status <strong>Pago</strong> só aparece depois da sua confirmação manual em <strong>Paguei</strong>; o app nunca presume que uma conta foi quitada.</div></div>
           <div class="card mb8" id="pix-resumo"></div>
           <div class="d-eq">
             <div>
@@ -2333,14 +2333,24 @@ function rPix(){
   if(Q('pix-resumo')){var sobraPix=sal-totalPix,proj=getProjecaoFatura();Q('pix-resumo').className='card section-pulse mb8';Q('pix-resumo').innerHTML='<div class="fsb mb8"><div><div class="ctitle" style="margin:0 0 5px">Sobra estimada do mês</div><div class="pulse-value '+(sobraPix>=0?'tg':'tr')+'">'+fmt(sobraPix)+'</div><div class="pulse-caption">Após PIX, boletos e faturas já cadastrados.</div></div><button class="btn bg bsm btn-with-icon" onclick="openOvl(\'ovl-faturas\')">'+icon('edit',13)+'<span>Revisar faturas</span></button></div><div class="row" style="padding:6px 0"><span style="font-size:.74rem">Renda total</span><span class="val vsm tg">'+fmt(sal)+'</span></div><div class="row" style="padding:6px 0"><span style="font-size:.74rem">Contas e cartões</span><span class="val vsm tr">−'+fmt(totalPix)+'</span></div><div class="div"></div><div class="row" style="padding:6px 0"><div><div style="font-size:.74rem">Próxima fatura projetada</div><div style="font-size:.6rem;color:var(--muted)">Assinaturas + parcelas + Localiza; fatura fechada prevalece.</div></div><span class="val vsm ty">'+fmt(proj.total)+'</span></div>';}
 }
 
-function pixRow(iconName,n,v,obs,enc,dividaId){
+function proximoMesKey(){var d=new Date(NOW.getFullYear(),NOW.getMonth()+1,1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
+function chavePagamentoFixo(id,referencia){return String(referencia||MES)+'|'+String(id||'');}
+function pagamentoFixoConfirmado(id,referencia){return !!((S.pagamentosFixos||{})[chavePagamentoFixo(id,referencia)]);}
+async function togglePagamentoFixo(id,referencia,nome){
+  if(!canMutateNow())return;if(!S.pagamentosFixos)S.pagamentosFixos={};var chave=chavePagamentoFixo(id,referencia);
+  if(S.pagamentosFixos[chave]){delete S.pagamentosFixos[chave];}else S.pagamentosFixos[chave]={data:hoje(),nome:nome||id};
+  var ok=await save();if(ok){rPix();rHome();toast(S.pagamentosFixos[chave]?'Pagamento confirmado.':'Pagamento reaberto.');}
+}
+function pixRow(iconName,n,v,obs,enc,dividaId,pagamentoId,referencia){
   var hoje=getMonthKeySP();var venc=enc&&enc<hoje;
   var divida=dividaId&&(S.dividas||[]).find(function(d){return d.id===dividaId&&(+d.v||0)>0;});
-  var pagoNoMes=divida&&(divida.pags||[]).some(function(p){return String(p.data||'').slice(0,7)===MES&&p.tipo==='parcela';});
-  var acao=divida?(pagoNoMes
-    ?'<span class="chip cg" style="font-size:.58rem">'+icon('check',10)+' Pago</span>'
-    :'<button class="btn bg bsm" onclick="openDivPag(\''+escJs(divida.id)+'\',\''+escJs(divida.n)+'\','+(+v||0)+')">Paguei</button>')
-    :'';
+  var id=pagamentoId||dividaId||'',pago=id&&pagamentoFixoConfirmado(id,referencia);
+  var acao='';
+  if(id){
+    if(pago)acao='<button class="btn bg bsm" onclick="togglePagamentoFixo(\''+escJs(id)+'\',\''+escJs(referencia||MES)+'\',\''+escJs(n)+'\')">'+icon('check',11)+' Pago</button>';
+    else if(divida)acao='<button class="btn bg bsm" onclick="openDivPag(\''+escJs(divida.id)+'\',\''+escJs(divida.n)+'\','+(+v||0)+',\''+escJs(chavePagamentoFixo(id,referencia))+'\')">Paguei</button>';
+    else acao='<button class="btn bg bsm" onclick="togglePagamentoFixo(\''+escJs(id)+'\',\''+escJs(referencia||MES)+'\',\''+escJs(n)+'\')">Paguei</button>';
+  }
   return'<div class="row" style="padding:5px 0"><div><div style="font-size:.78rem;display:flex;align-items:center;gap:5px">'+(iconName?icon(iconName,13):'')+esc(n)+(enc?'<span style="font-size:.58rem;margin-left:4px;color:'+(venc?'var(--muted)':'var(--red)')+'">até '+ml(enc)+'</span>':'')+'</div>'+(obs?'<div style="font-size:.6rem;color:var(--muted)">'+esc(obs)+'</div>':'')+' </div><div style="display:flex;align-items:center;gap:7px"><span class="val vsm tr">−'+fmt(v)+'</span>'+acao+'</div></div>';
 }
 
@@ -2349,14 +2359,14 @@ function buildPix15(){
   var fat=S.faturas||{};
   var cfg=S.cfg||{};
   h+='<div class="row" style="padding:5px 0"><span style="font-size:.78rem;color:var(--green);display:flex;align-items:center;gap:5px">'+icon('dollarSign',13)+'Salário (adiantamento)</span><span class="val vsm tg">+'+fmt(+cfg.sal15||16000)+'</span></div>';
-  if(faturaVenceNoMes()&&fat.nu){h+=pixRow('card','Fatura Nubank CC',fat.nu,'fechada');tot+=+fat.nu;}
-  if(faturaVenceNoMes()&&fat.br){h+=pixRow('card','Fatura Bradesco CC',fat.br,'fechada');tot+=+fat.br;}
-  (S.fixosPix||[]).filter(function(f){return itemAtivoNoMes(f)&&String(f.dia).includes('15');}).forEach(function(f){h+=pixRow(fixoIconMap[f.id]||'card',f.n,f.v,f.obs,f.enc,f.id);tot+=+(f.v||0);});
+  if(faturaVenceNoMes()&&fat.nu){h+=pixRow('card','Fatura Nubank CC',fat.nu,'fechada','','fatura_nu',MES);tot+=+fat.nu;}
+  if(faturaVenceNoMes()&&fat.br){h+=pixRow('card','Fatura Bradesco CC',fat.br,'fechada','','fatura_br',MES);tot+=+fat.br;}
+  (S.fixosPix||[]).filter(function(f){return itemAtivoNoMes(f)&&String(f.dia).includes('15');}).forEach(function(f){h+=pixRow(fixoIconMap[f.id]||'card',f.n,f.v,f.obs,f.enc,f.id,f.id,MES);tot+=+(f.v||0);});
   return{html:h,tot};
 }
 function buildPix22(){
   var h='',tot=0;
-  (S.fixosPix||[]).filter(function(f){var dia=+f.dia;return itemAtivoNoMes(f)&&dia>=16&&dia<=29;}).forEach(function(f){h+=pixRow(fixoIconMap[f.id]||'card',f.n,f.v,f.obs,f.enc,f.id);tot+=+(f.v||0);});
+  (S.fixosPix||[]).filter(function(f){var dia=+f.dia;return itemAtivoNoMes(f)&&dia>=16&&dia<=29;}).forEach(function(f){h+=pixRow(fixoIconMap[f.id]||'card',f.n,f.v,f.obs,f.enc,f.id,f.id,MES);tot+=+(f.v||0);});
   if(!h)h='<div style="font-size:.74rem;color:var(--muted);padding:5px 0">Nenhum</div>';
   return{html:h,tot};
 }
@@ -2364,7 +2374,7 @@ function buildPix30(){
   var h='',tot=0;
   var cfg=S.cfg||{};
   h+='<div class="row" style="padding:5px 0"><span style="font-size:.78rem;color:var(--green);display:flex;align-items:center;gap:5px">'+icon('dollarSign',13)+'Salário (complemento)</span><span class="val vsm tg">+'+fmt(+cfg.sal30||13432)+'</span></div>';
-  (S.fixosPix||[]).filter(function(f){return itemAtivoNoMes(f)&&(String(f.dia)==='30'||String(f.dia)==='4');}).forEach(function(f){h+=pixRow(fixoIconMap[f.id]||'card',f.n,f.v,f.obs,f.enc,f.id);tot+=+(f.v||0);});
+  (S.fixosPix||[]).filter(function(f){return itemAtivoNoMes(f)&&(String(f.dia)==='30'||String(f.dia)==='4');}).forEach(function(f){var ref=String(f.dia)==='4'?proximoMesKey():MES;h+=pixRow(fixoIconMap[f.id]||'card',f.n,f.v,f.obs,f.enc,f.id,f.id,ref);tot+=+(f.v||0);});
   return{html:h,tot};
 }
 
@@ -3003,6 +3013,7 @@ async function regNovaParc(){if(!canMutateNow())return;
 // DÍVIDAS
 // ═══════════════════════════════════════════════
 var _divEditId=null;
+var _divPagamentoFixoKey=null;
 function rDividas(){
   var divs=S.dividas||dfDividas();
   var tot=divs.reduce(function(a,d){return a+(+d.v||0);},0);
@@ -3171,8 +3182,9 @@ function editDivSaldo(id){
   openOvl('ovl-div-saldo');
 }
 async function saveDivSaldo(){if(!canMutateNow())return;var id=Q('ds-id')?.value,v=parseFloat(Q('ds-val')?.value||'');if(!id||isNaN(v)||v<0){toast('Informe um saldo válido.');return;}var divs=S.dividas||dfDividas(),d=divs.find(function(x){return x.id===id;});if(!d)return;d.v=v;S.dividas=divs;var saved=await save();if(!saved)return;closeOvl('ovl-div-saldo');toast('Saldo da dívida atualizado.');rDividas();rPix();}
-function openDivPag(id,nome,valorSugerido){
+function openDivPag(id,nome,valorSugerido,pagamentoFixoKey){
   _divEditId=id;
+  _divPagamentoFixoKey=pagamentoFixoKey||null;
   if(Q('dp-nome'))Q('dp-nome').textContent=nome;
   if(Q('dp-data'))Q('dp-data').value=hoje();
   if(Q('dp-val'))Q('dp-val').value=valorSugerido||'';
@@ -3192,10 +3204,17 @@ async function regDivPag(){if(!canMutateNow())return;
   else if(saldoInformado!==null)d.v=saldoInformado;
   else d.v=Math.max(0,d.v-v);
   S.dividas=divs;
+  // Quando o lançamento veio da agenda PIX, a confirmação só é gravada ao
+  // salvar este pagamento — nunca por previsão ou por uma parcela antiga.
+  if(_divPagamentoFixoKey){
+    if(!S.pagamentosFixos)S.pagamentosFixos={};
+    S.pagamentosFixos[_divPagamentoFixoKey]={data:data,nome:d.n};
+  }
   var quitouAgora=(d.v===0);
   if(quitouAgora)appendTimelineAuto(d.n+' quitado.',d.id==='c6'?107000:+d.pags.reduce(function(a,p){return a+p.v;},0));
   var saved=await save();
   if(!saved)return;
+  _divPagamentoFixoKey=null;
   closeOvl('ovl-div-pag');
   rDividas();
   rPix();
