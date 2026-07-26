@@ -595,7 +595,7 @@ button,.card,.month-event,.tab,.home-action{touch-action:manipulation}@media (pr
 
       <!-- PROGRESSO -->
       <div id="s-progresso" class="screen">
-        <div class="sh"><h2>Progresso</h2><p>Evolução patrimonial</p></div>
+        <div class="sh"><h2>Progresso</h2><p>Patrimônio, reserva e dívidas — sem metas genéricas.</p></div>
         <div class="p">
           <div id="prog-score" class="card mb8"></div>
           <div class="dg2 mb8" style="gap:10px" id="prog-grid"></div>
@@ -610,7 +610,7 @@ button,.card,.month-event,.tab,.home-action{touch-action:manipulation}@media (pr
 
       <!-- FECHAMENTO -->
       <div id="s-fechamento" class="screen">
-        <div class="sh"><h2>Fechamento do mês</h2><p>Revise antes de arquivar o período</p></div>
+        <div class="sh"><h2>Fechamento do mês</h2><p>Concilie o mês e só então vire o ciclo.</p></div>
         <div class="p">
           <div id="fech-hero" class="card closing-hero section-pulse mb8"></div>
           <div id="fech-envelopes" class="card mb8"></div>
@@ -624,7 +624,7 @@ button,.card,.month-event,.tab,.home-action{touch-action:manipulation}@media (pr
       <!-- REGRAS -->
       <div id="s-regras" class="screen">
         <div class="sh fsb" style="align-items:flex-start">
-          <div><h2>Regras</h2><p>Semáforo do seu comportamento</p></div>
+          <div><h2>Regras</h2><p>Guardrails do seu plano — não julgamentos.</p></div>
           <button class="btn bo bsm mt8 btn-with-icon" onclick="openOvl('ovl-confissao')"><span class="ui-icon" data-icon="alertTriangle" data-icon-size="13" aria-hidden="true"></span><span>Quebrei uma regra</span></button>
         </div>
         <div class="p">
@@ -652,14 +652,14 @@ button,.card,.month-event,.tab,.home-action{touch-action:manipulation}@media (pr
 
       <!-- INVESTIMENTOS -->
       <div id="s-invest" class="screen">
-        <div class="sh"><h2>Investimentos</h2><p>Disponível após quitação das dívidas</p></div>
+        <div class="sh"><h2>Investimentos</h2><p>Decisão futura; hoje o foco é proteger o caixa.</p></div>
         <div class="p" id="invest-lista"></div>
       </div>
 
       <!-- TIMELINE -->
       <div id="s-timeline" class="screen">
         <div class="sh fsb" style="align-items:flex-start">
-          <div><h2>Linha do Tempo</h2><p>Marcos da sua recuperação financeira</p></div>
+          <div><h2>Linha do Tempo</h2><p>Marcos reais, não uma lista de tarefas.</p></div>
           <button class="btn bg bsm mt8" onclick="openOvl('ovl-nova-tl')">+ Marco</button>
         </div>
         <div class="p">
@@ -1797,6 +1797,11 @@ function getAportePlanejadoMes(mes){
   Object.keys(aportes).forEach(function(n){if(+aportes[n]>0)itens.push({n:n,v:+aportes[n]});});
   return {total:itens.reduce(function(a,x){return a+x.v;},0),itens:itens,nota:item.nota||''};
 }
+function getMetaCaixinha(id,padrao){
+  var defs=(S.cxDef||{}).fixas||[];
+  var item=defs.find(function(x){return x&&x.id===id;});
+  return item&&+item.m>0?+item.m:(+padrao||0);
+}
 function getParcelasCartaoAtivas(){
   var out={NU:0,BR:0};
   function add(p){if(!p||p.s==='quitada'||p.s==='antecipada'||!(+p.cp||+p.cur_p||0))return;var b=String(p.b||'').toUpperCase();if(b.indexOf('NU')>=0)out.NU+=(+p.vp||0);if(b.indexOf('BR')>=0)out.BR+=(+p.vp||0);}
@@ -2008,6 +2013,9 @@ function rFechamento(){
   if(estourados.length)leituraFech+=' Há '+estourados.length+' envelope'+(estourados.length>1?'s acima do limite.':' acima do limite.');
   else if(sobrou>0)leituraFech+=' Sobram '+fmt(sobrou)+' nos envelopes para decidir o rollover.';
   if(Q('fech-resumo'))Q('fech-resumo').innerHTML='<div class="ctitle">Leitura do fechamento</div><div class="alert ab mb8" style="margin-top:0"><span>'+icon('lightbulb',16)+'</span><div style="font-size:.72rem">'+leituraFech+'</div></div><div class="ctitle">O que segue para o próximo mês</div><div class="review-row"><div style="display:flex;gap:9px;align-items:center"><div class="review-icon">'+icon('repeat',16)+'</div><div><strong style="font-size:.76rem">Compromissos recorrentes</strong><p>Fixos e assinaturas já cadastrados</p></div></div><span class="val vsm">'+fmt(fixos)+'</span></div><div class="review-row"><div style="display:flex;gap:9px;align-items:center"><div class="review-icon">'+icon('dollarSign',16)+'</div><div><strong style="font-size:.76rem">Entradas previstas</strong><p>Pendentes neste mês</p></div></div><span class="val vsm tg">'+fmt(pend)+'</span></div>';
+  var confirmados=Object.keys(S.pagamentosFixos||{}).filter(function(k){return k.indexOf(chave+'|')===0;}).length;
+  var pendentesEntrada=(S.entradas||[]).filter(function(e){return e.s==='pendente'&&e.m===chave;}).length;
+  if(Q('fech-resumo'))Q('fech-resumo').innerHTML+='<div class="div mt8"></div><div class="ctitle mt8">Cheque final</div><div class="plan-row"><div><strong>Pagamentos confirmados manualmente</strong><small>O app não presume pagamento; revise o que ainda está em PIX do mês.</small></div><span class="chip cb">'+confirmados+'</span></div><div class="plan-row"><div><strong>Entradas extras pendentes</strong><small>Não arquive como recebidas se o dinheiro ainda não caiu.</small></div><span class="chip '+(pendentesEntrada?'cy':'cg')+'">'+pendentesEntrada+'</span></div>';
   var btn=Q('fech-confirmar-btn');if(btn){btn.disabled=jaFechado;btn.textContent=jaFechado?'Mês já fechado':'Conferi tudo · fechar mês';}
 }
 function confirmarFechamento(){
@@ -3372,6 +3380,11 @@ function rProgresso(){
     });
   }
   if(Q('prog-snapshots'))Q('prog-snapshots').innerHTML=hs;
+  // Substitui benchmarks abstratos por metas que existem no seu próprio plano.
+  var metaReserva=getMetaCaixinha('reserva',cfg.m_res||40000),metaObrigacao=getMetaCaixinha('obrigacao',5000);
+  var obrigacao=+(cx.obrigacao||0),aportePlano=getAportePlanejadoMes(MES),margemLivre=Math.max(0,estrategia.livrePlanejado);
+  if(Q('prog-fidelity'))Q('prog-fidelity').innerHTML='<div class="ctitle">Metas patrimoniais do seu plano</div><div class="plan-card-title" style="margin:4px 0 8px">O que importa antes de pensar em investimentos</div><div class="plan-row"><div><strong>Reserva de emergência</strong><small>'+fmt(res)+' de '+fmt(metaReserva)+' · faltam '+fmt(Math.max(0,metaReserva-res))+'</small></div><span class="chip '+(res>=metaReserva?'cg':'cy')+'">'+Math.min(100,Math.round(res/Math.max(1,metaReserva)*100))+'%</span></div><div class="plan-row"><div><strong>Caixinha Obrigação</strong><small>'+fmt(obrigacao)+' de '+fmt(metaObrigacao)+' · meta antes de abr/2027</small></div><span class="chip '+(obrigacao>=metaObrigacao?'cg':'cy')+'">'+Math.min(100,Math.round(obrigacao/Math.max(1,metaObrigacao)*100))+'%</span></div><div class="plan-row"><div><strong>Dívidas em aberto</strong><small>Não trate cartão nem reserva como investimento.</small></div><span class="val vsm tr">'+fmt(passivos)+'</span></div>';
+  if(Q('prog-projecao'))Q('prog-projecao').innerHTML='<div class="ctitle">Próximo passo financeiro</div><div class="plan-card-title" style="margin:4px 0 8px">'+(margemLivre>0?'Preservar a margem antes de aportar':'O mês não fecha para novos aportes')+'</div><div class="plan-row"><div><strong>Margem do mês</strong><small>Depois de contas, faturas e categorias.</small></div><span class="val vsm '+(estrategia.livrePlanejado>=0?'tg':'tr')+'">'+fmt(estrategia.livrePlanejado)+'</span></div><div class="plan-row"><div><strong>Aporte previsto</strong><small>'+esc(aportePlano.nota||'orientação do plano; só transfira depois de pagar')+'</small></div><span class="val vsm ty">'+fmt(aportePlano.total)+'</span></div><div class="plan-row"><div><strong>Decisão</strong><small>'+ (margemLivre>=aportePlano.total?'O aporte cabe no planejamento; confirme o saldo real antes de transferir.':'Não antecipe aporte: primeiro garanta o caixa e as obrigações.') +'</small></div><button class="btn bg bsm" onclick="go(\'agora\')">Ver planejamento</button></div>';
 }
 async function addSnapshot(){if(!canMutateNow())return;
   var cx=S.cx||{};var divs=S.dividas||[];
@@ -3411,7 +3424,8 @@ function rRegras(){
   var verde=REGRAS.filter(function(r){return r.s==='verde';}).length;
   var amar=REGRAS.filter(function(r){return r.s==='amarelo';}).length;
   var verm=REGRAS.filter(function(r){return r.s==='vermelho';}).length;
-  if(Q('regras-semaforo'))Q('regras-semaforo').innerHTML='<div class="ctitle">Semáforo geral</div><div style="display:flex;gap:12px;align-items:center"><div style="display:flex;gap:6px;align-items:center"><div class="sem sem-g"></div><span style="font-size:.78rem">'+verde+' ok</span></div><div style="display:flex;gap:6px;align-items:center"><div class="sem sem-y"></div><span style="font-size:.78rem">'+amar+' atenção</span></div><div style="display:flex;gap:6px;align-items:center"><div class="sem sem-r"></div><span style="font-size:.78rem">'+verm+' crítico</span></div></div>';
+  var margemRegras=getStrategiaMes().livrePlanejado;
+  if(Q('regras-semaforo'))Q('regras-semaforo').innerHTML='<div class="ctitle">Semáforo geral</div><div class="plan-card-title" style="margin:4px 0 8px">'+(verm?'Há regra que pede intervenção agora.':'As regras estão a serviço do seu plano, não do perfeccionismo.')+'</div><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><div style="display:flex;gap:6px;align-items:center"><div class="sem sem-g"></div><span style="font-size:.78rem">'+verde+' ok</span></div><div style="display:flex;gap:6px;align-items:center"><div class="sem sem-y"></div><span style="font-size:.78rem">'+amar+' atenção</span></div><div style="display:flex;gap:6px;align-items:center"><div class="sem sem-r"></div><span style="font-size:.78rem">'+verm+' crítico</span></div></div><div class="plan-mini">Regra-mãe do ciclo: não criar novo gasto/parcelamento se a margem após compromissos estiver negativa. Margem atual: '+fmt(margemRegras)+'.</div>';
   var h='';
   REGRAS.forEach(function(r){
     var sc=r.s;var semCor=sc==='verde'?'var(--green)':sc==='vermelho'?'var(--red)':sc==='azul'?'var(--blue)':'var(--yellow)';
@@ -3460,8 +3474,8 @@ function rInsights(){
   var serasaScore=+(cfg.serasa_score||735);
 
   // Headline
-  var headlineIcon=score>=70?'trendingUp':score>=50?'alertTriangle':'alertOctagon';
-  var headline=score>=70?'Você está no caminho certo em '+mes:score>=50?'Atenção necessária em '+mes:'Situação crítica em '+mes;
+  var headlineIcon=sobra>=0?'checkCircle':'alertOctagon';
+  var headline=sobra>=0?'O plano de '+mes+' fecha no papel':'O plano de '+mes+' ainda não fecha';
   var headlineDesc=sobra<0?'Faltam '+fmt(Math.abs(sobra))+' para cobrir compromissos, faturas e orçamento restante dos envelopes. Aportes ficam adiados.': 'Após compromissos, faturas e envelopes, a margem planejada é '+fmt(sobra)+'.';
   if(Q('ins-headline'))Q('ins-headline').innerHTML='<div style="font-size:.9rem;font-weight:600;margin-bottom:6px;display:flex;align-items:center;gap:6px">'+icon(headlineIcon,15)+'<span>'+headline+'</span></div><div style="font-size:.78rem;color:var(--muted)">'+headlineDesc+'</div>'
     +'<div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">'
@@ -3577,6 +3591,19 @@ function rInvest(){
   if(bloq){h+='<div class="alert ar mb8"><span>'+icon('lock',16)+'</span><div style="font-size:.72rem"><strong>Investimentos bloqueados</strong> até quitar C6, Itaú 1 e Itaú 2.<br>Foco: nome limpo + reserva.</div></div><div class="card mb8"><div class="ctitle">Ordem de desbloqueio</div><div class="row" style="padding:5px 0"><span style="font-size:.78rem">1. Quitar C6 cartão</span><span class="chip '+(c6===0?'cg':'cr')+' btn-with-icon">'+(c6===0?icon('check',10)+'<span>Feito</span>':'Pendente')+'</span></div><div class="row" style="padding:5px 0"><span style="font-size:.78rem">2. Quitar Itaú 1</span><span class="chip '+(i1===0?'cg':'cy')+' btn-with-icon">'+(i1===0?icon('check',10)+'<span>Feito</span>':'Set/2026')+'</span></div><div class="row" style="padding:5px 0;border:none"><span style="font-size:.78rem">3. Quitar Itaú 2</span><span class="chip '+(i2===0?'cg':'cy')+' btn-with-icon">'+(i2===0?icon('check',10)+'<span>Feito</span>':'Set/2026')+'</span></div></div>';}
   else{h+='<div class="alert ag mb8"><span>'+icon('checkCircle',16)+'</span><div style="font-size:.72rem"><strong>Desbloqueado!</strong> Hora de investir.</div></div>';}
   h+='<div class="card mb8"><div class="ctitle">Carteira recomendada</div><div class="row" style="padding:5px 0"><div><div style="font-size:.78rem;display:flex;align-items:center;gap:5px">'+icon('shield',13)+'Tesouro Selic/CDB DI</div><div style="font-size:.62rem;color:var(--muted)">Liquidez diária · reserva</div></div><span class="chip cb">40%</span></div><div class="row" style="padding:5px 0"><div><div style="font-size:.78rem;display:flex;align-items:center;gap:5px">'+icon('bank',13)+'FIIs</div><div style="font-size:.62rem;color:var(--muted)">Dividendos isentos IR · renda passiva</div></div><span class="chip cg">35%</span></div><div class="row" style="padding:5px 0"><div><div style="font-size:.78rem;display:flex;align-items:center;gap:5px">'+icon('trendingUp',13)+'Ações BR</div><div style="font-size:.62rem;color:var(--muted)">Longo prazo</div></div><span class="chip cy">15%</span></div><div class="row" style="padding:5px 0;border:none"><div><div style="font-size:.78rem;display:flex;align-items:center;gap:5px">'+icon('globe',13)+'Internacional</div><div style="font-size:.62rem;color:var(--muted)">Diversificação dólar</div></div><span class="chip cp">10%</span></div></div>';
+  if(Q('invest-lista'))Q('invest-lista').innerHTML=h;
+}
+
+// O objetivo desta tela é evitar alocação prematura. Não recomenda carteira
+// especulativa enquanto a reserva, o caixa e o plano de dívidas não fecharem.
+function rInvest(){
+  var cx=S.cx||{},cfg=S.cfg||{},estrategia=getStrategiaMes();
+  var reserva=+(cx.reserva||0),metaReserva=getMetaCaixinha('reserva',cfg.m_res||40000);
+  var ativos=(S.dividas||[]).filter(function(d){return +d.v>0;});
+  var dividasAbertas=ativos.reduce(function(a,d){return a+(+d.v||0);},0);
+  var aporte=getAportePlanejadoMes(MES),pronto=reserva>=metaReserva&&dividasAbertas===0&&estrategia.livrePlanejado>=0;
+  var estado=pronto?'<div class="alert ag mb8"><span>'+icon('checkCircle',16)+'</span><div style="font-size:.72rem"><strong>Etapa de investimentos liberada.</strong><br>Reserva, dívidas e caixa mensal estão cobertos no retrato cadastrado.</div></div>':'<div class="alert ay mb8"><span>'+icon('shield',16)+'</span><div style="font-size:.72rem"><strong>Fase atual: proteger caixa e reserva.</strong><br>Não há recomendação de risco agora; este dinheiro continua com função definida.</div></div>';
+  var h=estado+'<div class="card mb8"><div class="ctitle">Checklist antes de investir</div><div class="plan-row"><div><strong>Reserva de emergência</strong><small>'+fmt(reserva)+' de '+fmt(metaReserva)+'</small></div><span class="chip '+(reserva>=metaReserva?'cg':'cy')+'">'+(reserva>=metaReserva?'pronta':'em construção')+'</span></div><div class="plan-row"><div><strong>Dívidas</strong><small>'+ (ativos.length?ativos.map(function(d){return d.n;}).join(' · '):'nenhuma dívida em aberto') +'</small></div><span class="chip '+(dividasAbertas===0?'cg':'cr')+'">'+fmt(dividasAbertas)+'</span></div><div class="plan-row"><div><strong>Margem mensal</strong><small>Depois de compromissos e categorias.</small></div><span class="chip '+(estrategia.livrePlanejado>=0?'cg':'cr')+'">'+fmt(estrategia.livrePlanejado)+'</span></div></div><div class="card mb8"><div class="ctitle">Destino do próximo dinheiro</div><div class="plan-card-title" style="margin:4px 0 7px">'+(pronto?'Aí sim: montar carteira de longo prazo':'Antes de investir, siga esta ordem')+'</div><div class="plan-row"><div><strong>1. Contas e categorias</strong><small>PIX, faturas e envelopes do ciclo.</small></div><span>'+icon('checkSquare',15)+'</span></div><div class="plan-row"><div><strong>2. Reserva e Obrigação</strong><small>Aporte do mês: '+fmt(aporte.total)+' · '+esc(aporte.nota||'conforme planejamento')+'</small></div><span>'+icon('shield',15)+'</span></div><div class="plan-row"><div><strong>3. Investimentos de longo prazo</strong><small>'+ (pronto?'Começar por liquidez e diversificação, em uma conversa específica.':'Aguardar as duas etapas anteriores.') +'</small></div><span>'+icon('trendingUp',15)+'</span></div></div><button class="btn bg bfull" onclick="go(\'agora\')">Voltar ao planejamento do ciclo</button>';
   if(Q('invest-lista'))Q('invest-lista').innerHTML=h;
 }
 
