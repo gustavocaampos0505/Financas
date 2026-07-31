@@ -744,6 +744,7 @@ button,.card,.month-event,.tab,.home-action{touch-action:manipulation}@media (pr
               <button class="btn bp bfull mt8 btn-with-icon" onclick="corrigirParcelaAdemicon145250()"><span class="ui-icon" data-icon="refreshCw" data-icon-size="14" aria-hidden="true"></span><span>Corrigir parcela do consórcio — R$ 1.452,50</span></button>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarOrganizacaoCaixinhas26072026()"><span class="ui-icon" data-icon="piggyBank" data-icon-size="14" aria-hidden="true"></span><span>Aplicar organização de caixinhas e obrigação</span></button>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarRevisaoFluxo26072026()"><span class="ui-icon" data-icon="refreshCw" data-icon-size="14" aria-hidden="true"></span><span>Aplicar revisão de fluxo, fatura e dinheiro livre</span></button>
+              <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarAuditoriaProjecoes30072026()"><span class="ui-icon" data-icon="shieldCheck" data-icon-size="14" aria-hidden="true"></span><span>Corrigir projeções e duplicatas — 30/jul</span></button>
               <button class="btn bo bfull mt8 btn-with-icon" onclick="limparParcelasDuplicadas()"><span class="ui-icon" data-icon="tool" data-icon-size="14" aria-hidden="true"></span><span>Corrigir parcelas duplicadas</span></button>
               <button class="btn bo bfull mt8 btn-with-icon" onclick="go('fechamento')"><span class="ui-icon" data-icon="checkSquare" data-icon-size="14" aria-hidden="true"></span><span>Fechamento guiado do mês</span></button>
               <button class="btn bd bfull mt8 btn-with-icon" onclick="resetTudo()"><span class="ui-icon" data-icon="alertTriangle" data-icon-size="14" aria-hidden="true"></span><span>Reset completo</span></button>
@@ -1670,7 +1671,7 @@ function dfParc(){return{
   adidas:{n:'Adidas',b:'BR',vp:62.99,tp:10,cp:4,f:'Out/2026'},
   electro:{n:'Electrolux',b:'BR',vp:40.54,tp:20,cp:12,f:'Jul/2027'},
   ady:{n:'ADY Ingresse',b:'BR',vp:303.06,tp:2,cp:0,f:'Jun/2026'},
-  liniker:{n:'Liniker Show',b:'PIX',vp:44,tp:8,cp:5,f:'Dez/2026'},
+liniker:{n:'Liniker Show',b:'PIX',vp:44,tp:8,cp:0,f:'Jul/2026',s:'quitada'},
   savana:{n:'Savana',b:'NU',vp:63,tp:7,cp:5,f:'Nov/2026'},
 };}
 function dfFixosPix(){return[
@@ -1826,7 +1827,10 @@ function getParcelasCartaoAtivas(){
 function getProjecaoFatura(){
   var ass={NU:0,BR:0};(S.fixosAss||[]).filter(itemAtivoNoMes).forEach(function(x){var b=String(x.cartao||'').toUpperCase();if(b==='NU')ass.NU+=(+x.v||0);if(b==='BR')ass.BR+=(+x.v||0);});
   var parc=getParcelasCartaoAtivas(), loc=S.localizaCartao||{};
-  var localiza=loc.ativo===false?0:(+loc.v||0);
+  // Localiza pode vir do cadastro legado de assinaturas ou de localizaCartao.
+  // Nunca some as duas fontes: é a mesma cobrança mensal no Bradesco.
+  var localizaJaEmAss=(S.fixosAss||[]).some(function(x){return itemAtivoNoMes(x)&&String(x.cartao||'').toUpperCase()==='BR'&&(x.id==='localiza'||/localiza/i.test(String(x.n||'')));});
+  var localiza=loc.ativo===false||localizaJaEmAss?0:(+loc.v||0);
   return {NU:ass.NU+parc.NU,BR:ass.BR+parc.BR+localiza,assinaturas:ass,parcelas:parc,localiza:localiza,total:ass.NU+ass.BR+parc.NU+parc.BR+localiza};
 }
 function getProximoSalario(){
@@ -2907,7 +2911,7 @@ function rParcelas(){
     var r=18,circ=Math.PI*2*r;var dash=Math.round(prog/100*circ);
     var ring='<svg width="48" height="48" viewBox="0 0 48 48" style="flex-shrink:0"><circle cx="24" cy="24" r="'+r+'" fill="none" stroke="var(--s3)" stroke-width="4"/><circle cx="24" cy="24" r="'+r+'" fill="none" stroke="var(--green)" stroke-width="4" stroke-dasharray="'+dash+' '+Math.round(circ)+'" stroke-dashoffset="'+Math.round(circ/4)+'" stroke-linecap="round"/><text x="24" y="28" text-anchor="middle" font-size="9" fill="var(--green)" font-family="DM Mono,monospace">'+prog+'%</text></svg>';
     var isFutura=cpAdj===0&&p.mesInicio&&(iniDate>cicloDate);
-    if(cpAdj>0||isFutura)hAtiv+='<div class="card mb8" style="'+(isFutura?'opacity:.55':'')+'"><div style="display:flex;gap:10px;align-items:center">'+ring+'<div style="flex:1"><div class="fsb"><div style="font-size:.84rem;font-weight:500">'+esc(p.n)+(isFutura?'<span style="font-size:.6rem;color:var(--blue);margin-left:6px"><span class="status-dot" style="background:var(--blue)"></span>começa '+p.mesInicio.slice(0,7)+'</span>':'')+'</div>'+'<button class="fix-del" onclick="delParcExtra(\''+p.id+'\')">'+icon('trash',14)+'</button>'+'</div><div style="font-size:.65rem;color:var(--muted);margin-top:2px">'+esc(p.b)+' · '+fmtd(vp)+'/mês</div></div></div></div>';
+    if(cpAdj>0||isFutura)hAtiv+='<div class="card mb8" style="'+(isFutura?'opacity:.55':'')+'"><div style="display:flex;gap:10px;align-items:center">'+ring+'<div style="flex:1"><div class="fsb"><div style="font-size:.84rem;font-weight:500">'+esc(p.n)+(isFutura?'<span style="font-size:.6rem;color:var(--blue);margin-left:6px"><span class="status-dot" style="background:var(--blue)"></span>começa '+p.mesInicio.slice(0,7)+'</span>':'')+'</div>'+'<button class="fix-del" onclick="delParcExtra(\''+p.id+'\')">'+icon('trash',14)+'</button>'+'</div><div style="font-size:.65rem;color:var(--muted);margin-top:2px">'+esc(p.b)+' · '+fmtd(vp)+'/mês · '+(p.tp-cpAdj)+'/'+p.tp+' pagas · '+(cpAdj?cpAdj+'× restantes':'quitada')+' · até '+esc(p.f||'não informado')+'</div></div></div></div>';
   });
 
   // Totalizador
@@ -3047,11 +3051,13 @@ async function regNovaParc(){if(!canMutateNow())return;
   if(!Number.isFinite(v)||v<=0){toast('Informe um valor total válido.');return;}
   if(!Number.isInteger(t)||t<1){toast('Informe um total de parcelas válido.');return;}
   if(!Number.isInteger(a)||a<1||a>t){toast('A parcela atual deve estar entre 1 e '+t+'.');return;}
+  var inicio=Q('np-inicio')?.value||'';
+  if(!/^\d{4}-\d{2}$/.test(inicio)){toast('Informe o mês em que a 1ª parcela cai.');return;}
   var vp=Math.round(v/t*100)/100;
   if(!S.parcExtras)S.parcExtras=[];
   if(S.parcCiclo===undefined)S.parcCiclo=0;
-  var inicio=Q('np-inicio')?.value||'';
-  S.parcExtras.push({id:uid(),n:d,b:c==='NU'?'Nubank CC':c==='BR'?'Bradesco CC':'PIX',vp,tp:t,cp:t-a+1,f:'—',s:'ativa',mesInicio:inicio});
+  var fim=addMonths(inicio,t-a),pf=fim.split('-'),rotuloFim=(MABREV[+pf[1]-1]||'—')+'/'+pf[0];
+  S.parcExtras.push({id:uid(),n:d,b:c==='NU'?'Nubank CC':c==='BR'?'Bradesco CC':'PIX',vp,tp:t,cp:t-a+1,f:rotuloFim,mesFim:fim,s:'ativa',mesInicio:inicio});
   var saved=await save();
   if(!saved)return;
   closeOvl('ovl-nova-parc');rParcelas();
@@ -3947,6 +3953,32 @@ function aplicarRevisaoFluxo26072026(){
       var ok=await save();
       if(!ok){S=anterior;renderAll();toast('Não foi possível aplicar a revisão. Seus dados foram restaurados.');return;}
       renderAll();toast('Fluxo financeiro revisado. Atualize o saldo em conta para ver o dinheiro livre real.');
+    },false);
+}
+// Auditoria pontual após o cruzamento das faturas abertas de 30/jul/2026.
+// Arquiva duplicatas em vez de apagá-las definitivamente, para preservar rastreabilidade.
+function aplicarAuditoriaProjecoes30072026(){
+  if(!canMutateNow())return;
+  if(S.mig24AuditoriaProjecoes3007){toast('A auditoria de projeções já foi aplicada.');return;}
+  askConfirm('Aplicar auditoria de projeções?',
+    'Remove das projeções três duplicatas comprovadas pelo OFX (ML 2º parcelamento, Amazon BR V e Amazon BR VI), marca Liniker como quitada e preserva os registros arquivados para consulta. Nenhuma fatura fechada, saldo ou gasto será alterado.',
+    async function(){
+      var anterior=JSON.parse(JSON.stringify(S));
+      if(!Array.isArray(S.parcExtras))S.parcExtras=[];
+      if(!Array.isArray(S.parcelasArquivadas))S.parcelasArquivadas=[];
+      var ids=['audit_ml2','audit_amazon_v','audit_amazon_vi'];
+      var removidas=S.parcExtras.filter(function(p){return p&&ids.indexOf(p.id)>=0;});
+      removidas.forEach(function(p){
+        if(!S.parcelasArquivadas.some(function(a){return a&&a.id===p.id;}))S.parcelasArquivadas.push(Object.assign({},p,{s:'arquivada',motivo:'Duplicata confirmada no OFX Nubank de jul/2026',arquivadaEm:getTodayKeySP()}));
+      });
+      S.parcExtras=S.parcExtras.filter(function(p){return !p||ids.indexOf(p.id)<0;});
+      if(S.parc&&S.parc.liniker){S.parc.liniker.cp=0;S.parc.liniker.cur_p=0;S.parc.liniker.s='quitada';S.parc.liniker.f='Jul/2026';}
+      S.mig24AuditoriaProjecoes3007=true;
+      S.mig24AuditoriaProjecoes3007Em=Date.now();
+      var ok=await save();
+      if(!ok){S=anterior;renderAll();toast('Não foi possível salvar a auditoria. Seus dados foram restaurados.');return;}
+      renderAll();
+      toast('Projeções corrigidas: 3 duplicatas arquivadas e Liniker quitada.');
     },false);
 }
 function aplicarPlanoSegundoSemestre2026(){
