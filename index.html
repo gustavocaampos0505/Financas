@@ -2426,22 +2426,39 @@ function rPix(){
 function proximoMesKey(){var d=new Date(NOW.getFullYear(),NOW.getMonth()+1,1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
 function chavePagamentoFixo(id,referencia){return String(referencia||MES)+'|'+String(id||'');}
 function pagamentoFixoConfirmado(id,referencia){return !!((S.pagamentosFixos||{})[chavePagamentoFixo(id,referencia)]);}
+function valorPagamentoFixo(id,referencia,previsto){
+  var pg=(S.pagamentosFixos||{})[chavePagamentoFixo(id,referencia)];
+  return pg&&pg.valorPago!==undefined&&pg.valorPago!==null&&!isNaN(+pg.valorPago)?+pg.valorPago:(+previsto||0);
+}
 async function togglePagamentoFixo(id,referencia,nome){
   if(!canMutateNow())return;if(!S.pagamentosFixos)S.pagamentosFixos={};var chave=chavePagamentoFixo(id,referencia);
   if(S.pagamentosFixos[chave]){delete S.pagamentosFixos[chave];}else S.pagamentosFixos[chave]={data:hoje(),nome:nome||id};
   var ok=await save();if(ok){rPix();rHome();toast(S.pagamentosFixos[chave]?'Pagamento confirmado.':'Pagamento reaberto.');}
 }
+async function ajustarValorPagamentoFixo(id,referencia,nome,previsto){
+  if(!canMutateNow())return;
+  if(!S.pagamentosFixos)S.pagamentosFixos={};
+  var chave=chavePagamentoFixo(id,referencia),pg=S.pagamentosFixos[chave];
+  if(!pg){toast('Marque como pago antes de informar o valor real.');return;}
+  var atual=valorPagamentoFixo(id,referencia,previsto);
+  var entrada=window.prompt('Valor efetivamente pago em '+(nome||id)+' (R$)',String(atual).replace('.',','));
+  if(entrada===null)return;
+  var valor=parseFloat(String(entrada).replace(/\./g,'').replace(',','.'));
+  if(!isFinite(valor)||valor<0){toast('Informe um valor válido.');return;}
+  pg.valorPago=valor;pg.valorPrevisto=+previsto||0;pg.ajustadoEm=hoje();
+  var ok=await save();if(ok){rPix();rHome();toast('Valor real salvo: '+fmt(valor)+'.');}
+}
 function pixRow(iconName,n,v,obs,enc,dividaId,pagamentoId,referencia){
   var hoje=getMonthKeySP();var venc=enc&&enc<hoje;
   var divida=dividaId&&(S.dividas||[]).find(function(d){return d.id===dividaId&&(+d.v||0)>0;});
-  var id=pagamentoId||dividaId||'',pago=id&&pagamentoFixoConfirmado(id,referencia);
+  var id=pagamentoId||dividaId||'',pago=id&&pagamentoFixoConfirmado(id,referencia),valorReal=id?valorPagamentoFixo(id,referencia,v):(+v||0),ajustado=pago&&Math.abs(valorReal-(+v||0))>.005;
   var acao='';
   if(id){
-    if(pago)acao='<button class="btn bg bsm" onclick="togglePagamentoFixo(\''+escJs(id)+'\',\''+escJs(referencia||MES)+'\',\''+escJs(n)+'\')">'+icon('check',11)+' Pago</button>';
+    if(pago)acao='<button class="btn bg bsm" onclick="togglePagamentoFixo(\''+escJs(id)+'\',\''+escJs(referencia||MES)+'\',\''+escJs(n)+'\')">'+icon('check',11)+' Pago</button><button class="btn bg bsm" title="Informar valor efetivamente pago" onclick="ajustarValorPagamentoFixo(\''+escJs(id)+'\',\''+escJs(referencia||MES)+'\',\''+escJs(n)+'\','+(+v||0)+')">'+icon('edit',11)+' Valor</button>';
     else if(divida)acao='<button class="btn bg bsm" onclick="openDivPag(\''+escJs(divida.id)+'\',\''+escJs(divida.n)+'\','+(+v||0)+',\''+escJs(chavePagamentoFixo(id,referencia))+'\')">Paguei</button>';
     else acao='<button class="btn bg bsm" onclick="togglePagamentoFixo(\''+escJs(id)+'\',\''+escJs(referencia||MES)+'\',\''+escJs(n)+'\')">Paguei</button>';
   }
-  return'<div class="row" style="padding:5px 0"><div><div style="font-size:.78rem;display:flex;align-items:center;gap:5px">'+(iconName?icon(iconName,13):'')+esc(n)+(enc?'<span style="font-size:.58rem;margin-left:4px;color:'+(venc?'var(--muted)':'var(--red)')+'">até '+ml(enc)+'</span>':'')+'</div>'+(obs?'<div style="font-size:.6rem;color:var(--muted)">'+esc(obs)+'</div>':'')+' </div><div style="display:flex;align-items:center;gap:7px"><span class="val vsm tr">−'+fmt(v)+'</span>'+acao+'</div></div>';
+  return'<div class="row" style="padding:5px 0"><div><div style="font-size:.78rem;display:flex;align-items:center;gap:5px">'+(iconName?icon(iconName,13):'')+esc(n)+(enc?'<span style="font-size:.58rem;margin-left:4px;color:'+(venc?'var(--muted)':'var(--red)')+'">até '+ml(enc)+'</span>':'')+'</div>'+(obs?'<div style="font-size:.6rem;color:var(--muted)">'+esc(obs)+'</div>':'')+(ajustado?'<div style="font-size:.6rem;color:var(--green)">Pago '+fmt(valorReal)+' · previsto '+fmt(v)+'</div>':'')+' </div><div style="display:flex;align-items:center;gap:7px"><span class="val vsm tr">−'+fmt(valorReal)+'</span>'+acao+'</div></div>';
 }
 
 function buildPix15(){
@@ -2451,12 +2468,12 @@ function buildPix15(){
   h+='<div class="row" style="padding:5px 0"><span style="font-size:.78rem;color:var(--green);display:flex;align-items:center;gap:5px">'+icon('dollarSign',13)+'Salário (adiantamento)</span><span class="val vsm tg">+'+fmt(+cfg.sal15||16000)+'</span></div>';
   if(faturaVenceNoMes()&&fat.nu){h+=pixRow('card','Fatura Nubank CC',fat.nu,'fechada','','fatura_nu',MES);tot+=+fat.nu;}
   if(faturaVenceNoMes()&&fat.br){h+=pixRow('card','Fatura Bradesco CC',fat.br,'fechada','','fatura_br',MES);tot+=+fat.br;}
-  (S.fixosPix||[]).filter(function(f){return itemAtivoNoMes(f)&&String(f.dia).includes('15');}).forEach(function(f){h+=pixRow(fixoIconMap[f.id]||'card',f.n,f.v,f.obs,f.enc,f.id,f.id,MES);tot+=+(f.v||0);});
+  (S.fixosPix||[]).filter(function(f){return itemAtivoNoMes(f)&&String(f.dia).includes('15');}).forEach(function(f){h+=pixRow(fixoIconMap[f.id]||'card',f.n,f.v,f.obs,f.enc,f.id,f.id,MES);tot+=valorPagamentoFixo(f.id,MES,f.v);});
   return{html:h,tot};
 }
 function buildPix22(){
   var h='',tot=0;
-  (S.fixosPix||[]).filter(function(f){var dia=+f.dia;return itemAtivoNoMes(f)&&dia>=16&&dia<=29;}).forEach(function(f){h+=pixRow(fixoIconMap[f.id]||'card',f.n,f.v,f.obs,f.enc,f.id,f.id,MES);tot+=+(f.v||0);});
+  (S.fixosPix||[]).filter(function(f){var dia=+f.dia;return itemAtivoNoMes(f)&&dia>=16&&dia<=29;}).forEach(function(f){h+=pixRow(fixoIconMap[f.id]||'card',f.n,f.v,f.obs,f.enc,f.id,f.id,MES);tot+=valorPagamentoFixo(f.id,MES,f.v);});
   if(!h)h='<div style="font-size:.74rem;color:var(--muted);padding:5px 0">Nenhum</div>';
   return{html:h,tot};
 }
@@ -2464,7 +2481,7 @@ function buildPix30(){
   var h='',tot=0;
   var cfg=S.cfg||{};
   h+='<div class="row" style="padding:5px 0"><span style="font-size:.78rem;color:var(--green);display:flex;align-items:center;gap:5px">'+icon('dollarSign',13)+'Salário (complemento)</span><span class="val vsm tg">+'+fmt(+cfg.sal30||13432)+'</span></div>';
-  (S.fixosPix||[]).filter(function(f){return itemAtivoNoMes(f)&&(String(f.dia)==='30'||String(f.dia)==='4');}).forEach(function(f){var ref=String(f.dia)==='4'?proximoMesKey():MES;h+=pixRow(fixoIconMap[f.id]||'card',f.n,f.v,f.obs,f.enc,f.id,f.id,ref);tot+=+(f.v||0);});
+  (S.fixosPix||[]).filter(function(f){return itemAtivoNoMes(f)&&(String(f.dia)==='30'||String(f.dia)==='4');}).forEach(function(f){var ref=String(f.dia)==='4'?proximoMesKey():MES;h+=pixRow(fixoIconMap[f.id]||'card',f.n,f.v,f.obs,f.enc,f.id,f.id,ref);tot+=valorPagamentoFixo(f.id,ref,f.v);});
   return{html:h,tot};
 }
 
