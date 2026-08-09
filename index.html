@@ -746,6 +746,7 @@ button,.card,.month-event,.tab,.home-action{touch-action:manipulation}@media (pr
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarRevisaoFluxo26072026()"><span class="ui-icon" data-icon="refreshCw" data-icon-size="14" aria-hidden="true"></span><span>Aplicar revisão de fluxo, fatura e dinheiro livre</span></button>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarAuditoriaProjecoes30072026()"><span class="ui-icon" data-icon="shieldCheck" data-icon-size="14" aria-hidden="true"></span><span>Corrigir projeções e duplicatas — 30/jul</span></button>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarConciliacaoFaturas09082026()"><span class="ui-icon" data-icon="receipt" data-icon-size="14" aria-hidden="true"></span><span>Aplicar conciliação de faturas — 09/ago</span></button>
+              <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarRegrasCaixaReserva09082026()"><span class="ui-icon" data-icon="shieldCheck" data-icon-size="14" aria-hidden="true"></span><span>Aplicar regras de caixa e reserva — ago/2026</span></button>
               <button class="btn bo bfull mt8 btn-with-icon" onclick="limparParcelasDuplicadas()"><span class="ui-icon" data-icon="tool" data-icon-size="14" aria-hidden="true"></span><span>Corrigir parcelas duplicadas</span></button>
               <button class="btn bo bfull mt8 btn-with-icon" onclick="go('fechamento')"><span class="ui-icon" data-icon="checkSquare" data-icon-size="14" aria-hidden="true"></span><span>Fechamento guiado do mês</span></button>
               <button class="btn bd bfull mt8 btn-with-icon" onclick="resetTudo()"><span class="ui-icon" data-icon="alertTriangle" data-icon-size="14" aria-hidden="true"></span><span>Reset completo</span></button>
@@ -1678,12 +1679,12 @@ liniker:{n:'Liniker Show',b:'PIX',vp:44,tp:8,cp:0,f:'Jul/2026',s:'quitada'},
 function dfFixosPix(){return[
   {id:'santander',e:'🏦',n:'Santander',v:972,dia:'4',obs:'Dívida · 0,49%/mês',enc:''},
   {id:'dentista',e:'🦷',n:'Odontologia (em avaliação)',v:0,dia:'22',obs:'Possível correção ortodôntica antes do tratamento. Sem valor ou data definidos.',enc:'',ativo:false},
-  {id:'psicologa',e:'🧠',n:'Psicóloga',v:274.50,dia:'15',obs:'1 sessão/mês · Alessandra Christina',enc:''},
+  {id:'psicologa',e:'🧠',n:'Psicóloga',v:549,dia:'15',obs:'2 consultas/mês · Alessandra Christina · pausa em set/2026',enc:''},
   {id:'rose',e:'💆',n:'Rose diarista 1ª',v:1000,dia:'15',obs:'1ª parcela mensal',enc:''},
   {id:'rose2',e:'💆',n:'Rose diarista 2ª',v:1000,dia:'30',obs:'2ª parcela mensal',enc:''},
-  {id:'personal',e:'🏋️',n:'Personal Rafael',v:2720,dia:'30',obs:'',enc:''},
+  {id:'personal',e:'🏋️',n:'Personal Rafael',v:2100,dia:'30',obs:'Teto provisório mensal · set/2026 foi antecipado em ago',enc:''},
   {id:'itau2',e:'🏦',n:'Itaú 2',v:423,dia:'22',obs:'Quitar quando possível',enc:''},
-  {id:'itau1',e:'🏦',n:'Itaú 1',v:510.23,dia:'12',obs:'Quitar quando reserva > R$20k · 1,29%/mês',enc:''},
+  {id:'itau1',e:'🏦',n:'Itaú 1',v:510.23,dia:'12',obs:'Parcela mensal · decisão de quitação só após reserva estabilizada na meta de R$40 mil',enc:''},
   {id:'ademicon',e:'🚗',n:'Ademicon Veículos',v:1452.50,dia:'15',inicio:'2026-09',obs:'Pré-contemplação · antes cobrado no cartão Nubank · ago/2026 já foi antecipado na fatura de jul · revisar para R$2.033,50 no mês da contemplação',enc:''},
   {id:'energia_solar',e:'☀️',n:'Energia Solar (ASC Engenharia Elétrica)',v:966.68,dia:'17',inicio:'2026-08',obs:'Financiamento solar 4/4 parcelas · entrada de R$15.000 paga pelo pai, fora do fluxo',enc:'2026-11'},
   {id:'spotify',e:'🎵',n:'Spotify Obatobi',v:14,dia:'15',obs:'',enc:''},
@@ -1766,7 +1767,7 @@ function renderScreen(id){
 }
 // Leitura estratégica única: não altera dados e não presume que dinheiro reservado em
 // caixinhas esteja disponível para gastar. Todas as telas de decisão usam estes números.
-function itemAtivoNoMes(item){return !!item&&item.ativo!==false&&(!item.inicio||item.inicio<=MES)&&(!item.enc||item.enc>=MES);}
+function itemAtivoNoMes(item){return itemAtivoEmMes(item,MES);}
 function faturaVenceNoMes(){
   var vence=String(((S.faturas||{}).vence)||'');
   // Faturas antigas, sem vencimento registrado, mantêm o comportamento anterior.
@@ -1844,7 +1845,13 @@ function mesRotuloParcela(valor){
   var chave=m[1].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').slice(0,3),n=nomes[chave];
   return n?m[2]+'-'+String(n).padStart(2,'0'):'';
 }
-function itemAtivoEmMes(item,mes){return !!item&&item.ativo!==false&&(!item.inicio||item.inicio<=mes)&&(!item.enc||item.enc>=mes);}
+function itemAtivoEmMes(item,mes){
+  if(!item||item.ativo===false||!!(item.inicio&&item.inicio>mes)||!!(item.enc&&item.enc<mes))return false;
+  // Exceções são pontuais: preservam o fixo cadastrado, mas evitam projetar uma
+  // cobrança no mês em que ela foi deliberadamente pausada.
+  var excecoes=(S.excecoesFixos||{})[mes]||{},ex=excecoes[item.id];
+  return !(ex&&(ex.ativo===false||ex.pausado===true));
+}
 function getParcelasCartaoEmMesCobranca(mesCobranca){
   var out={NU:0,BR:0};
   function add(p){
@@ -1868,9 +1875,8 @@ function getVariaveisNoMes(mes){
   if(tr.mesAtivacao&&mes>=tr.mesAtivacao&&tr.valorPosSolar!==undefined)v.luz=+tr.valorPosSolar||0;
   return Object.keys(v).filter(function(k){return k!=='luzTransicao';}).reduce(function(a,k){return a+(+v[k]||0);},0);
 }
-// Esta é a leitura de longo prazo solicitada: caixa no fim de dezembro, reserva
-// protegida e carry consolidado. Não conta entradas extras incertas; só o 13º,
-// que já faz parte da remuneração prevista, entra quando cadastrado.
+// Leitura de longo prazo: não trata 13º pendente como dinheiro disponível. Ele
+// só entra depois de marcado como recebido, evitando prometer uma sobra fictícia.
 function getProjecaoAteDezembro(){
   var inicio=MES, fim='2026-12',meses=[];if(inicio>fim)return {meses:[],caixa:null,reserva:+((S.cx||{}).reserva||0),carry:null};
   var caixa=getCaixaOperacional(),reserva=+((S.cx||{}).reserva||0),caixinhas=Object.values(S.cx||{}).reduce(function(a,v){return a+(+v||0);},0),transferido=0,cfg=S.cfg||{};
@@ -1878,8 +1884,8 @@ function getProjecaoAteDezembro(){
     var pix=(S.fixosPix||[]).filter(function(x){return itemAtivoEmMes(x,mes);}).reduce(function(a,x){return a+(+x.v||0);},0);
     var fatura=mes===MES?getFaturasDoMes():getProjecaoFaturaNoVencimento(mes).total;
     var envelope=getPlanoEnvelopeMes(mes).total,aporte=getAportePlanejadoMes(mes),renda=(+cfg.sal15||0)+(+cfg.sal30||0);
-    // O 13º é salário; outras entradas continuam fora até serem efetivamente recebidas.
-    renda+=(S.entradas||[]).filter(function(e){return e&&e.id==='decimo'&&e.s==='pendente'&&e.m===mes;}).reduce(function(a,e){return a+(+e.v||0);},0);
+    // Entradas extras, inclusive 13º, só entram após confirmação de recebimento.
+    renda+=(S.entradas||[]).filter(function(e){return e&&e.id==='decimo'&&e.s==='recebido'&&e.m===mes;}).reduce(function(a,e){return a+(+e.v||0);},0);
     var saidas=pix+getVariaveisNoMes(mes)+fatura+envelope+aporte.total,resultado=renda-saidas;
     if(caixa!==null)caixa+=resultado;
     var aporteReserva=aporte.itens.filter(function(x){return String(x.n).toLowerCase()==='reserva';}).reduce(function(a,x){return a+x.v;},0);
@@ -2034,8 +2040,8 @@ function rHome(){
   var acaoTxt='';
   if(c6&&c6.v>0){
     acaoTxt='<div class="ctitle" style="display:flex;align-items:center;gap:6px">'+icon('target',14)+'Decisão do momento</div><div style="font-size:.86rem;font-weight:600">Aguardar oferta C6 via Consumidor.gov</div><div style="font-size:.7rem;color:var(--muted);margin-top:4px">Meta: ≤ R$27.000 para quitar e sair do Serasa</div><div class="mt8"><button class="btn bp bsm btn-with-icon" onclick="go(\'agora\')"><span>Ver protocolo</span>'+icon('chevronRight',12)+'</button></div>';
-  } else if(itau1h&&itau1h.v>0&&res_h>20000){
-    acaoTxt='<div class="ctitle" style="display:flex;align-items:center;gap:6px">'+icon('target',14)+'Decisão do momento</div><div style="font-size:.86rem;font-weight:600">Quitar Itaú 1 — '+fmt(itau1h.v)+'</div><div style="font-size:.7rem;color:var(--muted);margin-top:4px">Reserva acima de R$20k. Libera R$510/mês.</div><div class="mt8"><button class="btn bp bsm btn-with-icon" onclick="go(\'dividas\')"><span>Ver dívidas</span>'+icon('chevronRight',12)+'</button></div>';
+  } else if(itau1h&&itau1h.v>0&&res_h>=mRes_h){
+    acaoTxt='<div class="ctitle" style="display:flex;align-items:center;gap:6px">'+icon('target',14)+'Decisão do momento</div><div style="font-size:.86rem;font-weight:600">Revisar Itaú 1 com a Reserva estabilizada</div><div style="font-size:.7rem;color:var(--muted);margin-top:4px">A meta de Reserva foi atingida. Compare o desconto de quitação com a liquidez antes de decidir.</div><div class="mt8"><button class="btn bp bsm btn-with-icon" onclick="go(\'dividas\')"><span>Ver dívidas</span>'+icon('chevronRight',12)+'</button></div>';
   } else if(res_h<mRes_h){
     acaoTxt='<div class="ctitle" style="display:flex;align-items:center;gap:6px">'+icon('target',14)+'Decisão do momento</div><div style="font-size:.86rem;font-weight:600">'+(estrategia.livrePlanejado<0?'Fechar o plano do mês antes de aportar':'Construir reserva com a margem que realmente sobrar')+'</div><div style="font-size:.7rem;color:var(--muted);margin-top:4px">Reserva atual: '+fmt(res_h)+' de '+fmt(mRes_h)+'. '+(estrategia.livrePlanejado<0?'Aportes ficam adiados neste ciclo.':'Aporte apenas depois de cobrir compromissos e envelopes.')+'</div><div class="mt8"><button class="btn bp bsm btn-with-icon" onclick="go(\'caixinhas\')"><span>Ver caixinhas</span>'+icon('chevronRight',12)+'</button></div>';
   } else {
@@ -2091,6 +2097,8 @@ function rFechamento(){
   var confirmados=Object.keys(S.pagamentosFixos||{}).filter(function(k){return k.indexOf(chave+'|')===0;}).length;
   var pendentesEntrada=(S.entradas||[]).filter(function(e){return e.s==='pendente'&&e.m===chave;}).length;
   if(Q('fech-resumo'))Q('fech-resumo').innerHTML+='<div class="div mt8"></div><div class="ctitle mt8">Cheque final</div><div class="plan-row"><div><strong>Pagamentos confirmados manualmente</strong><small>O app não presume pagamento; revise o que ainda está em PIX do mês.</small></div><span class="chip cb">'+confirmados+'</span></div><div class="plan-row"><div><strong>Entradas extras pendentes</strong><small>Não arquive como recebidas se o dinheiro ainda não caiu.</small></div><span class="chip '+(pendentesEntrada?'cy':'cg')+'">'+pendentesEntrada+'</span></div>';
+  var regraCaixa=S.regrasCaixaReserva||{};
+  if(Q('fech-resumo')&&regraCaixa.inicioVarredura&&chave>=regraCaixa.inicioVarredura)Q('fech-resumo').innerHTML+='<div class="div mt8"></div><div class="ctitle mt8">Depois do fechamento real</div><div class="plan-row"><div><strong>1. Provisione a próxima janela</strong><small>Fatura, PIX/boleto, parcelas e variáveis até o próximo dia 15, sem usar salário futuro como cobertura.</small></div><span>'+icon('shield',15)+'</span></div><div class="plan-row"><div><strong>2. Varra o excedente</strong><small>Somente o que sobrar de verdade depois da provisão vai para a Reserva até '+fmt(regraCaixa.metaReserva||40000)+'. Registre a transferência real na caixinha.</small></div><span>'+icon('arrowUpCircle',15)+'</span></div>';
   var btn=Q('fech-confirmar-btn');if(btn){btn.disabled=jaFechado;btn.textContent=jaFechado?'Mês já fechado':'Conferi tudo · fechar mês';}
 }
 function confirmarFechamento(){
@@ -2744,9 +2752,14 @@ function rAgora(){
   var fimDez=visaoDez.meses.length?visaoDez.meses[visaoDez.meses.length-1]:null;
   var valorProj=function(v){return v===null||v===undefined?'—':fmt(v);};
   var linhasDez=(visaoDez.meses||[]).map(function(x){return '<div class="plan-row"><div><strong>'+ml(x.m)+'</strong><small>renda '+fmt(x.renda)+' · obrigações, fatura, envelopes e aportes</small></div><span class="val vsm '+(x.resultado>=0?'tg':'tr')+'">'+(x.resultado>=0?'+':'')+fmt(x.resultado)+'</span></div>';}).join('');
-  var visaoDezHtml='<div class="card plan-panel plan-ledger mb12"><div class="plan-ledger-head"><div><div class="ctitle">Até dezembro · leitura certa</div><div class="plan-card-title" style="margin-top:4px">Carry, reserva e dinheiro utilizável não são a mesma coisa</div></div><span class="plan-auto-badge">recalcula sozinho</span></div><div class="plan-ledger-note">A projeção considera salários cadastrados, 13º de dezembro, PIX/boletos, variáveis, envelopes, faturas e aportes registrados. Entradas extras incertas ficam fora. Fatura fechada sempre prevalece sobre a previsão.</div><div class="plan-kpis"><div class="plan-kpi"><span>Livre em conta · 31/dez</span><b class="tg">'+valorProj(visaoDez.caixa)+'</b></div><div class="plan-kpi"><span>Reserva protegida · 31/dez</span><b class="tb">'+valorProj(visaoDez.reserva)+'</b></div><div class="plan-kpi"><span>Carry total · 31/dez</span><b>'+valorProj(visaoDez.carry)+'</b></div></div><div class="plan-mini" style="margin:8px 0 4px">Livre em conta = o que sobra depois de tudo até dezembro. Reserva protegida não é dinheiro para gastar. Carry total soma caixa e caixinhas.</div>'+linhasDez+'</div>';
+  var visaoDezHtml='<div class="card plan-panel plan-ledger mb12"><div class="plan-ledger-head"><div><div class="ctitle">Até dezembro · leitura certa</div><div class="plan-card-title" style="margin-top:4px">Carry, reserva e dinheiro utilizável não são a mesma coisa</div></div><span class="plan-auto-badge">recalcula sozinho</span></div><div class="plan-ledger-note">A projeção considera salários cadastrados, PIX/boletos, variáveis, envelopes, faturas e aportes registrados. O 13º e entradas extras ficam fora até serem marcados como recebidos. Fatura fechada sempre prevalece sobre a previsão.</div><div class="plan-kpis"><div class="plan-kpi"><span>Livre em conta · 31/dez</span><b class="tg">'+valorProj(visaoDez.caixa)+'</b></div><div class="plan-kpi"><span>Reserva protegida · 31/dez</span><b class="tb">'+valorProj(visaoDez.reserva)+'</b></div><div class="plan-kpi"><span>Carry total · 31/dez</span><b>'+valorProj(visaoDez.carry)+'</b></div></div><div class="plan-mini" style="margin:8px 0 4px">Livre em conta = o que sobra depois de tudo até dezembro. Reserva protegida não é dinheiro para gastar. Carry total soma caixa e caixinhas.</div>'+linhasDez+'</div>';
   if(Q('agora-progress'))Q('agora-progress').insertAdjacentHTML('beforeend',visaoDezHtml);
   if(Q('agora-progress'))Q('agora-progress').insertAdjacentHTML('beforeend',contaHtml);
+  var regraCaixa=S.regrasCaixaReserva||{};
+  if(Q('agora-progress')&&regraCaixa.inicioVarredura){
+    var mesVarredura=MES>=regraCaixa.inicioVarredura;
+    Q('agora-progress').insertAdjacentHTML('beforeend','<div class="card plan-panel plan-callout mb12"><div class="ctitle">Fechamento e varredura da Reserva</div><div class="plan-card-title" style="margin-top:4px">'+(mesVarredura?'Fechamento real do mês: use a ordem abaixo':'Regra ativa a partir de outubro/2026')+'</div><div class="plan-mini" style="margin:7px 0">1. Fatura fechada real · 2. PIX, boleto e parcelas · 3. Variáveis · 4. Viagem. Só então separe a provisão da próxima janela.</div><div class="plan-row"><div><strong>Provisão obrigatória</strong><small>Próxima fatura + contas, parcelas e variáveis até o próximo dia 15; sem contar com salário futuro.</small></div><span>'+icon('shield',16)+'</span></div><div class="plan-row"><div><strong>Destino do excedente real</strong><small>Depois da provisão, 100% vai para a Reserva até '+fmt(regraCaixa.metaReserva||40000)+'. O app não transfere sozinho.</small></div><span>'+icon('arrowUpCircle',16)+'</span></div><div class="plan-mini">O 13º só entra quando recebido; depois, só completa o que faltar para a meta. Cofrinhos não emergenciais não recebem aporte automático em agosto e setembro.</div></div>');
+  }
   var h='<div class="card mb8"><div class="fsb mb8"><div><div class="ctitle" style="margin:0">Próxima ação · '+esc(ev.lbl)+'</div><div class="plan-card-title" style="margin-top:4px">Faça uma etapa, confirme e siga para a próxima</div></div><div class="chip '+(done===ev.passos.length?'cg':'cy')+'">'+done+' de '+ev.passos.length+'</div></div><div class="agora-checklist">';
   ev.passos.forEach(function(p,i){
     var stepKey=agoraStepKey(p,i),checked=!!ck[stepKey];
@@ -3539,8 +3552,8 @@ var REGRAS=[
   {id:'fatura',icon:'barChart',t:'Fatura do ciclo',d:'Valor já lançado neste mês',r:'Acompanhe a fatura lançada separadamente da projeção das parcelas. Fatura alta não vira autorização para novas compras.',get s(){var br=+(S.faturas&&S.faturas.br||0),nu=+(S.faturas&&S.faturas.nu||0),renda=(+((S.cfg||{}).sal15||16000))+(+((S.cfg||{}).sal30||13192)),pct=(br+nu)/Math.max(1,renda);return pct<.2?'verde':pct<.3?'amarelo':'vermelho';},get info(){var f=S.faturas||{};return 'NU '+fmt(+f.nu||0)+' · BR '+fmt(+f.br||0);}},
   {id:'limites_cartao',icon:'creditCard',t:'Guardas de cartão pela renda',d:'Limites de orçamento, não limite bancário',r:'Referência do plano: Nubank até 15% e Bradesco até 20% da renda líquida mensal. Revise os alertas em Configurações → Renda quando a renda mudar.',get s(){var c=S.cfg||{},renda=(+c.sal15||16000)+(+c.sal30||13192),p=getProjecaoFatura(),nuMax=Math.max(+c.lim_nu||0,Math.round(renda*.15)),brMax=Math.max(+c.lim_br||0,Math.round(renda*.20)),uso=Math.max(p.NU/Math.max(1,nuMax),p.BR/Math.max(1,brMax));return uso<.75?'verde':uso<.95?'amarelo':'vermelho';},get info(){var c=S.cfg||{},renda=(+c.sal15||16000)+(+c.sal30||13192),p=getProjecaoFatura(),nuMax=Math.max(+c.lim_nu||0,Math.round(renda*.15)),brMax=Math.max(+c.lim_br||0,Math.round(renda*.20));return 'NU '+fmt(p.NU)+'/'+fmt(nuMax)+' · BR '+fmt(p.BR)+'/'+fmt(brMax);}},
   {id:'parcelas_novas',icon:'card',t:'Novas parcelas',d:'Só com espaço projetado no cartão',r:'Antes de parcelar, confira a projeção acima e a margem do mês. Se alguma guarda estiver vermelha ou a margem ficar negativa, não crie parcela nova.',get s(){var p=getProjecaoFatura(),c=S.cfg||{},renda=(+c.sal15||16000)+(+c.sal30||13192),nuMax=Math.max(+c.lim_nu||0,Math.round(renda*.15)),brMax=Math.max(+c.lim_br||0,Math.round(renda*.20)),margem=getStrategiaMes().livrePlanejado,uso=Math.max(p.NU/Math.max(1,nuMax),p.BR/Math.max(1,brMax));return margem<0||uso>=.95?'vermelho':uso>=.75?'amarelo':'verde';},get info(){var p=getProjecaoFatura();return 'Projetado: NU '+fmt(p.NU)+' · BR '+fmt(p.BR);}},
-  {id:'50_50',icon:'dollarSign',t:'Protocolo 50/50',d:'Para dinheiro extra',r:'Éverton, Monique, IR restituição: 50% → reserva emergência · 50% → livre. Itaú 1 quitar quando reserva > R$20k.',s:'azul',info:'Regra preventiva'},
-  {id:'meta',icon:'target',t:'Foco 2026 — crescimento',d:'Reserva R$51.472 · Score 800 · Viagem set',r:'C6 quitado · Nome limpo · Serasa 735 · Próximo: Quitar Itaú 1 dez/26 · Tesouro Selic out/26 · Reserva meta dez/26.',get s(){var res=+((S.cx||{}).reserva||0);var itau1=(S.dividas||[]).find(function(d){return d.id==='itau1';});return res>30000&&(!itau1||itau1.v===0)?'verde':res>15000?'amarelo':'vermelho';},get info(){var res=+((S.cx||{}).reserva||0);var pct=Math.round(res/51472*100);return 'Reserva '+pct+'% · Serasa '+(+((S.cfg||{}).serasa_score||735));}},
+  {id:'varredura',icon:'shieldCheck',t:'Varredura de caixa',d:'A partir do fechamento real de outubro',r:'Primeiro proteja integralmente a próxima fatura, PIX/boleto, parcelas e variáveis até o próximo dia 15. Depois, 100% do excedente real vai para a Reserva até R$40 mil. Não é transferência automática nem se baseia em projeção.',s:'azul',info:'Provisão antes do aporte'},
+  {id:'meta',icon:'target',t:'Foco do plano',d:'Reserva de Emergência R$40.000',r:'A meta é chegar a R$40 mil até fev/mar de 2027. O 13º só entra depois de recebido e apenas no valor necessário para completar a meta. Quitação do Itaú 1 fica para revisão depois de a Reserva estabilizar.',get s(){var res=+((S.cx||{}).reserva||0),meta=getMetaCaixinha('reserva',40000);return res>=meta?'verde':res>=meta*.5?'amarelo':'vermelho';},get info(){var res=+((S.cx||{}).reserva||0),meta=getMetaCaixinha('reserva',40000);return 'Reserva '+fmt(res)+' de '+fmt(meta);}},
 ];
 function rRegras(){
   var verde=REGRAS.filter(function(r){return r.s==='verde';}).length;
@@ -4103,6 +4116,53 @@ function aplicarConciliacaoFaturas09082026(){
       var ok=await save();
       if(!ok){S=anterior;renderAll();toast('Não foi possível salvar a conciliação. Seus dados foram restaurados.');return;}
       renderAll();toast('Conciliação de 09/ago aplicada sem duplicar parcelas ou mexer nas caixinhas.');
+    },false);
+}
+// Regras operacionais consolidadas em 09/ago. Esta migração nunca movimenta
+// caixinhas nem altera gastos: registra somente o critério que o app deve usar
+// para orientar os próximos fechamentos reais.
+function aplicarRegrasCaixaReserva09082026(){
+  if(!canMutateNow())return;
+  if(S.mig26RegrasCaixaReserva0908){toast('As regras de caixa e reserva já foram aplicadas.');return;}
+  askConfirm('Aplicar regras de caixa e reserva?',
+    'Um backup será baixado. Atualiza valores recorrentes, a pausa de setembro e o plano de varredura para a Reserva. Não transfere dinheiro, não altera saldos de caixinhas e não registra pagamentos.',
+    async function(){
+      var anterior=JSON.parse(JSON.stringify(S));
+      downloadJson(anterior,'financas-gs-antes-regras-caixa-reserva-09-ago-2026-'+getTodayKeySP()+'.json');
+      if(!S.fixosPix)S.fixosPix=[];
+      var upsert=function(d){var x=S.fixosPix.find(function(f){return f&&f.id===d.id;});if(x)Object.assign(x,d);else S.fixosPix.push(d);};
+      upsert({id:'psicologa',e:'🧠',n:'Psicóloga',v:549,dia:'15',ativo:true,obs:'2 consultas/mês · Alessandra Christina · pausa em set/2026',enc:''});
+      upsert({id:'personal',e:'🏋️',n:'Personal Rafael',v:2100,dia:'30',ativo:true,obs:'Teto provisório mensal · set/2026 foi antecipado em ago',enc:''});
+      var itau1=S.fixosPix.find(function(f){return f&&f.id==='itau1';});
+      if(itau1){itau1.v=510.23;itau1.dia='12';itau1.obs='Parcela mensal · decisão de quitação só após reserva estabilizada na meta de R$40 mil';}
+      if(!S.excecoesFixos)S.excecoesFixos={};
+      S.excecoesFixos['2026-09']=Object.assign({},S.excecoesFixos['2026-09']||{},{psicologa:{pausado:true,ativo:false,obs:'Pausa confirmada em set/2026'}});
+      if(!S.cfg)S.cfg={};S.cfg.m_res=40000;
+      S.regrasCaixaReserva={
+        versao:1,inicioVarredura:'2026-10',metaReserva:40000,
+        ordem:['Fatura fechada real','PIX, boletos e parcelas do período','Variáveis do período','Viagem pendente','Provisão e varredura'],
+        provisao:'No fechamento real do dia 30, separar o valor bruto da próxima fatura + PIX/boleto + parcelas + variáveis até o próximo dia 15, sem contar com salário futuro.',
+        varredura:'Depois da provisão, 100% do excedente real vai para a Reserva de Emergência até R$40.000.',
+        decimo:'O 13º não é considerado livre até ser recebido; depois, somente o necessário completa a Reserva até R$40.000.',
+        observacao:'Cofrinhos não emergenciais não recebem aporte automático em ago/set. Valores de outubro e novembro são pisos de referência, nunca uma transferência automática.'
+      };
+      S.planoAportes={versao:5,meses:[
+        {m:'2026-07',aportes:{'Reserva':2000},nota:'aporte já realizado; histórico'},
+        {m:'2026-08',aportes:{},nota:'transição e viagem: nenhuma transferência automática'},
+        {m:'2026-09',aportes:{},nota:'viagem e pausa de caixinhas não emergenciais'},
+        {m:'2026-10',aportes:{'Reserva':2500},nota:'piso de referência; no fechamento real, varrer todo excedente após provisão'},
+        {m:'2026-11',aportes:{'Reserva':4000},nota:'piso de referência; no fechamento real, varrer todo excedente após provisão'},
+        {m:'2026-12',aportes:{},nota:'13º somente após recebimento e apenas o necessário para completar R$40 mil'}
+      ]};
+      if(!S.cxDef)S.cxDef={fixas:[],uso:[]};if(!Array.isArray(S.cxDef.fixas))S.cxDef.fixas=[];
+      var reserva=S.cxDef.fixas.find(function(c){return c&&c.id==='reserva';});
+      if(reserva)Object.assign(reserva,{m:40000,fim:'2027-03',ap:0,o:'Meta R$40.000 · varredura do excedente real após provisão; 13º só completa o que faltar.'});
+      var obrigacao=S.cxDef.fixas.find(function(c){return c&&c.id==='obrigacao';});
+      if(obrigacao)Object.assign(obrigacao,{m:5000,ap:0,fim:'2027-04',o:'Meta, não parcela mensal. Recomeçar apenas depois da Reserva e das provisões.'});
+      S.mig26RegrasCaixaReserva0908=true;S.mig26RegrasCaixaReserva0908Em=Date.now();
+      var ok=await save();
+      if(!ok){S=anterior;renderAll();toast('Não foi possível salvar as regras. Seus dados foram restaurados.');return;}
+      renderAll();toast('Regras de caixa e reserva aplicadas. Saldos reais não foram movimentados.');
     },false);
 }
 function aplicarPlanoSegundoSemestre2026(){
