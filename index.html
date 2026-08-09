@@ -747,6 +747,7 @@ button,.card,.month-event,.tab,.home-action{touch-action:manipulation}@media (pr
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarAuditoriaProjecoes30072026()"><span class="ui-icon" data-icon="shieldCheck" data-icon-size="14" aria-hidden="true"></span><span>Corrigir projeções e duplicatas — 30/jul</span></button>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarConciliacaoFaturas09082026()"><span class="ui-icon" data-icon="receipt" data-icon-size="14" aria-hidden="true"></span><span>Aplicar conciliação de faturas — 09/ago</span></button>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarRegrasCaixaReserva09082026()"><span class="ui-icon" data-icon="shieldCheck" data-icon-size="14" aria-hidden="true"></span><span>Aplicar regras de caixa e reserva — ago/2026</span></button>
+              <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarPlanoEurosSet2026()"><span class="ui-icon" data-icon="plane" data-icon-size="14" aria-hidden="true"></span><span>Registrar plano de euros — set/2026</span></button>
               <button class="btn bo bfull mt8 btn-with-icon" onclick="limparParcelasDuplicadas()"><span class="ui-icon" data-icon="tool" data-icon-size="14" aria-hidden="true"></span><span>Corrigir parcelas duplicadas</span></button>
               <button class="btn bo bfull mt8 btn-with-icon" onclick="go('fechamento')"><span class="ui-icon" data-icon="checkSquare" data-icon-size="14" aria-hidden="true"></span><span>Fechamento guiado do mês</span></button>
               <button class="btn bd bfull mt8 btn-with-icon" onclick="resetTudo()"><span class="ui-icon" data-icon="alertTriangle" data-icon-size="14" aria-hidden="true"></span><span>Reset completo</span></button>
@@ -2760,6 +2761,11 @@ function rAgora(){
     var mesVarredura=MES>=regraCaixa.inicioVarredura;
     Q('agora-progress').insertAdjacentHTML('beforeend','<div class="card plan-panel plan-callout mb12"><div class="ctitle">Fechamento e varredura da Reserva</div><div class="plan-card-title" style="margin-top:4px">'+(mesVarredura?'Fechamento real do mês: use a ordem abaixo':'Regra ativa a partir de outubro/2026')+'</div><div class="plan-mini" style="margin:7px 0">1. Fatura fechada real · 2. PIX, boleto e parcelas · 3. Variáveis · 4. Viagem. Só então separe a provisão da próxima janela.</div><div class="plan-row"><div><strong>Provisão obrigatória</strong><small>Próxima fatura + contas, parcelas e variáveis até o próximo dia 15; sem contar com salário futuro.</small></div><span>'+icon('shield',16)+'</span></div><div class="plan-row"><div><strong>Destino do excedente real</strong><small>Depois da provisão, 100% vai para a Reserva até '+fmt(regraCaixa.metaReserva||40000)+'. O app não transfere sozinho.</small></div><span>'+icon('arrowUpCircle',16)+'</span></div><div class="plan-mini">O 13º só entra quando recebido; depois, só completa o que faltar para a meta. Cofrinhos não emergenciais não recebem aporte automático em agosto e setembro.</div></div>');
   }
+  var planoEuros=S.planoEurosSet2026;
+  if(Q('agora-progress')&&planoEuros){
+    var pre=planoEuros.preEmbarque||{},pos=planoEuros.posSalario||{};
+    Q('agora-progress').insertAdjacentHTML('beforeend','<div class="card plan-panel mb12"><div class="ctitle">Euros · viagem de setembro</div><div class="plan-card-title" style="margin-top:4px">Orçamento separado da fatura</div><div class="plan-row"><div><strong>Saldo atual Revolut</strong><small>Saldo observado; não inclui compras futuras.</small></div><span class="val vsm tb">€ '+Number(planoEuros.saldoInicial||0).toLocaleString(\'pt-BR\',{minimumFractionDigits:2,maximumFractionDigits:2})+'</span></div><div class="plan-row"><div><strong>Antes de 03/set</strong><small>Comprar € '+Number(pre.eur||0).toLocaleString(\'pt-BR\',{minimumFractionDigits:2,maximumFractionDigits:2})+' somente depois da fatura de 15/ago e das contas prioritárias.</small></div><span class="val vsm tr">'+fmt(pre.brl||0)+'</span></div><div class="plan-row"><div><strong>Após o salário de 15/set</strong><small>Completa os últimos dias; já considera o saldo remanescente no Revolut.</small></div><span class="val vsm tr">'+fmt(pos.brl||0)+'</span></div><div class="plan-mini">Câmbio-teto do plano: R$ '+Number(planoEuros.cambioTeto||0).toLocaleString(\'pt-BR\',{minimumFractionDigits:2})+' por euro. Se ele subir ou surgir gasto fora do roteiro, revise antes de usar Reserva.</div></div>');
+  }
   var h='<div class="card mb8"><div class="fsb mb8"><div><div class="ctitle" style="margin:0">Próxima ação · '+esc(ev.lbl)+'</div><div class="plan-card-title" style="margin-top:4px">Faça uma etapa, confirme e siga para a próxima</div></div><div class="chip '+(done===ev.passos.length?'cg':'cy')+'">'+done+' de '+ev.passos.length+'</div></div><div class="agora-checklist">';
   ev.passos.forEach(function(p,i){
     var stepKey=agoraStepKey(p,i),checked=!!ck[stepKey];
@@ -4163,6 +4169,31 @@ function aplicarRegrasCaixaReserva09082026(){
       var ok=await save();
       if(!ok){S=anterior;renderAll();toast('Não foi possível salvar as regras. Seus dados foram restaurados.');return;}
       renderAll();toast('Regras de caixa e reserva aplicadas. Saldos reais não foram movimentados.');
+    },false);
+}
+// Planejamento de viagem validado em 09/ago. Registra o saldo observado no
+// Revolut e as compras futuras como compromissos, sem lançar uma saída antes de
+// ela acontecer e sem usar a Reserva como fonte automática.
+function aplicarPlanoEurosSet2026(){
+  if(!canMutateNow())return;
+  if(S.mig27PlanoEurosSet2026){toast('O plano de euros de setembro já foi registrado.');return;}
+  askConfirm('Registrar plano de euros da viagem?',
+    'Um backup será baixado. Registra o saldo observado de €78,12 e as duas compras planejadas (€1.060 antes do embarque e €420,38 após 15/set). Não converte dinheiro, não altera contas em reais nem movimenta a Reserva.',
+    async function(){
+      var anterior=JSON.parse(JSON.stringify(S));
+      downloadJson(anterior,'financas-gs-antes-plano-euros-09-ago-2026-'+getTodayKeySP()+'.json');
+      S.saldoRevolut={data:'2026-08-09',moeda:'EUR',saldo:78.12,observacao:'Saldo observado. Plano de viagem separado: €1.060 antes de 03/set e €420,38 após 15/set; ferry e Sitges incluídos no orçamento.'};
+      S.planoEurosSet2026={
+        moeda:'EUR',cambioTeto:6.10,saldoInicial:78.12,orcamentoTotal:1558.50,
+        preEmbarque:{dataLimite:'2026-09-03',eur:1060,brl:6466,obs:'€980 diária/ferry/imigração + €80 Sitges. Comprar somente depois da fatura de 15/ago e das contas prioritárias.'},
+        posSalario:{data:'2026-09-15',eur:420.38,brl:2564.32,obs:'Completa os 8 dias finais já considerando €139,62 remanescentes no Revolut.'},
+        regra:'O euro pré-embarque não concorre com a fatura de 15/ago. Não usar a Reserva em setembro se o plano e o câmbio-teto se mantiverem.',
+        revisadoEm:getTodayKeySP()
+      };
+      S.mig27PlanoEurosSet2026=true;S.mig27PlanoEurosSet2026Em=Date.now();
+      var ok=await save();
+      if(!ok){S=anterior;renderAll();toast('Não foi possível salvar o plano de euros. Seus dados foram restaurados.');return;}
+      renderAll();toast('Plano de euros registrado. Nenhuma conversão foi lançada automaticamente.');
     },false);
 }
 function aplicarPlanoSegundoSemestre2026(){
