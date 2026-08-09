@@ -748,6 +748,7 @@ button,.card,.month-event,.tab,.home-action{touch-action:manipulation}@media (pr
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarConciliacaoFaturas09082026()"><span class="ui-icon" data-icon="receipt" data-icon-size="14" aria-hidden="true"></span><span>Aplicar conciliação de faturas — 09/ago</span></button>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarRegrasCaixaReserva09082026()"><span class="ui-icon" data-icon="shieldCheck" data-icon-size="14" aria-hidden="true"></span><span>Aplicar regras de caixa e reserva — ago/2026</span></button>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarPlanoEurosSet2026()"><span class="ui-icon" data-icon="plane" data-icon-size="14" aria-hidden="true"></span><span>Registrar plano de euros — set/2026</span></button>
+              <button class="btn bp bfull mt8 btn-with-icon" onclick="corrigirCalendarioConsorcioSet2026()"><span class="ui-icon" data-icon="calendar" data-icon-size="14" aria-hidden="true"></span><span>Corrigir calendário do consórcio — dia 07</span></button>
               <button class="btn bo bfull mt8 btn-with-icon" onclick="limparParcelasDuplicadas()"><span class="ui-icon" data-icon="tool" data-icon-size="14" aria-hidden="true"></span><span>Corrigir parcelas duplicadas</span></button>
               <button class="btn bo bfull mt8 btn-with-icon" onclick="go('fechamento')"><span class="ui-icon" data-icon="checkSquare" data-icon-size="14" aria-hidden="true"></span><span>Fechamento guiado do mês</span></button>
               <button class="btn bd bfull mt8 btn-with-icon" onclick="resetTudo()"><span class="ui-icon" data-icon="alertTriangle" data-icon-size="14" aria-hidden="true"></span><span>Reset completo</span></button>
@@ -1686,7 +1687,7 @@ function dfFixosPix(){return[
   {id:'personal',e:'🏋️',n:'Personal Rafael',v:2100,dia:'30',obs:'Teto provisório mensal · set/2026 foi antecipado em ago',enc:''},
   {id:'itau2',e:'🏦',n:'Itaú 2',v:423,dia:'22',obs:'Quitar quando possível',enc:''},
   {id:'itau1',e:'🏦',n:'Itaú 1',v:510.23,dia:'12',obs:'Parcela mensal · decisão de quitação só após reserva estabilizada na meta de R$40 mil',enc:''},
-  {id:'ademicon',e:'🚗',n:'Ademicon Veículos',v:1452.50,dia:'15',inicio:'2026-09',obs:'Pré-contemplação · antes cobrado no cartão Nubank · ago/2026 já foi antecipado na fatura de jul · revisar para R$2.033,50 no mês da contemplação',enc:''},
+  {id:'ademicon',e:'🚗',n:'Ademicon Veículos',v:1452.50,dia:'7',inicio:'2026-09',obs:'Pré-contemplação · vence dia 07 · provisionar no fechamento do mês anterior · antes cobrado no cartão Nubank · revisar para R$2.033,50 no mês da contemplação',enc:''},
   {id:'energia_solar',e:'☀️',n:'Energia Solar (ASC Engenharia Elétrica)',v:966.68,dia:'17',inicio:'2026-08',obs:'Financiamento solar 4/4 parcelas · entrada de R$15.000 paga pelo pai, fora do fluxo',enc:'2026-11'},
   {id:'spotify',e:'🎵',n:'Spotify Obatobi',v:14,dia:'15',obs:'',enc:''},
   {id:'seg_res',e:'🏠',n:'Seguro Residencial',v:162.90,dia:'15',obs:'Bradesco',enc:''},
@@ -2763,8 +2764,8 @@ function rAgora(){
   }
   var planoEuros=S.planoEurosSet2026;
   if(Q('agora-progress')&&planoEuros){
-    var pre=planoEuros.preEmbarque||{},pos=planoEuros.posSalario||{};
-    Q('agora-progress').insertAdjacentHTML('beforeend','<div class="card plan-panel mb12"><div class="ctitle">Euros · viagem de setembro</div><div class="plan-card-title" style="margin-top:4px">Orçamento separado da fatura</div><div class="plan-row"><div><strong>Saldo atual Revolut</strong><small>Saldo observado; não inclui compras futuras.</small></div><span class="val vsm tb">€ '+Number(planoEuros.saldoInicial||0).toLocaleString(\'pt-BR\',{minimumFractionDigits:2,maximumFractionDigits:2})+'</span></div><div class="plan-row"><div><strong>Antes de 03/set</strong><small>Comprar € '+Number(pre.eur||0).toLocaleString(\'pt-BR\',{minimumFractionDigits:2,maximumFractionDigits:2})+' somente depois da fatura de 15/ago e das contas prioritárias.</small></div><span class="val vsm tr">'+fmt(pre.brl||0)+'</span></div><div class="plan-row"><div><strong>Após o salário de 15/set</strong><small>Completa os últimos dias; já considera o saldo remanescente no Revolut.</small></div><span class="val vsm tr">'+fmt(pos.brl||0)+'</span></div><div class="plan-mini">Câmbio-teto do plano: R$ '+Number(planoEuros.cambioTeto||0).toLocaleString(\'pt-BR\',{minimumFractionDigits:2})+' por euro. Se ele subir ou surgir gasto fora do roteiro, revise antes de usar Reserva.</div></div>');
+    var pre=planoEuros.preEmbarque||{},pos=planoEuros.posSalario||{},ponte=planoEuros.reservaPonte||{};
+    Q('agora-progress').insertAdjacentHTML('beforeend','<div class="card plan-panel mb12"><div class="ctitle">Euros · viagem de setembro</div><div class="plan-card-title" style="margin-top:4px">Orçamento separado da fatura</div><div class="plan-row"><div><strong>Saldo atual Revolut</strong><small>Saldo observado; não inclui compras futuras.</small></div><span class="val vsm tb">€ '+Number(planoEuros.saldoInicial||0).toLocaleString(\'pt-BR\',{minimumFractionDigits:2,maximumFractionDigits:2})+'</span></div><div class="plan-row"><div><strong>Antes de 03/set</strong><small>Comprar € '+Number(pre.eur||0).toLocaleString(\'pt-BR\',{minimumFractionDigits:2,maximumFractionDigits:2})+' somente depois da fatura de 15/ago e das contas prioritárias.</small></div><span class="val vsm tr">'+fmt(pre.brl||0)+'</span></div><div class="plan-row"><div><strong>Após o salário de 15/set</strong><small>Completa os últimos dias; já considera o saldo remanescente no Revolut.</small></div><span class="val vsm tr">'+fmt(pos.brl||0)+'</span></div>'+(ponte.brl?'<div class="plan-row"><div><strong>Ponte planejada da Reserva</strong><small>Somente em 15/set, para manter R$560 entre a volta ao Brasil e o salário do dia 30.</small></div><span class="val vsm ty">'+fmt(ponte.brl)+'</span></div>':'')+'<div class="plan-mini">Câmbio-teto do plano: R$ '+Number(planoEuros.cambioTeto||0).toLocaleString(\'pt-BR\',{minimumFractionDigits:2})+' por euro. O consórcio vence dia 07 e deve estar provisionado no fechamento anterior.</div></div>');
   }
   var h='<div class="card mb8"><div class="fsb mb8"><div><div class="ctitle" style="margin:0">Próxima ação · '+esc(ev.lbl)+'</div><div class="plan-card-title" style="margin-top:4px">Faça uma etapa, confirme e siga para a próxima</div></div><div class="chip '+(done===ev.passos.length?'cg':'cy')+'">'+done+' de '+ev.passos.length+'</div></div><div class="agora-checklist">';
   ev.passos.forEach(function(p,i){
@@ -3894,7 +3895,7 @@ function aplicarAjustesFinanceiros25072026Parte1(){
         var item=S.fixosPix.find(function(f){return f&&f.id===dados.id;});
         if(item)Object.assign(item,dados);else S.fixosPix.push(dados);
       };
-      upsertPix({id:'ademicon',e:'🚗',n:'Ademicon Veículos',v:1452.50,dia:'15',inicio:'2026-09',enc:'',ativo:true,obs:'Pré-contemplação · antes cobrado no cartão Nubank · ago/2026 já foi antecipado na fatura de jul · revisar para R$2.033,50 no mês da contemplação'});
+      upsertPix({id:'ademicon',e:'🚗',n:'Ademicon Veículos',v:1452.50,dia:'7',inicio:'2026-09',enc:'',ativo:true,obs:'Pré-contemplação · vence dia 07 · provisionar no fechamento do mês anterior · antes cobrado no cartão Nubank · revisar para R$2.033,50 no mês da contemplação'});
       upsertPix({id:'energia_solar',e:'☀️',n:'Energia Solar (ASC Engenharia Elétrica)',v:966.68,dia:'17',inicio:'2026-08',enc:'2026-11',ativo:true,obs:'Financiamento solar 4/4 parcelas · entrada de R$15.000 paga pelo pai, fora do fluxo'});
 
       S.fixosVar.luz=388;
@@ -3974,7 +3975,7 @@ function corrigirParcelaAdemicon145250(){
     var dados={v:1452.50,obs:'Pré-contemplação · antes cobrado no cartão Nubank · ago/2026 já foi antecipado na fatura de jul · revisar para R$2.033,50 no mês da contemplação'};
     var achou=false;
     [S.fixosPix,S.fixosAss].forEach(function(lista){lista.forEach(function(item){if(item&&(item.id==='ademicon'||/ademicon/i.test(String(item.n||'')))){Object.assign(item,dados);achou=true;}});});
-    if(!achou)S.fixosPix.push({id:'ademicon',e:'🚗',n:'Ademicon Veículos',v:1452.50,dia:'15',inicio:'2026-09',enc:'',ativo:true,obs:dados.obs});
+    if(!achou)S.fixosPix.push({id:'ademicon',e:'🚗',n:'Ademicon Veículos',v:1452.50,dia:'7',inicio:'2026-09',enc:'',ativo:true,obs:dados.obs});
     S.mig21Ademicon145250Feita=true;
     S.mig21Ademicon145250AplicadaEm=Date.now();
     var saved=await save();
@@ -4194,6 +4195,33 @@ function aplicarPlanoEurosSet2026(){
       var ok=await save();
       if(!ok){S=anterior;renderAll();toast('Não foi possível salvar o plano de euros. Seus dados foram restaurados.');return;}
       renderAll();toast('Plano de euros registrado. Nenhuma conversão foi lançada automaticamente.');
+    },false);
+}
+// Correção de calendário confirmada em 09/ago. Não altera valores, saldos ou
+// pagamentos: apenas fixa o vencimento real e a regra de provisão do consórcio.
+function corrigirCalendarioConsorcioSet2026(){
+  if(!canMutateNow())return;
+  if(S.mig28CalendarioConsorcioSet2026){toast('O calendário do consórcio já está corrigido para o dia 07.');return;}
+  askConfirm('Corrigir calendário do consórcio?',
+    'Um backup será baixado. Define vencimento no dia 07, exige a provisão no fechamento anterior e ajusta o plano de euros para registrar a ponte planejada de setembro. Não movimenta dinheiro nem marca pagamentos.',
+    async function(){
+      var anterior=JSON.parse(JSON.stringify(S));
+      downloadJson(anterior,'financas-gs-antes-calendario-consorcio-09-ago-2026-'+getTodayKeySP()+'.json');
+      if(!S.fixosPix)S.fixosPix=[]; if(!S.fixosAss)S.fixosAss=[];
+      S.fixosAss=S.fixosAss.filter(function(f){return !(f&&(f.id==='ademicon'||/ademicon/i.test(String(f.n||''))));});
+      var dados={id:'ademicon',e:'🚗',n:'Ademicon Veículos',v:1452.50,dia:'7',inicio:'2026-09',enc:'',ativo:true,obs:'Pré-contemplação · vence dia 07 · provisionar integralmente no fechamento do mês anterior · revisar para R$2.033,50 no mês da contemplação'};
+      var ademicon=S.fixosPix.find(function(f){return f&&(f.id==='ademicon'||/ademicon/i.test(String(f.n||'')));});
+      if(ademicon)Object.assign(ademicon,dados);else S.fixosPix.push(dados);
+      if(!S.regrasCaixaReserva)S.regrasCaixaReserva={};
+      S.regrasCaixaReserva.consorcio={vencimento:'07',provisao:'No fechamento do mês anterior, separar R$1.452,50 para o consórcio. Não tratar esse valor como dinheiro livre nem descontá-lo novamente no dia 15.'};
+      if(!S.planoEurosSet2026)S.planoEurosSet2026={moeda:'EUR',cambioTeto:6.10,saldoInicial:78.12,orcamentoTotal:1558.50,preEmbarque:{dataLimite:'2026-09-03',eur:1060,brl:6466,obs:'€980 diária/ferry/imigração + €80 Sitges.'},posSalario:{data:'2026-09-15',eur:420.38,brl:2564.32,obs:'Completa os últimos dias já considerando €139,62 remanescentes no Revolut.'}};
+      S.planoEurosSet2026.reservaPonte={data:'2026-09-15',brl:408.71,obs:'Ponte planejada para manter R$560 entre 22 e 30/set, depois da fatura e da compra de euros. Recompor pela varredura real de outubro.'};
+      S.planoEurosSet2026.regra='O euro pré-embarque não concorre com a fatura de 15/ago. O consórcio de 07/set deve estar provisionado em 30/ago. A ponte planejada da Reserva em 15/set é R$408,71; revisar com os valores reais.';
+      S.planoEurosSet2026.revisadoEm=getTodayKeySP();
+      S.mig28CalendarioConsorcioSet2026=true;S.mig28CalendarioConsorcioSet2026Em=Date.now();
+      var ok=await save();
+      if(!ok){S=anterior;renderAll();toast('Não foi possível salvar a correção. Seus dados foram restaurados.');return;}
+      renderAll();toast('Consórcio corrigido para o dia 07. Nenhum pagamento foi lançado.');
     },false);
 }
 function aplicarPlanoSegundoSemestre2026(){
