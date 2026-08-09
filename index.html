@@ -745,6 +745,7 @@ button,.card,.month-event,.tab,.home-action{touch-action:manipulation}@media (pr
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarOrganizacaoCaixinhas26072026()"><span class="ui-icon" data-icon="piggyBank" data-icon-size="14" aria-hidden="true"></span><span>Aplicar organização de caixinhas e obrigação</span></button>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarRevisaoFluxo26072026()"><span class="ui-icon" data-icon="refreshCw" data-icon-size="14" aria-hidden="true"></span><span>Aplicar revisão de fluxo, fatura e dinheiro livre</span></button>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarAuditoriaProjecoes30072026()"><span class="ui-icon" data-icon="shieldCheck" data-icon-size="14" aria-hidden="true"></span><span>Corrigir projeções e duplicatas — 30/jul</span></button>
+              <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarConciliacaoFaturas09082026()"><span class="ui-icon" data-icon="receipt" data-icon-size="14" aria-hidden="true"></span><span>Aplicar conciliação de faturas — 09/ago</span></button>
               <button class="btn bo bfull mt8 btn-with-icon" onclick="limparParcelasDuplicadas()"><span class="ui-icon" data-icon="tool" data-icon-size="14" aria-hidden="true"></span><span>Corrigir parcelas duplicadas</span></button>
               <button class="btn bo bfull mt8 btn-with-icon" onclick="go('fechamento')"><span class="ui-icon" data-icon="checkSquare" data-icon-size="14" aria-hidden="true"></span><span>Fechamento guiado do mês</span></button>
               <button class="btn bd bfull mt8 btn-with-icon" onclick="resetTudo()"><span class="ui-icon" data-icon="alertTriangle" data-icon-size="14" aria-hidden="true"></span><span>Reset completo</span></button>
@@ -1655,7 +1656,7 @@ function dfEnvs(){return[
 ];}
 function dfParc(){return{
   tassia:{n:'Tassia Devecchi',b:'NU',vp:465,tp:6,cp:2,f:'Set/2026'},
-  exame_bact:{n:'Exame Bacterias',b:'NU',vp:465,tp:6,cp:4,f:'Nov/2026'},
+  exame_bact:{n:'Exame Bacterias',b:'BR',vp:465,tp:6,cp:4,f:'Nov/2026'},
   carro:{n:'Funilaria',b:'NU',vp:480,tp:5,cp:1,f:'Ago/2026'},
   ml_som:{n:'ML Som',b:'NU',vp:55.90,tp:10,cp:5,f:'Dez/2026'},
   ticket:{n:'Ticketmaster',b:'NU',vp:113.63,tp:7,cp:1,f:'Jul/2026'},
@@ -4056,6 +4057,52 @@ function aplicarAuditoriaProjecoes30072026(){
       if(!ok){S=anterior;renderAll();toast('Não foi possível salvar a auditoria. Seus dados foram restaurados.');return;}
       renderAll();
       toast('Projeções corrigidas: 3 duplicatas arquivadas e Liniker quitada.');
+    },false);
+}
+// Conciliação dos extratos e faturas disponíveis em 09/ago/2026.
+// Esta revisão é deliberadamente idempotente: repor a mesma parcela não cria
+// uma segunda linha e nenhuma caixinha/saldo é movimentado aqui.
+function aplicarConciliacaoFaturas09082026(){
+  if(!canMutateNow())return;
+  if(S.mig25ConciliacaoFaturas0908){toast('A conciliação de 09/ago já foi aplicada.');return;}
+  askConfirm('Aplicar conciliação de faturas?',
+    'Um backup será baixado. Atualiza as faturas com vencimento em 15/ago (Nubank R$4.985,25; Bradesco R$12.664,50), corrige o cartão do Exame Bactérias e repõe somente as parcelas Amazon BR V, Amazon BR VI, Raia e Mantoan comprovadas no OFX. Não movimenta reserva, caixinhas nem registra PIX novamente.',
+    async function(){
+      var anterior=JSON.parse(JSON.stringify(S));
+      downloadJson(anterior,'financas-gs-antes-conciliacao-faturas-09-ago-2026-'+getTodayKeySP()+'.json');
+      if(!S.faturas)S.faturas={};
+      S.faturas.nu=4985.25;S.faturas.br=12664.50;S.faturas.vence='2026-08-15';
+      if(!S.parc)S.parc=dfParc();
+      if(S.parc.exame_bact)S.parc.exame_bact.b='BR';
+      if(S.parc.tassia)S.parc.tassia.b='NU';
+      if(!Array.isArray(S.parcExtras))S.parcExtras=[];
+      var normaliza=function(v){return String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim();};
+      var reconciliadas=[
+        {id:'audit_amazon_v_0908',n:'Amazon BR V',b:'Nubank CC',vp:31.87,tp:8,cp:6,f:'Jan/2027',mesFim:'2027-01',mesInicio:'2026-06',s:'ativa'},
+        {id:'audit_amazon_vi_0908',n:'Amazon BR VI',b:'Nubank CC',vp:105.69,tp:12,cp:10,f:'Mai/2027',mesFim:'2027-05',mesInicio:'2026-06',s:'ativa'},
+        {id:'audit_raia_0908',n:'Raia Drogasil',b:'Nubank CC',vp:320.13,tp:2,cp:2,f:'Set/2026',mesFim:'2026-09',mesInicio:'2026-08',s:'ativa'},
+        {id:'audit_mantoan_0908',n:'Mantoan',b:'Nubank CC',vp:139.90,tp:3,cp:2,f:'Set/2026',mesFim:'2026-09',mesInicio:'2026-08',s:'ativa'}
+      ];
+      reconciliadas.forEach(function(d){
+        var chave=normaliza(d.n),encontradas=S.parcExtras.filter(function(p){return p&&normaliza(p.n)===chave;});
+        if(encontradas.length){
+          var manter=encontradas[0];Object.assign(manter,d,{id:manter.id||d.id});
+          S.parcExtras=S.parcExtras.filter(function(p){return !p||normaliza(p.n)!==chave||p===manter;});
+        }else S.parcExtras.push(d);
+      });
+      S.conciliacaoFaturas09082026={
+        feitaEm:getTodayKeySP(),
+        classificacoes:{
+          supermercado:['Vanessa Cabral de Lima','Barbosa Loja 38','Amazon BR IV'],
+          estetica:['Goya Virtual'],
+          psiquiatria:['Benício']
+        },
+        observacao:'Classificações auditadas. Benício (R$950) foi pago via Mercado Pago e já está refletido no saldo da Reserva; não debitar novamente.'
+      };
+      S.mig25ConciliacaoFaturas0908=true;S.mig25ConciliacaoFaturas0908Em=Date.now();
+      var ok=await save();
+      if(!ok){S=anterior;renderAll();toast('Não foi possível salvar a conciliação. Seus dados foram restaurados.');return;}
+      renderAll();toast('Conciliação de 09/ago aplicada sem duplicar parcelas ou mexer nas caixinhas.');
     },false);
 }
 function aplicarPlanoSegundoSemestre2026(){
