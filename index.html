@@ -1928,7 +1928,12 @@ function getProjecaoAteDezembro(){
   for(var mes=inicio;mes<=fim;mes=addMes(mes,1)){
     var pix=mes===MES?getFixosPixPendentesNoMes(mes):(S.fixosPix||[]).filter(function(x){return itemAtivoEmMes(x,mes);}).reduce(function(a,x){return a+(+x.v||0);},0);
     var fatura=mes===MES?getFaturasDoMes():getProjecaoFaturaNoVencimento(mes).total;
-    var envelope=mes===MES?Math.max(0,getPlanoEnvelopeMes(mes).total-(S.envDef||[]).reduce(function(a,e){return a+getUsoEnvelope(e);},0)):getPlanoEnvelopeMes(mes).total,aporte=getAportePlanejadoMes(mes),renda=(+cfg.sal15||0)+(+cfg.sal30||0);
+    var envelope=mes===MES?Math.max(0,getPlanoEnvelopeMes(mes).total-(S.envDef||[]).reduce(function(a,e){return a+getUsoEnvelope(e);},0)):getPlanoEnvelopeMes(mes).total,aporte=getAportePlanejadoMes(mes);
+    // O saldo observado já contém salários que caíram antes da data da
+    // atualização. Neste mês só entram salários futuros; nos demais, o mês
+    // inteiro. Sem isso, a projeção soma salário passado uma segunda vez.
+    var rendaBase=(+cfg.sal15||0)+(+cfg.sal30||0);
+    var renda=mes===MES?(DIA<15?rendaBase:(DIA<30?(+cfg.sal30||0):0)):rendaBase;
     // Entradas extras, inclusive 13º, só entram após confirmação de recebimento.
     renda+=(S.entradas||[]).filter(function(e){return e&&e.id==='decimo'&&e.s==='recebido'&&e.m===mes;}).reduce(function(a,e){return a+(+e.v||0);},0);
     var variaveis=mes===MES?getVariaveisPendentesNoMes(mes):getVariaveisNoMes(mes);
@@ -2030,10 +2035,17 @@ async function saveCaixaLivre(){
 }
 function getStrategiaMes(){
   var cfg=S.cfg||{}, renda=(+cfg.sal15||0)+(+cfg.sal30||0);
-  var pix=getFixosPixPendentesNoMes(MES);
+  // Orçamento mensal e caixa de hoje são leituras diferentes. O primeiro usa
+  // todos os compromissos do mês; o segundo usa somente o que ainda está em
+  // aberto. Nunca misture renda integral com despesas remanescentes.
+  var pix=(S.fixosPix||[]).filter(itemAtivoNoMes).reduce(function(a,x){return a+(+x.v||0);},0);
+  var pixPendente=getFixosPixPendentesNoMes(MES);
   var assinaturas=(S.fixosAss||[]).filter(itemAtivoNoMes).reduce(function(a,x){return a+(+x.v||0);},0);
-  var variaveis=getVariaveisPendentesNoMes(MES);
-  var faturas=getFaturasDoMes();
+  var variaveis=getVariaveisNoMes(MES);
+  var variaveisPendentes=getVariaveisPendentesNoMes(MES);
+  var f=S.faturas||{};
+  var faturas=faturaVenceNoMes()?((+f.nu||0)+(+f.br||0)):0;
+  var faturasPendentes=getFaturasDoMes();
   var envelopes=(S.envDef||[]);
   var orcado=getPlanoEnvelopeMes(MES).total;
   var usado=envelopes.reduce(function(a,e){return a+getUsoEnvelope(e);},0);
@@ -2043,10 +2055,10 @@ function getStrategiaMes(){
   // separadamente para provisão, não como saída já paga neste mês.
   var obrigacoes=pix+variaveis+faturas;
   var margem=renda-obrigacoes;
-  var livrePlanejado=margem-restanteEnvelope;
+  var livrePlanejado=margem-orcado;
   var dias=Math.max(1,getDaysInMonthSP(MES)-DIA+1);
   var prox=(S.fixosPix||[]).filter(function(x){return itemAtivoNoMes(x)&&(+x.dia||99)>=DIA;}).sort(function(a,b){return(+a.dia||99)-(+b.dia||99);})[0]||null;
-  return {renda:renda,pix:pix,assinaturas:assinaturas,variaveis:variaveis,faturas:faturas,obrigacoes:obrigacoes,orcado:orcado,usado:usado,restanteEnvelope:restanteEnvelope,margem:margem,livrePlanejado:livrePlanejado,dias:dias,referenciaDia:Math.max(0,Math.min(restanteEnvelope/dias,livrePlanejado/dias)),proxima:prox};
+  return {renda:renda,pix:pix,pixPendente:pixPendente,assinaturas:assinaturas,variaveis:variaveis,variaveisPendentes:variaveisPendentes,faturas:faturas,faturasPendentes:faturasPendentes,obrigacoes:obrigacoes,obrigacoesPendentes:pixPendente+variaveisPendentes+faturasPendentes,orcado:orcado,usado:usado,restanteEnvelope:restanteEnvelope,margem:margem,livrePlanejado:livrePlanejado,dias:dias,referenciaDia:Math.max(0,Math.min(restanteEnvelope/dias,livrePlanejado/dias)),proxima:prox};
 }
 
 // ═══════════════════════════════════════════════
@@ -2836,11 +2848,11 @@ function agoraStepKey(p,i){
 function getAgoraEventos(){
   var estrategia=getStrategiaMes(),fat=S.faturas||{},projecao=getProjecaoFatura(),dist=getDistribuicaoEnvelopes(MES),caixaLivre=getCaixaLivreVerdade();
   var porDia=function(dias){return(S.fixosPix||[]).filter(function(f){return itemAtivoNoMes(f)&&dias.indexOf(String(f.dia))>=0;});};
-  var passosPix=function(lista){return lista.map(function(f){return {t:'PIX: '+f.n+' '+fmt(f.v),s:'Vencimento dia '+f.dia+(f.obs?' · '+f.obs:''),a:'pix'};});};
+  var passosPix=function(lista){return lista.filter(function(f){return !pagamentoFixoConfirmado(f.id,MES);}).map(function(f){return {t:'PIX: '+f.n+' '+fmt(f.v),s:'Vencimento dia '+f.dia+(f.obs?' · '+f.obs:''),a:'pix'};});};
   var d15=passosPix(porDia(['15'])),d22=passosPix((S.fixosPix||[]).filter(function(f){var dia=+f.dia;return itemAtivoNoMes(f)&&dia>=16&&dia<=29;})),d30=passosPix(porDia(['30','4']));
   var passos15=[];
-  if(faturaVenceNoMes()&&+fat.nu>0)passos15.push({t:'Pagar fatura Nubank '+fmt(fat.nu),s:'Valor atual cadastrado na aba PIX. Evite parcelar a fatura.',a:'pix'});
-  if(faturaVenceNoMes()&&+fat.br>0)passos15.push({t:'Pagar fatura Bradesco '+fmt(fat.br),s:'Valor atual cadastrado na aba PIX. Evite parcelar a fatura.',a:'pix'});
+  if(faturaVenceNoMes()&&+fat.nu>0&&!pagamentoFixoConfirmado('fatura_nu',MES))passos15.push({t:'Pagar fatura Nubank '+fmt(fat.nu),s:'Valor atual cadastrado na aba PIX. Evite parcelar a fatura.',a:'pix'});
+  if(faturaVenceNoMes()&&+fat.br>0&&!pagamentoFixoConfirmado('fatura_br',MES))passos15.push({t:'Pagar fatura Bradesco '+fmt(fat.br),s:'Valor atual cadastrado na aba PIX. Evite parcelar a fatura.',a:'pix'});
   passos15=passos15.concat(d15,d22);
   var odontologiaAtiva=(S.fixosPix||[]).some(function(f){return /dentista|odontologia/i.test(String(f.n||''))&&itemAtivoNoMes(f)&&(+f.v||0)>0;});
   if(!odontologiaAtiva){passos15.push({t:'Odontologia em avaliação',s:'Possível correção ortodôntica antes do tratamento. Não reservar nem lançar parcelas até ter orçamento, forma de pagamento e data.',a:'caixinhas'});}
@@ -2867,15 +2879,15 @@ function rAgora(){
   var compHtml=listaComp.length?listaComp.map(function(x){return '<div class="plan-row"><div><strong>'+esc(x.n)+'</strong><small>'+esc(x.t||'compromisso do ciclo')+'</small></div><span class="val vsm tr">−'+fmt(x.v)+'</span></div>';}).join(''):'<div class="plan-mini">Atualize o saldo das contas para listar o que falta até o próximo salário.</div>';
   var aporteTxt=aporte.itens.length?aporte.itens.map(function(x){return esc(x.n)+' '+fmt(x.v);}).join(' · '):'Sem aporte programado para este mês.';
   var linhasConta=[
-    {n:'Renda prevista',d:'Salário do dia 15 + salário do dia 30',v:estrategia.renda,cor:'tg',s:'+'},
-    {n:'PIX e boletos',d:'Itens ativos em Gastos Fixos',v:estrategia.pix,cor:'tr',s:'−'},
-    {n:'Contas variáveis',d:'Luz, água, gás e demais valores cadastrados',v:estrategia.variaveis,cor:'tr',s:'−'},
-    {n:'Faturas com vencimento neste mês',d:'Nubank e Bradesco já informados no app',v:estrategia.faturas,cor:'tr',s:'−'},
-    {n:'Categorias ainda disponíveis',d:'Envelopes planejados menos o que já foi registrado',v:estrategia.restanteEnvelope,cor:'tr',s:'−'}
+    {n:'Renda mensal planejada',d:'Salário do dia 15 + salário do dia 30',v:estrategia.renda,cor:'tg',s:'+'},
+    {n:'PIX e boletos do mês',d:'Inclui pagos e pendentes; é orçamento, não saldo de hoje',v:estrategia.pix,cor:'tr',s:'−'},
+    {n:'Contas variáveis do mês',d:'Luz, água, gás e demais valores cadastrados',v:estrategia.variaveis,cor:'tr',s:'−'},
+    {n:'Faturas do mês',d:'Valor completo informado; pago ou pendente não muda o orçamento',v:estrategia.faturas,cor:'tr',s:'−'},
+    {n:'Orçamento de categorias',d:'Limite mensal integral; não só o saldo restante',v:estrategia.orcado,cor:'tr',s:'−'}
   ];
   var contaHtml=linhasConta.map(function(x){return '<div class="plan-ledger-row"><div><strong>'+x.n+'</strong><small>'+x.d+'</small></div><span class="val vsm '+x.cor+'">'+x.s+fmt(x.v)+'</span></div>';}).join('');
-  contaHtml='<div class="card plan-panel plan-ledger mb12"><div class="plan-ledger-head"><div><div class="ctitle">Conta automática do mês</div><div class="plan-card-title" style="margin-top:4px">De onde vem o dinheiro livre planejado</div></div><span class="plan-auto-badge">recalcula sozinho</span></div><div class="plan-ledger-note">A atualização acontece quando você muda salário, fatura, PIX, variável, envelope ou gasto registrado. A próxima fatura é provisão separada — não é descontada duas vezes aqui.</div>'+contaHtml+'<div class="plan-ledger-total"><div><strong>Margem planejada do mês</strong><small>Depois de todas as obrigações e categorias restantes.</small></div><b class="'+(margem>=0?'tg':'tr')+'">'+fmt(margem)+'</b></div></div>';
-  if(Q('agora-progress'))Q('agora-progress').innerHTML='<div class="plan-overview"><div class="card agora-hero plan-panel"><div class="fsb"><div><div class="ctitle">Dinheiro livre agora</div><div style="font:500 1.45rem DM Mono,monospace;margin:4px 0">'+cicloLivre+'</div><p>'+ (ciclo.disponivel===null?'Informe o saldo das contas para separar o que é caixa do que já está comprometido.':'É o saldo em conta depois de reservar os compromissos até '+ciclo.prox.rotulo+'.') +'</p></div><button class="btn bg bsm" onclick="atualizarCaixaLivre()">'+icon('edit',12)+' Atualizar</button></div><div class="plan-kpis"><div class="plan-kpi"><span>Próx. salário</span><b>'+ (ciclo.prox?ciclo.prox.rotulo:'—') +'</b></div><div class="plan-kpi"><span>Comprometido</span><b>'+ (ciclo.disponivel===null?'—':fmt(ciclo.total)) +'</b></div><div class="plan-kpi"><span>Próx. fatura</span><b>'+fmt(proj.total)+'</b></div></div></div><div class="card plan-panel"><div class="ctitle">Até o próximo salário</div><div class="plan-card-title" style="margin-top:4px">O que já tem destino</div>'+compHtml+'<button class="btn bg bsm mt8" onclick="go(\'pix\')">Ver agenda de pagamentos</button></div></div><div class="plan-grid"><div class="card plan-panel"><div class="ctitle">Orçamento do mês</div><div class="plan-big '+(margem>=0?'tg':'tr')+'">'+fmt(margem)+'</div><div class="plan-mini">Livre planejado após contas, faturas e o orçamento restante de categorias.</div><div class="plan-row"><div><strong>Renda prevista</strong><small>dia 15 + dia 30</small></div><span class="val vsm tg">'+fmt(estrategia.renda)+'</span></div><div class="plan-row"><div><strong>Contas e faturas</strong><small>PIX, boletos, variáveis e faturas fechadas</small></div><span class="val vsm tr">−'+fmt(estrategia.obrigacoes)+'</span></div></div><div class="card plan-panel"><div class="ctitle">Separar antes de gastar</div><div class="plan-big ty">'+fmt(dist.total)+'</div><div class="plan-mini">Categorias do mês · '+esc(dist.nota)+'</div><div class="plan-row"><div><strong>Restante para categorias</strong><small>'+fmt(estrategia.usado)+' já registrado</small></div><span class="val vsm ty">'+fmt(estrategia.restanteEnvelope)+'</span></div><button class="btn bg bsm mt8" onclick="go(\'envelopes\')">Ver envelopes</button></div><div class="card plan-panel plan-callout"><div class="ctitle">Aporte do plano</div><div class="plan-big tg">'+fmt(aporte.total)+'</div><div class="plan-mini">'+aporteTxt+'</div><div class="plan-row"><div><strong>Regra de segurança</strong><small>Aporte só acontece depois de faturas, PIX e categorias separados.</small></div><span>'+icon('shieldCheck',16)+'</span></div><button class="btn bg bsm mt8" onclick="go(\'caixinhas\')">Ver caixinhas</button></div></div>';
+  contaHtml='<div class="card plan-panel plan-ledger mb12"><div class="plan-ledger-head"><div><div class="ctitle">Orçamento mensal</div><div class="plan-card-title" style="margin-top:4px">Resultado planejado do mês inteiro</div></div><span class="plan-auto-badge">recalcula sozinho</span></div><div class="plan-ledger-note">Aqui entram todos os salários e todos os compromissos de '+ml(MES)+', inclusive os já pagos. Para saber o dinheiro utilizável hoje, veja “Dinheiro livre agora” acima. A próxima fatura é uma provisão separada.</div>'+contaHtml+'<div class="plan-ledger-total"><div><strong>Margem do orçamento mensal</strong><small>Depois de todos os compromissos e do limite integral das categorias.</small></div><b class="'+(margem>=0?'tg':'tr')+'">'+fmt(margem)+'</b></div></div>';
+  if(Q('agora-progress'))Q('agora-progress').innerHTML='<div class="plan-overview"><div class="card agora-hero plan-panel"><div class="fsb"><div><div class="ctitle">Dinheiro livre agora</div><div style="font:500 1.45rem DM Mono,monospace;margin:4px 0">'+cicloLivre+'</div><p>'+ (ciclo.disponivel===null?'Informe o saldo das contas para separar o que é caixa do que já está comprometido.':'É o saldo em conta depois de reservar os compromissos até '+ciclo.prox.rotulo+'.') +'</p></div><button class="btn bg bsm" onclick="atualizarCaixaLivre()">'+icon('edit',12)+' Atualizar</button></div><div class="plan-kpis"><div class="plan-kpi"><span>Próx. salário</span><b>'+ (ciclo.prox?ciclo.prox.rotulo:'—') +'</b></div><div class="plan-kpi"><span>Comprometido</span><b>'+ (ciclo.disponivel===null?'—':fmt(ciclo.total)) +'</b></div><div class="plan-kpi"><span>Próx. fatura</span><b>'+fmt(proj.total)+'</b></div></div></div><div class="card plan-panel"><div class="ctitle">Até o próximo salário</div><div class="plan-card-title" style="margin-top:4px">O que ainda sai do saldo atual</div>'+compHtml+'<button class="btn bg bsm mt8" onclick="go(\'pix\')">Ver agenda de pagamentos</button></div></div><div class="plan-grid"><div class="card plan-panel"><div class="ctitle">Orçamento do mês</div><div class="plan-big '+(margem>=0?'tg':'tr')+'">'+fmt(margem)+'</div><div class="plan-mini">Margem do mês inteiro: usa todas as rendas, faturas e categorias, independentemente de já estarem pagas.</div><div class="plan-row"><div><strong>Renda mensal</strong><small>dia 15 + dia 30</small></div><span class="val vsm tg">'+fmt(estrategia.renda)+'</span></div><div class="plan-row"><div><strong>Contas e faturas do mês</strong><small>PIX, boletos, variáveis e faturas completas</small></div><span class="val vsm tr">−'+fmt(estrategia.obrigacoes)+'</span></div></div><div class="card plan-panel"><div class="ctitle">Separar antes de gastar</div><div class="plan-big ty">'+fmt(dist.total)+'</div><div class="plan-mini">Categorias do mês · '+esc(dist.nota)+'</div><div class="plan-row"><div><strong>Restante para categorias</strong><small>'+fmt(estrategia.usado)+' já registrado</small></div><span class="val vsm ty">'+fmt(estrategia.restanteEnvelope)+'</span></div><button class="btn bg bsm mt8" onclick="go(\'envelopes\')">Ver envelopes</button></div><div class="card plan-panel plan-callout"><div class="ctitle">Aporte do plano</div><div class="plan-big tg">'+fmt(aporte.total)+'</div><div class="plan-mini">'+aporteTxt+'</div><div class="plan-row"><div><strong>Regra de segurança</strong><small>Aporte só acontece depois de faturas, PIX e categorias separados.</small></div><span>'+icon('shieldCheck',16)+'</span></div><button class="btn bg bsm mt8" onclick="go(\'caixinhas\')">Ver caixinhas</button></div></div>';
   var visaoDez=getProjecaoAteDezembro();
   var fimDez=visaoDez.meses.length?visaoDez.meses[visaoDez.meses.length-1]:null;
   var valorProj=function(v){return v===null||v===undefined?'—':fmt(v);};
