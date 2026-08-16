@@ -750,6 +750,7 @@ button,.card,.month-event,.tab,.home-action{touch-action:manipulation}@media (pr
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarPlanoEurosSet2026()"><span class="ui-icon" data-icon="plane" data-icon-size="14" aria-hidden="true"></span><span>Registrar plano de euros — set/2026</span></button>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="corrigirCalendarioConsorcioSet2026()"><span class="ui-icon" data-icon="calendar" data-icon-size="14" aria-hidden="true"></span><span>Corrigir calendário do consórcio — dia 07</span></button>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="registrarAcordoLocalizaAgo2026()"><span class="ui-icon" data-icon="scale" data-icon-size="14" aria-hidden="true"></span><span>Registrar reajuste e acordo da Localiza</span></button>
+              <button class="btn bp bfull mt8 btn-with-icon" onclick="corrigirPrazoAcordoLocalizaSet2026()"><span class="ui-icon" data-icon="calendar" data-icon-size="14" aria-hidden="true"></span><span>Atualizar prazo do acordo Localiza — 14/set</span></button>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarAcompanhamentoSemanal16082026()"><span class="ui-icon" data-icon="receipt" data-icon-size="14" aria-hidden="true"></span><span>Registrar acompanhamento semanal — 16/ago</span></button>
               <button class="btn bo bfull mt8 btn-with-icon" onclick="limparParcelasDuplicadas()"><span class="ui-icon" data-icon="tool" data-icon-size="14" aria-hidden="true"></span><span>Corrigir parcelas duplicadas</span></button>
               <button class="btn bo bfull mt8 btn-with-icon" onclick="go('fechamento')"><span class="ui-icon" data-icon="checkSquare" data-icon-size="14" aria-hidden="true"></span><span>Fechamento guiado do mês</span></button>
@@ -4246,14 +4247,35 @@ function registrarAcordoLocalizaAgo2026(){
         obs:'Reajustada para R$ 3.118,32 em ago/2026. Lançada no cartão dia 12; pagamento somente na fatura do dia 15 seguinte.'
       });
       if(!S.entradas)S.entradas=dfEntradas();
-      var entrada={id:'acordo_localiza_2026',d:'Acordo Localiza',v:13400,m:'2026-09',data:'2026-09-09',s:'pendente',o:'Acordo aceito · pagamento em até 20 dias úteis. Não conta como caixa antes do crédito. Ao receber: R$5.000 para caixa operacional/provisões e R$8.400 para Reserva de Emergência.'};
+      var entrada={id:'acordo_localiza_2026',d:'Acordo Localiza',v:13400,m:'2026-09',data:'2026-09-14',s:'pendente',o:'Protocolo em 14/ago · até 20 dias úteis para pagamento; planejamento usa 14/set como data-limite. Não conta como caixa antes do crédito. Ao receber: R$5.000 para caixa operacional/provisões e R$8.400 para Reserva de Emergência.'};
       var i=S.entradas.findIndex(function(e){return e&&e.id==='acordo_localiza_2026';});
       if(i>=0)S.entradas[i]=Object.assign({},S.entradas[i],entrada);else S.entradas.push(entrada);
-      S.planoAcordoLocaliza={valor:13400,status:'aguardando_credito',previsao:'2026-09-09',operacional:5000,reserva:8400,regra:'Não usar para quitação do Itaú. O caixa operacional protege setembro; saldo não utilizado entra na varredura após a provisão do ciclo seguinte.'};
+      S.planoAcordoLocaliza={valor:13400,status:'aguardando_credito',protocolo:'2026-08-14',prazoDiasUteis:20,previsao:'2026-09-14',operacional:5000,reserva:8400,regra:'Não usar para quitação do Itaú. O caixa operacional protege setembro; saldo não utilizado entra na varredura após a provisão do ciclo seguinte.'};
       S.mig29AcordoLocalizaAgo2026=true;S.mig29AcordoLocalizaAgo2026Em=Date.now();
       var ok=await save();
       if(!ok){S=anterior;renderAll();toast('Não foi possível salvar o registro. Seus dados foram restaurados.');return;}
       renderAll();toast('Reajuste e acordo registrados. A entrada permanece pendente até o crédito.');
+    },false);
+}
+// Ajuste de prazo: protocolo informado em 14/ago. O plano usa 14/set como
+// limite prudencial de 20 dias úteis; a entrada segue pendente até o crédito.
+function corrigirPrazoAcordoLocalizaSet2026(){
+  if(!canMutateNow())return;
+  if(S.mig31PrazoAcordoLocalizaSet2026){toast('O prazo do acordo Localiza já está atualizado para 14/set.');return;}
+  askConfirm('Atualizar prazo do acordo Localiza?',
+    'Um backup será baixado. Registra protocolo em 14/ago e previsão prudencial de crédito em 14/set. Não movimenta dinheiro, não altera Reserva e não marca a entrada como recebida.',
+    async function(){
+      var anterior=JSON.parse(JSON.stringify(S));
+      downloadJson(anterior,'financas-gs-antes-prazo-acordo-localiza-'+getTodayKeySP()+'.json');
+      if(!S.entradas)S.entradas=dfEntradas();
+      var entrada={id:'acordo_localiza_2026',d:'Acordo Localiza',v:13400,m:'2026-09',data:'2026-09-14',s:'pendente',o:'Protocolo em 14/ago · até 20 dias úteis para pagamento; planejamento usa 14/set como data-limite. Não conta como caixa antes do crédito. Ao receber: R$5.000 para caixa operacional/provisões e R$8.400 para Reserva de Emergência.'};
+      var i=S.entradas.findIndex(function(e){return e&&e.id==='acordo_localiza_2026';});
+      if(i>=0)S.entradas[i]=Object.assign({},S.entradas[i],entrada);else S.entradas.push(entrada);
+      S.planoAcordoLocaliza=Object.assign({},S.planoAcordoLocaliza||{},{valor:13400,status:'aguardando_credito',protocolo:'2026-08-14',prazoDiasUteis:20,previsao:'2026-09-14',operacional:5000,reserva:8400,regra:'Não usar para quitação do Itaú. O caixa operacional protege setembro; saldo não utilizado entra na varredura após a provisão do ciclo seguinte.'});
+      S.mig31PrazoAcordoLocalizaSet2026=true;S.mig31PrazoAcordoLocalizaSet2026Em=Date.now();
+      var ok=await save();
+      if(!ok){S=anterior;renderAll();toast('Não foi possível atualizar o prazo. Seus dados foram restaurados.');return;}
+      renderAll();toast('Prazo do acordo atualizado: planejamento até 14/set.');
     },false);
 }
 // Acompanhamento semanal de 16/ago/2026. Guarda números observados sem
