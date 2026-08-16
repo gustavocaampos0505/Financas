@@ -752,6 +752,7 @@ button,.card,.month-event,.tab,.home-action{touch-action:manipulation}@media (pr
               <button class="btn bp bfull mt8 btn-with-icon" onclick="registrarAcordoLocalizaAgo2026()"><span class="ui-icon" data-icon="scale" data-icon-size="14" aria-hidden="true"></span><span>Registrar reajuste e acordo da Localiza</span></button>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="corrigirPrazoAcordoLocalizaSet2026()"><span class="ui-icon" data-icon="calendar" data-icon-size="14" aria-hidden="true"></span><span>Atualizar prazo do acordo Localiza — 14/set</span></button>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarAcompanhamentoSemanal16082026()"><span class="ui-icon" data-icon="receipt" data-icon-size="14" aria-hidden="true"></span><span>Registrar acompanhamento semanal — 16/ago</span></button>
+              <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarRevisaoFinanceira16082026()"><span class="ui-icon" data-icon="shieldCheck" data-icon-size="14" aria-hidden="true"></span><span>Aplicar revisão financeira — 16/ago</span></button>
               <button class="btn bo bfull mt8 btn-with-icon" onclick="limparParcelasDuplicadas()"><span class="ui-icon" data-icon="tool" data-icon-size="14" aria-hidden="true"></span><span>Corrigir parcelas duplicadas</span></button>
               <button class="btn bo bfull mt8 btn-with-icon" onclick="go('fechamento')"><span class="ui-icon" data-icon="checkSquare" data-icon-size="14" aria-hidden="true"></span><span>Fechamento guiado do mês</span></button>
               <button class="btn bd bfull mt8 btn-with-icon" onclick="resetTudo()"><span class="ui-icon" data-icon="alertTriangle" data-icon-size="14" aria-hidden="true"></span><span>Reset completo</span></button>
@@ -1845,6 +1846,13 @@ function getParcelasCartaoAtivas(){
   Object.keys(S.parc||{}).forEach(function(k){add(S.parc[k]);});(S.parcExtras||[]).forEach(add);return out;
 }
 function getProjecaoFatura(){
+  // Enquanto a fatura de setembro estiver aberta, o extrato conciliado é mais
+  // confiável que a soma de regras genéricas. Ele já exclui saldo anterior.
+  var mon=S.monitoramentoFaturaSet2026||{};
+  if(MES==='2026-08'&&mon.status==='aberta'&&mon.vence==='2026-09-15'&&(+mon.total||0)>0){
+    var nu=+mon.nubankNovo||0,br=+mon.bradescoNovo||0,varCartao=+mon.variavelCartaoEstimada||0;
+    return {NU:nu,BR:br+varCartao,assinaturas:{NU:0,BR:0},parcelas:{NU:0,BR:0},localiza:0,total:nu+br+varCartao,observada:true,referencia:mon.referencia||''};
+  }
   var ass={NU:0,BR:0};(S.fixosAss||[]).filter(itemAtivoNoMes).forEach(function(x){var b=String(x.cartao||'').toUpperCase();if(b==='NU')ass.NU+=(+x.v||0);if(b==='BR')ass.BR+=(+x.v||0);});
   var parc=getParcelasCartaoAtivas(), loc=S.localizaCartao||{};
   // Localiza pode vir do cadastro legado de assinaturas ou de localizaCartao.
@@ -1932,16 +1940,17 @@ function getProvisaoVariavelPixAte(prox){
   // outra parte sai via PIX. Por padrão, protegemos 40% em PIX, proporcional
   // aos dias que faltam até o próximo salário. O percentual pode ser revisado
   // em S.regrasCaixaReserva.variavelPixPercentual sem mexer no histórico.
-  var regras=S.regrasCaixaReserva||{},pct=+regras.variavelPixPercentual;
-  if(!isFinite(pct)||pct<0||pct>1)pct=.40;
+  var regras=S.regrasCaixaReserva||{},pctPadrao=+regras.variavelPixPercentual;
+  if(!isFinite(pctPadrao)||pctPadrao<0||pctPadrao>1)pctPadrao=.40;
   var hoje=new Date(NOW.getFullYear(),NOW.getMonth(),DIA),fim=new Date(prox.ano,prox.mes,prox.dia);
   var total=0,porMes={};
   for(var cursor=new Date(hoje.getFullYear(),hoje.getMonth(),hoje.getDate()+1);cursor<fim;cursor.setDate(cursor.getDate()+1)){
-    var mes=chaveMesData(cursor),diasNoMes=new Date(cursor.getFullYear(),cursor.getMonth()+1,0).getDate();
+    var mes=chaveMesData(cursor),diasNoMes=new Date(cursor.getFullYear(),cursor.getMonth()+1,0).getDate(),porMesRegra=(regras.variavelPixPercentualPorMes||{}),pct=Object.prototype.hasOwnProperty.call(porMesRegra,mes)?+porMesRegra[mes]:pctPadrao;
+    if(!isFinite(pct)||pct<0||pct>1)pct=pctPadrao;
     var diario=(getPlanoEnvelopeMes(mes).total*pct)/diasNoMes;
     total+=diario;porMes[mes]=(porMes[mes]||0)+diario;
   }
-  return {valor:Math.round(total*100)/100,pct:pct,porMes:porMes};
+  return {valor:Math.round(total*100)/100,pct:pctPadrao,porMes:porMes};
 }
 function getCaixaLivreVerdade(){
   var caixa=getCaixaOperacional();if(caixa===null)return {disponivel:null};
@@ -4368,6 +4377,47 @@ function aplicarAcompanhamentoSemanal16082026(){
       var ok=await save();
       if(!ok){S=anterior;renderAll();toast('Não foi possível concluir o acompanhamento. Seus dados foram restaurados.');return;}
       renderAll();toast('Acompanhamento de 16/ago salvo: caixa, Reserva e provisão de setembro atualizados.');
+    },false);
+}
+// Revisão consolidada com os extratos e decisões confirmadas em 16/ago.
+// Não altera Reserva, não considera Localiza recebida e não cria parcelamento.
+function aplicarRevisaoFinanceira16082026(){
+  if(!canMutateNow())return;
+  if(S.mig32RevisaoFinanceira1608){toast('A revisão financeira de 16/ago já foi aplicada.');return;}
+  askConfirm('Aplicar revisão financeira de 16/ago?',
+    'Um backup será baixado. Atualiza caixa observado, fatura antiga de 17/ago, base da fatura de setembro, Itaú 1, plano de euros e datas confirmadas. Não marca faturas futuras como pagas nem movimenta caixinhas.',
+    async function(){
+      var anterior=JSON.parse(JSON.stringify(S));
+      downloadJson(anterior,'financas-gs-antes-revisao-financeira-16-ago-2026-'+getTodayKeySP()+'.json');
+      if(!S.cx)S.cx={};S.cx.reserva=2625.42;
+      S.caixaOperacional={data:'2026-08-16',contasBRL:{bradesco:13171.70,nubank:0.04,outros:0,mercadoPagoDisponivel:0},obs:'Saldo observado após Itaú 1 de R$522,98; não inclui cofrinhos.'};
+      if(!S.fixosPix)S.fixosPix=[];
+      var upsert=function(d){var i=S.fixosPix.findIndex(function(x){return x&&x.id===d.id;});if(i>=0)S.fixosPix[i]=Object.assign({},S.fixosPix[i],d);else S.fixosPix.push(d);};
+      var itau1=S.fixosPix.find(function(x){return x&&x.id==='itau1';});
+      if(itau1)Object.assign(itau1,{v:522.98,dia:'12',obs:'Valor corrente observado em 16/ago/2026; revisar se a cobrança voltar ao valor-base.'});
+      if(!S.pagamentosFixos)S.pagamentosFixos={};
+      S.pagamentosFixos['2026-08|itau1']={data:'2026-08-16',nome:'Itaú 1',valorPago:522.98,valorPrevisto:522.98,obs:'Pago; diferença por juros/atraso a confirmar.'};
+      upsert({id:'fatura_bradesco_anterior_1708',e:'💳',n:'Fatura Bradesco anterior',v:12664.50,dia:'17',inicio:'2026-08',enc:'2026-08',ativo:true,obs:'Débito em 17/08/2026: R$956,11 (cartão 3848) + R$11.708,39 (6575). É saldo anterior; não compõe a fatura de 15/set.'});
+      if(!S.excecoesFixos)S.excecoesFixos={};
+      S.excecoesFixos['2026-08']=Object.assign({},S.excecoesFixos['2026-08']||{},{psicologa:{pausado:true,ativo:false,obs:'Agosto adiado para 30/08'}});
+      upsert({id:'psicologa_agosto_adiada',e:'🧠',n:'Psicóloga — agosto adiada',v:549,dia:'30',inicio:'2026-08',enc:'2026-08',ativo:true,obs:'Alessandra: pagamento de agosto prorrogado para 30/08.'});
+      var rafael=S.fixosPix.find(function(x){return x&&x.id==='personal';});if(rafael)Object.assign(rafael,{v:2100,dia:'30',obs:'3×/semana · R$2.100/mês · setembro foi antecipado em agosto.'});
+      S.monitoramentoFaturaSet2026={referencia:'16/ago/2026',vence:'2026-09-15',status:'aberta',bradescoNovo:6000.17,nubankNovo:3061.66,variavelCartaoEstimada:1213,total:10274.83,parcelasEncerrando:657.11,obs:'Base observada: Bradesco novo sem os R$956,11 de saldo anterior + Nubank ciclo novo + variável de 17–29/ago estimada no cartão. Reconciliar quando fechar.'};
+      if(!S.regrasCaixaReserva)S.regrasCaixaReserva={};
+      S.regrasCaixaReserva.variavelPixPercentual=.40;
+      S.regrasCaixaReserva.variavelPixPercentualPorMes=Object.assign({},S.regrasCaixaReserva.variavelPixPercentualPorMes||{}, {'2026-08':0});
+      S.planoEurosSet2026=Object.assign({},S.planoEurosSet2026||{}, {moeda:'EUR',cambioTeto:6.10,saldoInicial:78.12,orcamentoTotal:1536.34,preEmbarque:{dataLimite:'2026-09-03',eur:1037.84,brl:6330.82,obs:'Alvo pré-embarque revisto; compra sai do salário de 30/ago.'},posSalario:{data:'2026-09-15',eur:420.38,brl:2564.32,obs:'Complemento após salário de 15/set.'},regra:'Aporte de Reserva de agosto foi pulado. Provisione Ademicon em 30/ago; não contar Localiza antes do crédito.'});
+      if(!S.planoAportes)S.planoAportes={versao:6,meses:[]};if(!Array.isArray(S.planoAportes.meses))S.planoAportes.meses=[];
+      var ap=S.planoAportes.meses.find(function(x){return x&&x.m==='2026-08';}),dadosAp={m:'2026-08',aportes:{'Obrigação':632.12,'Psiquiatra':238,'Imprevistos':300,'Estética':440},nota:'Reserva: R$0 em agosto. Aporte pulado para financiar euros pré-embarque; demais caixinhas apenas se o fechamento real permitir.'};
+      if(ap)Object.assign(ap,dadosAp);else S.planoAportes.meses.push(dadosAp);
+      if(!S.entradas)S.entradas=dfEntradas();var entrada=S.entradas.find(function(x){return x&&x.id==='acordo_localiza_2026';});
+      if(entrada)Object.assign(entrada,{data:'2026-09-15',m:'2026-09',s:'pendente',o:'Acordo R$13.400 confirmado para até 15/set. Só registrar como recebido quando o crédito cair: R$5.000 caixa/provisões + R$8.400 Reserva.'});
+      S.planoAcordoLocaliza=Object.assign({},S.planoAcordoLocaliza||{},{valor:13400,status:'aguardando_credito',previsao:'2026-09-15',operacional:5000,reserva:8400});
+      if(!S.cxDef)S.cxDef={fixas:dfCxFixas(),uso:dfCxUso()};var psi=((S.cxDef||{}).uso||[]).find(function(x){return x&&x.id==='psiquiatra';});if(psi)psi.o='R$950 trimestral; pago em ago/2026. Próximo pagamento: nov/2026.';
+      S.decisoesFinanceiras16082026={itau2:'Quitação de R$2.842,38 recusada por ora: preservar liquidez antes da viagem.',magaly:'Não lançar R$312 antes da entrega; provável fatura de setembro.',hmbrasil:'R$108,26: roupa pontual.',localizaEstorno:'R$1.212,87 em 12/08 estornado; não projetar retorno.'};
+      S.mig32RevisaoFinanceira1608=true;S.mig32RevisaoFinanceira1608Em=Date.now();
+      var ok=await save();if(!ok){S=anterior;renderAll();toast('Não foi possível salvar a revisão. Seus dados foram restaurados.');return;}
+      renderAll();toast('Revisão financeira de 16/ago aplicada. Confira a fatura antiga em PIX e a base de setembro no Planejamento.');
     },false);
 }
 function aplicarPlanoSegundoSemestre2026(){
