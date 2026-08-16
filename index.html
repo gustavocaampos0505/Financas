@@ -737,6 +737,7 @@ button,.card,.month-event,.tab,.home-action{touch-action:manipulation}@media (pr
               <input type="file" id="import-file" accept="application/json,.json" class="hidden" onchange="importDados(event)">
               <button class="btn bg bfull mt8 btn-with-icon" onclick="Q('import-file').click()"><span class="ui-icon" data-icon="upload" data-icon-size="14" aria-hidden="true"></span><span>Importar backup JSON</span></button>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarConsolidacao16082026()"><span class="ui-icon" data-icon="shieldCheck" data-icon-size="14" aria-hidden="true"></span><span>Sincronizar pagamentos confirmados — 16/ago</span></button>
+              <button class="btn bp bfull mt8 btn-with-icon" onclick="conciliarEnvelopes16082026()"><span class="ui-icon" data-icon="receipt" data-icon-size="14" aria-hidden="true"></span><span>Conciliar gastos de cartões nos envelopes — 16/ago</span></button>
               <details class="mt8"><summary style="cursor:pointer;font-size:.74rem;color:var(--muted);padding:8px 0">Ferramentas históricas e migrações antigas</summary>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarConciliacaoExtratos25072026()"><span class="ui-icon" data-icon="refreshCw" data-icon-size="14" aria-hidden="true"></span><span>Conciliar extratos de 25/jul/2026</span></button>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarAjustesFinanceiros25072026Parte1()"><span class="ui-icon" data-icon="sliders" data-icon-size="14" aria-hidden="true"></span><span>Aplicar ajustes financeiros — parte 1</span></button>
@@ -4517,6 +4518,43 @@ function aplicarConsolidacao16082026(){
       S.mig33Consolidacao1608=true;S.mig33Consolidacao1608Em=Date.now();
       var ok=await save();if(!ok){S=anterior;renderAll();toast('Não foi possível salvar a consolidação. Seus dados foram restaurados.');return;}
       renderAll();toast('Pagamentos confirmados sincronizados em todas as abas.');
+    },false);
+}
+// Conciliação de categorias confirmadas nos extratos disponíveis em 16/ago.
+// Registra cada compra uma única vez no livro dos envelopes. Não altera saldos,
+// faturas, caixinhas, PIX/boletos nem parcelas: elas continuam sendo a fonte
+// de verdade do caixa e do cartão.
+function conciliarEnvelopes16082026(){
+  if(!canMutateNow())return;
+  if(S.mig34Envelopes1608){toast('Os gastos de cartões de 16/ago já foram conciliados nos envelopes.');return;}
+  askConfirm('Conciliar gastos nos envelopes?',
+    'Será criado um backup. Registra somente compras categorizadas nos extratos: mercado, farmácia, alimentação fora, lazer, transporte e compras. Não mexe no valor das faturas, pagamentos, parcelas, caixa ou caixinhas.',
+    async function(){
+      var anterior=JSON.parse(JSON.stringify(S));
+      downloadJson(anterior,'financas-gs-antes-envelopes-cartoes-16-ago-2026-'+getTodayKeySP()+'.json');
+      if(!S.gastos)S.gastos=[];
+      var itens=[
+        {id:'conc1608-barbosa',cat:'super',val:117.04,pgto:'Crédito Bradesco',desc:'Barbosa Loja 38',data:'2026-08-12'},
+        {id:'conc1608-jl-sacolao',cat:'super',val:41.61,pgto:'Crédito Bradesco',desc:'JL Sacolão',data:'2026-08-12'},
+        {id:'conc1608-keetabr-jorge',cat:'delivery',val:36.89,pgto:'Crédito Bradesco',desc:'Keetabr Jorge Pereira',data:'2026-08-13'},
+        {id:'conc1608-padaria',cat:'delivery',val:17.43,pgto:'Crédito Bradesco',desc:'Padaria e Confeitaria',data:'2026-08-14'},
+        {id:'conc1608-keetabr-gdm',cat:'delivery',val:39.69,pgto:'Crédito Bradesco',desc:'Keetabr GDM Comércio',data:'2026-08-14'},
+        {id:'conc1608-carioca',cat:'lazer',val:10,pgto:'Crédito Bradesco',desc:'Carioca Team',data:'2026-08-15'},
+        {id:'conc1608-zigpay',cat:'lazer',val:79,pgto:'Crédito Bradesco',desc:'ZigPay',data:'2026-08-15'},
+        {id:'conc1608-uber',cat:'comb',val:58.97,pgto:'Crédito Bradesco',desc:'Uber',data:'2026-08-15'},
+        {id:'conc1608-keetabr-parmegiana',cat:'delivery',val:58.86,pgto:'Crédito Bradesco',desc:'Keetabr Parmegiana',data:'2026-08-15'},
+        {id:'conc1608-raia',cat:'farm',val:320.13,pgto:'Crédito Nubank',desc:'Raia Drogasil · parcela 1/2',data:'2026-08-09'},
+        {id:'conc1608-tiktok',cat:'compras',val:97.40,pgto:'Crédito Nubank',desc:'TikTok Shop · compra pontual',data:'2026-08-15'}
+      ];
+      itens.forEach(function(item){
+        if(!S.gastos.some(function(g){return g&&g.origem===item.id;}))S.gastos.push({id:uid(),tipo:(item.cat==='delivery'||item.cat==='lazer'||item.cat==='compras')?'envelope':'livre',cat:item.cat,val:item.val,pgto:item.pgto,desc:item.desc,data:item.data,ts:Date.now(),origem:item.id});
+      });
+      recalcularUsoEnvelopes();
+      S.conciliacaoEnvelopes16082026={feitaEm:getTodayKeySP(),fonte:'Faturas Bradesco/Nubank e categorias confirmadas pelo usuário',itens:itens.map(function(i){return i.id;})};
+      S.mig34Envelopes1608=true;S.mig34Envelopes1608Em=Date.now();
+      var ok=await save();
+      if(!ok){S=anterior;renderAll();toast('Não foi possível salvar a conciliação. Seus dados foram restaurados.');return;}
+      renderAll();toast('Gastos dos cartões conciliados nos envelopes sem duplicar a fatura.');
     },false);
 }
 function aplicarPlanoSegundoSemestre2026(){
