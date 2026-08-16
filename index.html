@@ -749,6 +749,8 @@ button,.card,.month-event,.tab,.home-action{touch-action:manipulation}@media (pr
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarRegrasCaixaReserva09082026()"><span class="ui-icon" data-icon="shieldCheck" data-icon-size="14" aria-hidden="true"></span><span>Aplicar regras de caixa e reserva — ago/2026</span></button>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarPlanoEurosSet2026()"><span class="ui-icon" data-icon="plane" data-icon-size="14" aria-hidden="true"></span><span>Registrar plano de euros — set/2026</span></button>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="corrigirCalendarioConsorcioSet2026()"><span class="ui-icon" data-icon="calendar" data-icon-size="14" aria-hidden="true"></span><span>Corrigir calendário do consórcio — dia 07</span></button>
+              <button class="btn bp bfull mt8 btn-with-icon" onclick="registrarAcordoLocalizaAgo2026()"><span class="ui-icon" data-icon="scale" data-icon-size="14" aria-hidden="true"></span><span>Registrar reajuste e acordo da Localiza</span></button>
+              <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarAcompanhamentoSemanal16082026()"><span class="ui-icon" data-icon="receipt" data-icon-size="14" aria-hidden="true"></span><span>Registrar acompanhamento semanal — 16/ago</span></button>
               <button class="btn bo bfull mt8 btn-with-icon" onclick="limparParcelasDuplicadas()"><span class="ui-icon" data-icon="tool" data-icon-size="14" aria-hidden="true"></span><span>Corrigir parcelas duplicadas</span></button>
               <button class="btn bo bfull mt8 btn-with-icon" onclick="go('fechamento')"><span class="ui-icon" data-icon="checkSquare" data-icon-size="14" aria-hidden="true"></span><span>Fechamento guiado do mês</span></button>
               <button class="btn bd bfull mt8 btn-with-icon" onclick="resetTudo()"><span class="ui-icon" data-icon="alertTriangle" data-icon-size="14" aria-hidden="true"></span><span>Reset completo</span></button>
@@ -2663,7 +2665,7 @@ var AGORA_EVENTOS=[
   {id:'sal30',icon:'wallet',lbl:'Salário Dia 30',passos:[
     {t:'PIX Personal Rafael R$2.720 (vira R$2.000 em set)',s:'Dia 30. Ver aba PIX.',a:'pix'},
     {t:'PIX Rose 2ª parcela R$1.000',s:'Dia 30. Ver aba PIX.',a:'pix'},
-    {t:'PIX Localiza R$2.980',s:'Boleto dia 1. Pagar com antecedência.',a:'pix'},
+    {t:'Localiza no cartão',s:'Cobrança mensal de R$ 3.118,32 entra no cartão e é paga somente na fatura seguinte.',a:'parcelas'},
     {t:'PIX Itaú 1 R$510,23',s:'Enquanto não quitado. Ver aba PIX.',a:'pix'},
     {t:'PIX Santander R$972',s:'Vence dia 4. Pagar junto com o dia 30.',a:'pix'},
     {t:'Recarregar Alimentação fora 2ª quinzena',s:'R$350 no envelope.',a:'envelopes'},
@@ -2756,6 +2758,11 @@ function rAgora(){
   var linhasDez=(visaoDez.meses||[]).map(function(x){return '<div class="plan-row"><div><strong>'+ml(x.m)+'</strong><small>renda '+fmt(x.renda)+' · obrigações, fatura, envelopes e aportes</small></div><span class="val vsm '+(x.resultado>=0?'tg':'tr')+'">'+(x.resultado>=0?'+':'')+fmt(x.resultado)+'</span></div>';}).join('');
   var visaoDezHtml='<div class="card plan-panel plan-ledger mb12"><div class="plan-ledger-head"><div><div class="ctitle">Até dezembro · leitura certa</div><div class="plan-card-title" style="margin-top:4px">Carry, reserva e dinheiro utilizável não são a mesma coisa</div></div><span class="plan-auto-badge">recalcula sozinho</span></div><div class="plan-ledger-note">A projeção considera salários cadastrados, PIX/boletos, variáveis, envelopes, faturas e aportes registrados. O 13º e entradas extras ficam fora até serem marcados como recebidos. Fatura fechada sempre prevalece sobre a previsão.</div><div class="plan-kpis"><div class="plan-kpi"><span>Livre em conta · 31/dez</span><b class="tg">'+valorProj(visaoDez.caixa)+'</b></div><div class="plan-kpi"><span>Reserva protegida · 31/dez</span><b class="tb">'+valorProj(visaoDez.reserva)+'</b></div><div class="plan-kpi"><span>Carry total · 31/dez</span><b>'+valorProj(visaoDez.carry)+'</b></div></div><div class="plan-mini" style="margin:8px 0 4px">Livre em conta = o que sobra depois de tudo até dezembro. Reserva protegida não é dinheiro para gastar. Carry total soma caixa e caixinhas.</div>'+linhasDez+'</div>';
   if(Q('agora-progress'))Q('agora-progress').insertAdjacentHTML('beforeend',visaoDezHtml);
+  var monitor=S.monitoramentoFaturaSet2026;
+  if(Q('agora-progress')&&monitor){
+    var rotuloMonitor=monitor.status==='aberta'?'em aberto · pode mudar até o fechamento':'fechada';
+    Q('agora-progress').insertAdjacentHTML('beforeend','<div class="card plan-panel plan-callout mb12"><div class="fsb"><div><div class="ctitle">Fatura de 15/set · acompanhamento real</div><div class="plan-card-title" style="margin-top:4px">'+esc(rotuloMonitor)+'</div></div><span class="chip cy">provisão</span></div><div class="plan-big ty" style="margin-top:8px">'+fmt(monitor.total||0)+'</div><div class="plan-mini">Este valor já tem destino. Não é saldo livre e não substitui a fatura fechada quando ela sair.</div><div class="plan-row"><div><strong>Bradesco · gastos do ciclo</strong><small>Saldo anterior de '+fmt(monitor.bradescoSaldoAnterior||0)+' foi excluído.</small></div><span class="val vsm tr">'+fmt(monitor.bradescoNovo||0)+'</span></div><div class="plan-row"><div><strong>Nubank · ciclo novo</strong><small>Pagamento de '+fmt(monitor.nubankPagamentoAnterior||0)+' pertence à fatura anterior.</small></div><span class="val vsm tr">'+fmt(monitor.nubankNovo||0)+'</span></div><div class="plan-mini">Atualizado em '+esc(monitor.referencia||'')+'. As parcelas que acabam neste ciclo liberam '+fmt(monitor.parcelasEncerrando||0)+' por mês a partir do próximo ciclo, se não houver novas compras parceladas.</div></div>');
+  }
   if(Q('agora-progress'))Q('agora-progress').insertAdjacentHTML('beforeend',contaHtml);
   var regraCaixa=S.regrasCaixaReserva||{};
   if(Q('agora-progress')&&regraCaixa.inicioVarredura){
@@ -4034,7 +4041,7 @@ function aplicarRevisaoFluxo26072026(){
       S.fixosPix=(S.fixosPix||[]).filter(function(f){return !(f&&(f.id==='localiza'||/localiza/i.test(String(f.n||''))));});
       var itau=(S.fixosPix||[]).find(function(f){return f&&f.id==='itau1';});
       if(itau){itau.dia='12';itau.v=510.23;itau.obs='Parcela mensal dia 12 · quitar quando reserva > R$20k · 1,29%/mês';}
-      S.localizaCartao={id:'localiza_cartao',n:'Localiza Meoo',v:2980,diaCompra:12,cartao:'BR',ativo:true,obs:'Lançada no cartão dia 12; pagamento somente na fatura do dia 15 seguinte. Não é PIX nem boleto mensal.'};
+      S.localizaCartao={id:'localiza_cartao',n:'Localiza Meoo',v:3118.32,diaCompra:12,cartao:'BR',ativo:true,obs:'Reajustada para R$ 3.118,32 em ago/2026. Lançada no cartão dia 12; pagamento somente na fatura do dia 15 seguinte. Não é PIX nem boleto mensal.'};
       S.contasVariaveisAgenda=[
         {id:'sabesp',n:'Sabesp (água)',v:+((S.fixosVar||{}).agua||100),dia:15},
         {id:'enel',n:'ENEL (luz)',v:+((S.fixosVar||{}).luz||388),dia:22},
@@ -4222,6 +4229,69 @@ function corrigirCalendarioConsorcioSet2026(){
       var ok=await save();
       if(!ok){S=anterior;renderAll();toast('Não foi possível salvar a correção. Seus dados foram restaurados.');return;}
       renderAll();toast('Consórcio corrigido para o dia 07. Nenhum pagamento foi lançado.');
+    },false);
+}
+// Acordo aceito em agosto: registra a nova cobrança e a expectativa de entrada,
+// mas nunca soma os R$13.400 ao caixa/reserva antes de o usuário marcar "Recebi".
+function registrarAcordoLocalizaAgo2026(){
+  if(!canMutateNow())return;
+  if(S.mig29AcordoLocalizaAgo2026){toast('O reajuste e o acordo da Localiza já estão registrados.');return;}
+  askConfirm('Registrar reajuste e acordo da Localiza?',
+    'Um backup será baixado. Atualiza a cobrança mensal do cartão para R$ 3.118,32 e cria uma entrada prevista de R$ 13.400 para setembro. Não movimenta contas, caixinhas ou Reserva; a entrada só vale após você marcar “Recebi”.',
+    async function(){
+      var anterior=JSON.parse(JSON.stringify(S));
+      downloadJson(anterior,'financas-gs-antes-acordo-localiza-ago-2026-'+getTodayKeySP()+'.json');
+      S.localizaCartao=Object.assign({},S.localizaCartao||{},{
+        id:'localiza_cartao',n:'Localiza Meoo',v:3118.32,diaCompra:12,cartao:'BR',ativo:true,
+        obs:'Reajustada para R$ 3.118,32 em ago/2026. Lançada no cartão dia 12; pagamento somente na fatura do dia 15 seguinte.'
+      });
+      if(!S.entradas)S.entradas=dfEntradas();
+      var entrada={id:'acordo_localiza_2026',d:'Acordo Localiza',v:13400,m:'2026-09',data:'2026-09-09',s:'pendente',o:'Acordo aceito · pagamento em até 20 dias úteis. Não conta como caixa antes do crédito. Ao receber: R$5.000 para caixa operacional/provisões e R$8.400 para Reserva de Emergência.'};
+      var i=S.entradas.findIndex(function(e){return e&&e.id==='acordo_localiza_2026';});
+      if(i>=0)S.entradas[i]=Object.assign({},S.entradas[i],entrada);else S.entradas.push(entrada);
+      S.planoAcordoLocaliza={valor:13400,status:'aguardando_credito',previsao:'2026-09-09',operacional:5000,reserva:8400,regra:'Não usar para quitação do Itaú. O caixa operacional protege setembro; saldo não utilizado entra na varredura após a provisão do ciclo seguinte.'};
+      S.mig29AcordoLocalizaAgo2026=true;S.mig29AcordoLocalizaAgo2026Em=Date.now();
+      var ok=await save();
+      if(!ok){S=anterior;renderAll();toast('Não foi possível salvar o registro. Seus dados foram restaurados.');return;}
+      renderAll();toast('Reajuste e acordo registrados. A entrada permanece pendente até o crédito.');
+    },false);
+}
+// Acompanhamento semanal de 16/ago/2026. Guarda números observados sem
+// transformar uma fatura ainda aberta em fatura fechada, nem somar o saldo
+// anterior do Bradesco pela segunda vez.
+function aplicarAcompanhamentoSemanal16082026(){
+  if(!canMutateNow())return;
+  if(S.mig30AcompanhamentoSemanal1608){toast('O acompanhamento semanal de 16/ago já está registrado.');return;}
+  askConfirm('Registrar acompanhamento semanal?',
+    'Um backup será baixado. Atualiza apenas saldos reais observados e cria a provisão informativa da fatura aberta de 15/set (R$10.017,94). A fatura de agosto, pagamentos, parcelas e Reserva não serão recalculados nem duplicados.',
+    async function(){
+      var anterior=JSON.parse(JSON.stringify(S));
+      downloadJson(anterior,'financas-gs-antes-acompanhamento-semanal-16-ago-2026-'+getTodayKeySP()+'.json');
+      if(!S.cx)S.cx={};
+      // Tela do Mercado Pago: total de cofrinhos R$2.625,42, integralmente Reserva.
+      S.cx.reserva=2625.42;
+      // Contas de uso observadas em 16/ago. Cofrinhos não entram neste total.
+      S.caixaOperacional={
+        data:'2026-08-16',
+        contasBRL:{bradesco:13694.68,nubank:0.04,outros:0,mercadoPagoDisponivel:0},
+        obs:'Extratos de 16/ago/2026. Mercado Pago disponível zerado; R$2.625,42 ficam na Reserva de Emergência.'
+      };
+      S.monitoramentoFaturaSet2026={
+        referencia:'16/ago/2026',vence:'2026-09-15',status:'aberta',
+        bradescoNovo:6956.28,bradescoSaldoAnterior:11708.39,
+        nubankNovo:3061.66,nubankPagamentoAnterior:4985.25,
+        total:10017.94,parcelasEncerrando:657.11,
+        obs:'Bradesco: total aberto R$18.664,67 menos saldo anterior R$11.708,39. Nubank: ciclo novo R$3.061,66; pagamento de R$4.985,25 pertence à fatura anterior. Folha R$19,80 é real por atraso; TikTok R$97,40 é pontual.'
+      };
+      S.acompanhamentoSemanal16082026={
+        feitoEm:getTodayKeySP(),
+        resumo:'Saldos e fatura aberta registrados a partir dos extratos de 16/ago. Não há lançamento automático de gasto, pagamento ou aporte.',
+        classificacoes:{folha:'duas cobranças reais por atraso',tiktok:'pontual',amazonBRIII:'estorno integral; efeito zero'}
+      };
+      S.mig30AcompanhamentoSemanal1608=true;S.mig30AcompanhamentoSemanal1608Em=Date.now();
+      var ok=await save();
+      if(!ok){S=anterior;renderAll();toast('Não foi possível concluir o acompanhamento. Seus dados foram restaurados.');return;}
+      renderAll();toast('Acompanhamento de 16/ago salvo: caixa, Reserva e provisão de setembro atualizados.');
     },false);
 }
 function aplicarPlanoSegundoSemestre2026(){
