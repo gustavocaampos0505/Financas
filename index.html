@@ -695,7 +695,7 @@ button,.card,.month-event,.tab,.home-action{touch-action:manipulation}@media (pr
           <div id="cfg-metas" class="hidden">
             <div class="card mb8">
               <div class="ctitle">Metas configuráveis</div>
-              <label>Meta reserva emergência (R$)</label><input type="number" class="inp inp-mono" id="c-mres" placeholder="51472">
+              <label>Meta reserva emergência (R$)</label><input type="number" class="inp inp-mono" id="c-mres" placeholder="40000">
               <label>Meta viagem (R$)</label><input type="number" class="inp inp-mono" id="c-mviag" placeholder="14200">
               <label>Meta score Serasa</label><input type="number" class="inp inp-mono" id="c-mscore" placeholder="600">
               <label>Score atual Serasa</label><input type="number" class="inp inp-mono" id="c-serasa" placeholder="550">
@@ -736,6 +736,8 @@ button,.card,.month-event,.tab,.home-action{touch-action:manipulation}@media (pr
               <button class="btn bg bfull mt8 btn-with-icon" onclick="exportDados()"><span class="ui-icon" data-icon="download" data-icon-size="14" aria-hidden="true"></span><span>Exportar JSON</span></button>
               <input type="file" id="import-file" accept="application/json,.json" class="hidden" onchange="importDados(event)">
               <button class="btn bg bfull mt8 btn-with-icon" onclick="Q('import-file').click()"><span class="ui-icon" data-icon="upload" data-icon-size="14" aria-hidden="true"></span><span>Importar backup JSON</span></button>
+              <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarConsolidacao16082026()"><span class="ui-icon" data-icon="shieldCheck" data-icon-size="14" aria-hidden="true"></span><span>Sincronizar pagamentos confirmados — 16/ago</span></button>
+              <details class="mt8"><summary style="cursor:pointer;font-size:.74rem;color:var(--muted);padding:8px 0">Ferramentas históricas e migrações antigas</summary>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarConciliacaoExtratos25072026()"><span class="ui-icon" data-icon="refreshCw" data-icon-size="14" aria-hidden="true"></span><span>Conciliar extratos de 25/jul/2026</span></button>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarAjustesFinanceiros25072026Parte1()"><span class="ui-icon" data-icon="sliders" data-icon-size="14" aria-hidden="true"></span><span>Aplicar ajustes financeiros — parte 1</span></button>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarAuditoriaParcelas25072026()"><span class="ui-icon" data-icon="checkCircle" data-icon-size="14" aria-hidden="true"></span><span>Aplicar auditoria de parcelas — jul/2026</span></button>
@@ -755,6 +757,7 @@ button,.card,.month-event,.tab,.home-action{touch-action:manipulation}@media (pr
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarRevisaoFinanceira16082026()"><span class="ui-icon" data-icon="shieldCheck" data-icon-size="14" aria-hidden="true"></span><span>Aplicar revisão financeira — 16/ago</span></button>
               <button class="btn bo bfull mt8 btn-with-icon" onclick="limparParcelasDuplicadas()"><span class="ui-icon" data-icon="tool" data-icon-size="14" aria-hidden="true"></span><span>Corrigir parcelas duplicadas</span></button>
               <button class="btn bo bfull mt8 btn-with-icon" onclick="go('fechamento')"><span class="ui-icon" data-icon="checkSquare" data-icon-size="14" aria-hidden="true"></span><span>Fechamento guiado do mês</span></button>
+              </details>
               <button class="btn bd bfull mt8 btn-with-icon" onclick="resetTudo()"><span class="ui-icon" data-icon="alertTriangle" data-icon-size="14" aria-hidden="true"></span><span>Reset completo</span></button>
             </div>
           </div>
@@ -1471,7 +1474,7 @@ async function ensureInitialDoc(){
 
 
 function initDefaults(){
-  if(!S.cfg)S.cfg={sal15:16000,sal30:13192,va:780,flash_c:400,flash_i:180,lim_nu:3500,lim_br:2000,m_res:51472,m_viag:20000,m_score:800,a_nu:2800,a_res:5000,a_days:3,nome:'Gustavo',inicio:'2026-05-08',bruto:40000,serasa_score:735};
+  if(!S.cfg)S.cfg={sal15:16000,sal30:13192,va:780,flash_c:400,flash_i:180,lim_nu:3500,lim_br:2000,m_res:40000,m_viag:20000,m_score:800,a_nu:2800,a_res:5000,a_days:3,nome:'Gustavo',inicio:'2026-05-08',bruto:40000,serasa_score:760};
   if(!S.cx)S.cx={};
   if(!S.cxDef)S.cxDef={fixas:dfCxFixas(),uso:dfCxUso(),provisoes:[]};
   if(!Array.isArray(S.cxDef.provisoes))S.cxDef.provisoes=[];
@@ -1792,10 +1795,11 @@ function faturaVenceNoMes(){
   // Faturas antigas, sem vencimento registrado, mantêm o comportamento anterior.
   return !vence||vence.slice(0,7)===MES;
 }
+function valorPendentePagamentoFixo(id,referencia,previsto){return pagamentoFixoConfirmado(id,referencia)?0:valorPagamentoFixo(id,referencia,previsto);}
 function getFaturasDoMes(){
   if(!faturaVenceNoMes())return 0;
-  var f=S.faturas||{};
-  return (+f.nu||0)+(+f.br||0);
+  var f=S.faturas||{},ref=String(f.vence||MES).slice(0,7)||MES;
+  return valorPendentePagamentoFixo('fatura_nu',ref,+f.nu||0)+valorPendentePagamentoFixo('fatura_br',ref,+f.br||0);
 }
 function getCaixaOperacional(){
   var c=S.caixaOperacional;
@@ -1899,7 +1903,21 @@ function getProjecaoFaturaNoVencimento(mesVencimento){
 function getVariaveisNoMes(mes){
   var v=Object.assign({},S.fixosVar||{}),tr=(S.fixosVar||{}).luzTransicao||{};
   if(tr.mesAtivacao&&mes>=tr.mesAtivacao&&tr.valorPosSolar!==undefined)v.luz=+tr.valorPosSolar||0;
+  var excecoes=(S.excecoesVariaveis||{})[mes]||{};
+  Object.keys(excecoes).forEach(function(k){if(excecoes[k]&&excecoes[k].v!==undefined)v[k]=+excecoes[k].v||0;});
+  // Compatibilidade com a revisão já aplicada antes da correção: em agosto
+  // não houve pagamento de ENEL, portanto ela não pode reduzir o caixa real.
+  if(mes==='2026-08'&&S.mig32RevisaoFinanceira1608&&(!excecoes.enel||excecoes.enel.v===undefined))v.luz=0;
   return Object.keys(v).filter(function(k){return k!=='luzTransicao';}).reduce(function(a,k){return a+(+v[k]||0);},0);
+}
+function getFixosPixPendentesNoMes(mes){
+  return (S.fixosPix||[]).filter(function(x){return itemAtivoEmMes(x,mes)&&!pagamentoFixoConfirmado(x.id,mes);}).reduce(function(a,x){return a+(+x.v||0);},0);
+}
+function getVariaveisPendentesNoMes(mes){
+  return (S.contasVariaveisAgenda||[]).reduce(function(a,c){
+    var v=valorContaVariavelNoMes(c,mes);
+    return a+(pagamentoVariavelConfirmado(c.id,mes)?0:Math.max(0,v));
+  },0);
 }
 // Leitura de longo prazo: não trata 13º pendente como dinheiro disponível. Ele
 // só entra depois de marcado como recebido, evitando prometer uma sobra fictícia.
@@ -1907,16 +1925,17 @@ function getProjecaoAteDezembro(){
   var inicio=MES, fim='2026-12',meses=[];if(inicio>fim)return {meses:[],caixa:null,reserva:+((S.cx||{}).reserva||0),carry:null};
   var caixa=getCaixaOperacional(),reserva=+((S.cx||{}).reserva||0),caixinhas=Object.values(S.cx||{}).reduce(function(a,v){return a+(+v||0);},0),transferido=0,cfg=S.cfg||{};
   for(var mes=inicio;mes<=fim;mes=addMes(mes,1)){
-    var pix=(S.fixosPix||[]).filter(function(x){return itemAtivoEmMes(x,mes);}).reduce(function(a,x){return a+(+x.v||0);},0);
+    var pix=mes===MES?getFixosPixPendentesNoMes(mes):(S.fixosPix||[]).filter(function(x){return itemAtivoEmMes(x,mes);}).reduce(function(a,x){return a+(+x.v||0);},0);
     var fatura=mes===MES?getFaturasDoMes():getProjecaoFaturaNoVencimento(mes).total;
-    var envelope=getPlanoEnvelopeMes(mes).total,aporte=getAportePlanejadoMes(mes),renda=(+cfg.sal15||0)+(+cfg.sal30||0);
+    var envelope=mes===MES?Math.max(0,getPlanoEnvelopeMes(mes).total-(S.envDef||[]).reduce(function(a,e){return a+getUsoEnvelope(e);},0)):getPlanoEnvelopeMes(mes).total,aporte=getAportePlanejadoMes(mes),renda=(+cfg.sal15||0)+(+cfg.sal30||0);
     // Entradas extras, inclusive 13º, só entram após confirmação de recebimento.
     renda+=(S.entradas||[]).filter(function(e){return e&&e.id==='decimo'&&e.s==='recebido'&&e.m===mes;}).reduce(function(a,e){return a+(+e.v||0);},0);
-    var saidas=pix+getVariaveisNoMes(mes)+fatura+envelope+aporte.total,resultado=renda-saidas;
+    var variaveis=mes===MES?getVariaveisPendentesNoMes(mes):getVariaveisNoMes(mes);
+    var saidas=pix+variaveis+fatura+envelope+aporte.total,resultado=renda-saidas;
     if(caixa!==null)caixa+=resultado;
     var aporteReserva=aporte.itens.filter(function(x){return String(x.n).toLowerCase()==='reserva';}).reduce(function(a,x){return a+x.v;},0);
     reserva+=aporteReserva;transferido+=aporte.total;
-    meses.push({m:mes,renda:renda,pix:pix,variaveis:getVariaveisNoMes(mes),fatura:fatura,envelopes:envelope,aporte:aporte.total,resultado:resultado,caixa:caixa,reserva:reserva,carry:caixa===null?null:caixa+caixinhas+transferido});
+    meses.push({m:mes,renda:renda,pix:pix,variaveis:variaveis,fatura:fatura,envelopes:envelope,aporte:aporte.total,resultado:resultado,caixa:caixa,reserva:reserva,carry:caixa===null?null:caixa+caixinhas+transferido});
   }
   var ultimo=meses[meses.length-1]||{};return {meses:meses,caixa:ultimo.caixa,reserva:ultimo.reserva,carry:ultimo.carry};
 }
@@ -1952,6 +1971,19 @@ function getProvisaoVariavelPixAte(prox){
   }
   return {valor:Math.round(total*100)/100,pct:pctPadrao,porMes:porMes};
 }
+function chavePagamentoVariavel(id,referencia){return String(referencia||MES)+'|var|'+String(id||'');}
+function pagamentoVariavelConfirmado(id,referencia){return !!((S.pagamentosVariaveis||{})[chavePagamentoVariavel(id,referencia)]);}
+function valorContaVariavelNoMes(conta,mes){
+  var ex=((S.excecoesVariaveis||{})[mes]||{})[conta.id],valor=ex&&ex.v!==undefined?(+ex.v||0):(+conta.v||0);
+  if(mes==='2026-08'&&conta.id==='enel'&&S.mig32RevisaoFinanceira1608&&(!ex||ex.v===undefined))valor=0;
+  return valor;
+}
+async function togglePagamentoVariavel(id,referencia,nome,valor){
+  if(!canMutateNow())return;if(!S.pagamentosVariaveis)S.pagamentosVariaveis={};
+  var chave=chavePagamentoVariavel(id,referencia);
+  if(S.pagamentosVariaveis[chave])delete S.pagamentosVariaveis[chave];else S.pagamentosVariaveis[chave]={data:hoje(),nome:nome||id,valorPago:+valor||0};
+  var ok=await save();if(ok){renderAll();toast(S.pagamentosVariaveis[chave]?'Pagamento confirmado.':'Pagamento reaberto.');}
+}
 function getCaixaLivreVerdade(){
   var caixa=getCaixaOperacional();if(caixa===null)return {disponivel:null};
   var prox=getProximoSalario(), compromissos=[];
@@ -1963,7 +1995,8 @@ function getCaixaLivreVerdade(){
   });
   (S.contasVariaveisAgenda||[]).forEach(function(c){
     var data=proximaDataDoItem(c.dia);
-    if(estaAntesDoProximoSalario(data,prox)&&(+c.v||0)>0)compromissos.push({n:c.n,v:+c.v||0,t:'conta variável',data:chaveMesData(data)});
+    var mesConta=chaveMesData(data),valor=valorContaVariavelNoMes(c,mesConta);
+    if(estaAntesDoProximoSalario(data,prox)&&valor>0&&!pagamentoVariavelConfirmado(c.id,mesConta))compromissos.push({n:c.n,v:valor,t:'conta variável',data:mesConta});
   });
   var fat=S.faturas||{}, vence=String(fat.vence||'');
   if(/^\d{4}-\d{2}-\d{2}$/.test(vence)){
@@ -1996,13 +2029,13 @@ async function saveCaixaLivre(){
 }
 function getStrategiaMes(){
   var cfg=S.cfg||{}, renda=(+cfg.sal15||0)+(+cfg.sal30||0);
-  var pix=(S.fixosPix||[]).filter(itemAtivoNoMes).reduce(function(a,x){return a+(+x.v||0);},0);
+  var pix=getFixosPixPendentesNoMes(MES);
   var assinaturas=(S.fixosAss||[]).filter(itemAtivoNoMes).reduce(function(a,x){return a+(+x.v||0);},0);
-  var variaveis=getTotVar();
+  var variaveis=getVariaveisPendentesNoMes(MES);
   var faturas=getFaturasDoMes();
   var envelopes=(S.envDef||[]);
   var orcado=getPlanoEnvelopeMes(MES).total;
-  var usado=envelopes.reduce(function(a,e){return a+(+e.usado||0);},0);
+  var usado=envelopes.reduce(function(a,e){return a+getUsoEnvelope(e);},0);
   var restanteEnvelope=Math.max(0,orcado-usado);
   // Assinaturas e parcelas são pagas por meio da fatura. Somá-las junto da
   // fatura duplicaria o mesmo dinheiro; a projeção da próxima fatura aparece
@@ -2026,12 +2059,12 @@ function rHome(){
   var diasMes=new Date(NOW.getFullYear(),NOW.getMonth()+1,0).getDate();
   var diasRest=Math.max(1,diasMes-DIA+1);
   var envMes=(S.envDef||[]).filter(function(e){return e.tipo==='envelope';});
-  var envRest=envMes.reduce(function(a,e){return a+Math.max(0,(+e.lim||0)-(+e.usado||0));},0);
+  var envRest=envMes.reduce(function(a,e){return a+Math.max(0,(+e.lim||0)-getUsoEnvelope(e));},0);
   var caixaLivre=getCaixaLivreVerdade(),caixaOperacional=getCaixaOperacional();
   if(Q('home-date'))Q('home-date').textContent=MESES[NOW.getMonth()]+' '+NOW.getFullYear()+' · dia '+DIA;
 
   // Badges de pendência nas abas
-  var envsPend=(S.envDef||[]).filter(function(e){return e.tipo==='envelope'&&e.lim&&(e.usado||0)/e.lim>0.9;});
+  var envsPend=(S.envDef||[]).filter(function(e){return e.tipo==='envelope'&&e.lim&&getUsoEnvelope(e)/e.lim>0.9;});
   var itau1Pend=(S.dividas||[]).find(function(d){return d.id==='itau1'&&d.v>0&&+(( S.cx||{}).reserva||0)>20000;});
   document.querySelectorAll('.ni,.sb-item').forEach(function(b){var old=b.querySelector('.badge');if(old)old.remove();});
   if(itau1Pend){var nb=document.createElement('span');nb.className='badge';nb.textContent='!';var nd=Q('sb-dividas');if(nd)nd.appendChild(nb);}
@@ -2053,8 +2086,8 @@ function rHome(){
   var q15=buildPix15();var q30=buildPix30();
   var q=DIA<=15?q15:q30;var qLabel=DIA<=15?'Dia 15':'Dia 30';
   var sal=DIA<=15?(+cfg.sal15||16000):(+cfg.sal30||13432);
-  var envEstourados=envMes.filter(function(e){return +e.lim>0&&(+e.usado||0)>=+e.lim;});
-  var envNoLimite=envMes.filter(function(e){if(!(+e.lim>0))return false;var p=(+e.usado||0)/(+e.lim);return p>=.85&&p<1;});
+  var envEstourados=envMes.filter(function(e){return +e.lim>0&&getUsoEnvelope(e)>=+e.lim;});
+  var envNoLimite=envMes.filter(function(e){if(!(+e.lim>0))return false;var p=getUsoEnvelope(e)/(+e.lim);return p>=.85&&p<1;});
   if(envEstourados.length){alertas.push('<div class="alert-summary critical"><div class="alert-summary-icon">'+icon('alertOctagon',18)+'</div><div><strong>'+envEstourados.length+' envelope'+(envEstourados.length>1?'s chegaram':' chegou')+' ao limite</strong><p>Evite novos gastos nessa categoria até o próximo mês.</p><button class="btn bd bsm" onclick="go(\'envelopes\')">Ver envelopes</button></div></div>');}
   else if(envNoLimite.length){alertas.push('<div class="alert-summary warning"><div class="alert-summary-icon">'+icon('alertTriangle',18)+'</div><div><strong>'+envNoLimite.length+' envelope'+(envNoLimite.length>1?'s estão':' está')+' perto do limite</strong><p>Você já usou 85% ou mais do orçamento definido.</p><button class="btn bg bsm" onclick="go(\'envelopes\')">Acompanhar agora</button></div></div>');}
   if(proxConta&&(+proxConta.dia-DIA)<=days){alertas.push('<div class="alert-summary warning"><div class="alert-summary-icon">'+icon('clock',18)+'</div><div><strong>'+esc(proxConta.n)+' vence '+(proxConta.dia===DIA?'hoje':'em '+(+proxConta.dia-DIA)+' dia'+(+proxConta.dia-DIA===1?'':'s'))+'</strong><p>Separe '+fmt(proxConta.v)+' para não ser pego de surpresa.</p><button class="btn bg bsm" onclick="go(\'pix\')">Ver contas do mês</button></div></div>');}
@@ -2104,7 +2137,7 @@ function rHome(){
   var c6=(S.dividas||[]).find(function(d){return d.id==='c6';});
   var itau1h=(S.dividas||[]).find(function(d){return d.id==='itau1';});
   var res_h=+(S.cx||{}).reserva||0;
-  var mRes_h=+((S.cfg||{}).m_res||51472);
+  var mRes_h=getMetaCaixinha('reserva',40000);
   var acaoTxt='';
   if(c6&&c6.v>0){
     acaoTxt='<div class="ctitle" style="display:flex;align-items:center;gap:6px">'+icon('target',14)+'Decisão do momento</div><div style="font-size:.86rem;font-weight:600">Aguardar oferta C6 via Consumidor.gov</div><div style="font-size:.7rem;color:var(--muted);margin-top:4px">Meta: ≤ R$27.000 para quitar e sair do Serasa</div><div class="mt8"><button class="btn bp bsm btn-with-icon" onclick="go(\'agora\')"><span>Ver protocolo</span>'+icon('chevronRight',12)+'</button></div>';
@@ -2135,16 +2168,16 @@ function rFechamento(){
   var eventuais=(S.eventuais||[]).reduce(function(a,x){return a+(+x.v||0);},0);
   var total=gastos+extras+eventuais;
   var envs=(S.envDef||[]).filter(function(e){return e.tipo==='envelope';});
-  var usado=envs.reduce(function(a,e){return a+(+e.usado||0);},0);
+  var usado=envs.reduce(function(a,e){return a+getUsoEnvelope(e);},0);
   var limite=envs.reduce(function(a,e){return a+(+e.lim||0);},0);
-  var estourados=envs.filter(function(e){return +e.lim>0&&(+e.usado||0)>+e.lim;});
+  var estourados=envs.filter(function(e){return +e.lim>0&&getUsoEnvelope(e)>+e.lim;});
   var sobrou=Math.max(0,limite-usado);
   var mes=MESES[+chave.split('-')[1]-1]+' '+chave.split('-')[0];
   var avisoFechado=jaFechado?'<div class="alert ag mb8"><span>'+icon('checkCircle',16)+'</span><div><strong>Este mês já foi fechado</strong><br>Fechado em '+new Date(S.closedMonths[chave].closedAt).toLocaleString('pt-BR')+'. Nenhuma ação adicional é necessária.</div></div>':'';
   if(Q('fech-hero'))Q('fech-hero').innerHTML=avisoFechado+'<div class="section-kicker">Prévia · '+mes+'</div><div class="closing-total">'+fmt(total)+'</div><div class="section-lead">Período que será fechado: <strong>'+fmtMesExtenso(chave)+'</strong>. Confira os pontos abaixo antes de arquivar.</div><div class="review-grid"><div class="review-metric"><span>Gastos em envelopes</span><b>'+fmt(gastos)+'</b></div><div class="review-metric"><span>Gastos extras</span><b>'+fmt(extras+eventuais)+'</b></div><div class="review-metric"><span>Restante dos envelopes</span><b class="'+(sobrou>0?'tg':'tm')+'">'+fmt(sobrou)+'</b></div></div>';
 
   var eh='';
-  if(envs.length){envs.forEach(function(e){var p=Math.round((+e.usado||0)/(+e.lim||1)*100);var cor=p>100?'var(--red)':p>=85?'var(--yellow)':'var(--green)';eh+='<div class="review-row"><div style="display:flex;gap:9px;align-items:center;min-width:0"><div class="review-icon">'+icon(categoryIconMap[e.id]||'tag',16)+'</div><div><strong style="font-size:.76rem">'+esc(e.n)+'</strong><p>'+fmt(e.usado||0)+' de '+fmt(e.lim||0)+'</p></div></div><div style="text-align:right"><span class="chip '+(p>100?'cr':p>=85?'cy':'cg')+'">'+p+'%</span></div></div>';});}
+  if(envs.length){envs.forEach(function(e){var uso=getUsoEnvelope(e),p=Math.round(uso/(+e.lim||1)*100);var cor=p>100?'var(--red)':p>=85?'var(--yellow)':'var(--green)';eh+='<div class="review-row"><div style="display:flex;gap:9px;align-items:center;min-width:0"><div class="review-icon">'+icon(categoryIconMap[e.id]||'tag',16)+'</div><div><strong style="font-size:.76rem">'+esc(e.n)+'</strong><p>'+fmt(uso)+' de '+fmt(e.lim||0)+'</p></div></div><div style="text-align:right"><span class="chip '+(p>100?'cr':p>=85?'cy':'cg')+'">'+p+'%</span></div></div>';});}
   if(Q('fech-envelopes'))Q('fech-envelopes').innerHTML='<div class="ctitle">Envelopes · conferência final</div>'+(eh||'<div class="soft-empty">Nenhum envelope com limite foi criado neste mês.</div>')+(estourados.length?'<div class="alert ar mt8" style="margin-bottom:0"><span>'+icon('alertTriangle',16)+'</span><div><strong>'+estourados.length+' limite'+(estourados.length>1?'s ultrapassados':' ultrapassado')+'</strong><br>Vale revisar esses gastos antes de fechar.</div></div>':'');
 
   var fim=[];
@@ -2228,7 +2261,7 @@ async function executarFechamento(){if(!canMutateNow())return;
   }));
 
   S.gastos=[];S.eventuais=[];S.extras=[];
-  if(S.envDef)S.envDef.forEach(function(e){e.usado=0;});
+  if(S.envDef)S.envDef.forEach(function(e){e.usado=0;e.ajusteConciliacao=0;});
   S.faturas={nu:0,br:0};
 
   S.closedMonths[chave]={closedAt:Date.now(),revisionBeforeClose:_serverRevision};
@@ -2248,7 +2281,7 @@ function calcHealthScore(){
   // Comprometimento (0-30)
   if(pct<0.5)score+=30;else if(pct<0.65)score+=22;else if(pct<0.75)score+=14;else if(pct<0.85)score+=6;
   // Reserva (0-25)
-  var res=+(S.cx||{}).reserva||0;var mRes=+cfg.m_res||51472;
+  var res=+(S.cx||{}).reserva||0;var mRes=getMetaCaixinha('reserva',40000);
   score+=Math.round(clamp(res/mRes,0,1)*25);
   // Dívidas (0-25)
   var c6v=(S.dividas||[]).find(function(d){return d.id==='c6';});
@@ -2269,6 +2302,30 @@ function calcHealthScore(){
 // ═══════════════════════════════════════════════
 var categoryIconMap={delivery:'utensils',lazer:'party',compras:'shoppingBag',roupas:'shirt',super:'shoppingCart',comb:'fuel',farm:'pill',religioso:'sparkles'};
 var _envAnt=false;
+// O uso de envelope não pode depender apenas de um contador solto. O ajuste de
+// conciliação preserva o histórico já digitado; daqui em diante, os lançamentos
+// de gastos viram a fonte rastreável e não se duplicam ao editar/excluir.
+function mapaUsoRastreadoEnvelopes(){
+  var mapa={};
+  (S.gastos||[]).forEach(function(g){if(g&&g.cat)mapa[g.cat]=(mapa[g.cat]||0)+(+g.val||0);});
+  return mapa;
+}
+function normalizarEnvelopeLedger(){
+  var mapa=mapaUsoRastreadoEnvelopes();
+  (S.envDef||[]).forEach(function(e){
+    if(e.ajusteConciliacao===undefined)e.ajusteConciliacao=Math.max(0,(+e.usado||0)-(+mapa[e.id]||0));
+  });
+}
+function getUsoEnvelope(env){
+  if(!env)return 0;
+  normalizarEnvelopeLedger();
+  return Math.max(0,(+env.ajusteConciliacao||0)+(+mapaUsoRastreadoEnvelopes()[env.id]||0));
+}
+function recalcularUsoEnvelopes(){
+  normalizarEnvelopeLedger();
+  var mapa=mapaUsoRastreadoEnvelopes();
+  (S.envDef||[]).forEach(function(e){e.usado=Math.max(0,(+e.ajusteConciliacao||0)+(+mapa[e.id]||0));});
+}
 function toggleEnvAnt(){
   _envAnt=!_envAnt;
   var btn=Q('btn-env-ant');
@@ -2280,7 +2337,7 @@ function rEnvelopes(){
   var chaveAnt=getMesAnt();
   var hist=_envAnt&&S.histMeses&&S.histMeses[chaveAnt];
   var envs=hist?hist.envDef||(S.envDef||dfEnvs()):S.envDef||dfEnvs();
-  var totalUsado=envs.reduce(function(a,e){return a+(+e.usado||0);},0);
+  var totalUsado=envs.reduce(function(a,e){return a+getUsoEnvelope(e);},0);
   var totalLim=hist?envs.reduce(function(a,e){return a+(+e.lim||0);},0):getPlanoEnvelopeMes(MES).total;
   var mesLabel=hist?chaveAnt:(MESES[NOW.getMonth()]+' '+NOW.getFullYear());
   if(Q('env-sub'))Q('env-sub').textContent=mesLabel+' · '+fmt(totalUsado)+' gastos';
@@ -2295,7 +2352,7 @@ function rEnvelopes(){
   // Lista envelopes com limite
   var hEnv='';
   envs.filter(function(e){return e.tipo==='envelope';}).forEach(function(e){
-    var usado=+e.usado||0,lim=+e.lim||0;
+    var usado=getUsoEnvelope(e),lim=+e.lim||0;
     var p=lim>0?Math.min(Math.round(usado/lim*100),100):0;
     var c=p<70?'var(--green)':p<90?'var(--yellow)':'var(--red)';
     var diasMes=getDaysInMonthSP(MES),hoje=DIA,restDias=Math.max(1,diasMes-hoje+1);
@@ -2309,7 +2366,7 @@ function rEnvelopes(){
   // Acompanhamento livre
   var hLivre='';
   envs.filter(function(e){return e.tipo==='livre';}).forEach(function(e){
-    var usado=+(e.usado||0);
+    var usado=getUsoEnvelope(e);
     var lim=+(e.lim||0);
     var limTxt=lim>0?'<span style="font-size:.65rem;color:var(--muted)"> / '+fmt(lim)+'</span>':'';
     var sobTxt=lim>0?'<span style="font-size:.65rem;color:var(--muted);margin-left:6px">sobra: '+fmt(Math.max(0,lim-usado))+'</span>':'';
@@ -2368,7 +2425,7 @@ function updateGastoGate(){
   var cat=Q('g-cat')?.value,val=+Q('g-val')?.value||0,editId=Q('g-edit-id')?.value||'';
   var env=(S.envDef||[]).find(function(e){return e.id===cat;});
   if(!env||!val||val<=0){out.innerHTML='';return;}
-  var base=+env.usado||0;
+  var base=getUsoEnvelope(env);
   var antigo=editId?(S.gastos||[]).find(function(g,i){return (g.id&&g.id===editId)||(!g.id&&String(i)===editId);}):null;
   if(antigo&&antigo.cat===cat)base=Math.max(0,base-(+antigo.val||0));
   var depois=base+val,lim=+env.lim||0,dias=Math.max(1,getDaysInMonthSP(MES)-DIA+1);
@@ -2387,21 +2444,17 @@ async function regGasto(){if(!canMutateNow())return;
   if(!S.envDef)S.envDef=dfEnvs();
   if(!S.gastos)S.gastos=[];
   var idx=editId?S.gastos.findIndex(function(g,i){return (g.id&&g.id===editId)||(!g.id&&String(i)===editId);}):-1;
-  if(idx>=0){
-    var old=S.gastos[idx],oldEnv=S.envDef.find(function(e){return e.id===old.cat;});
-    if(oldEnv)oldEnv.usado=Math.max(0,(+oldEnv.usado||0)-(+old.val||0));
-  }
   var env=S.envDef.find(function(e){return e.id===cat;});
-  if(env)env.usado=(+(env.usado||0))+val;
   var novo={id:idx>=0?(S.gastos[idx].id||uid()):uid(),tipo,cat,val,pgto,desc,data,ts:idx>=0?S.gastos[idx].ts:Date.now()};
   if(idx>=0)S.gastos[idx]=novo;else S.gastos.push(novo);
+  recalcularUsoEnvelopes();
   var saved=await save();
   if(!saved)return;
   closeOvl('ovl-gasto');toast(idx>=0?'Gasto atualizado.':'Gasto registrado.');
   if(Q('g-edit-id'))Q('g-edit-id').value='';if(Q('g-modal-title'))Q('g-modal-title').textContent='Registrar gasto';if(Q('g-save-btn'))Q('g-save-btn').textContent='Registrar';
   if(Q('g-val'))Q('g-val').value='';if(Q('g-desc'))Q('g-desc').value='';
   if(Q('g-intel'))Q('g-intel').innerHTML='';
-  rEnvelopes();
+  renderAll();
 }
 
 function rEnvHist(){
@@ -2456,16 +2509,15 @@ function renderAllGastos(){
 var _undoGasto=null;
 async function delGasto(i){if(!canMutateNow())return;
   var g=S.gastos[i];if(!g)return;
-  var envs=S.envDef||[];var env=envs.find(function(e){return e.id===g.cat;});
-  if(env)env.usado=Math.max(0,(+(env.usado||0))-(+g.val||0));
   S.gastos.splice(i,1);
+  recalcularUsoEnvelopes();
   var saved=await save();
   if(!saved)return;
-  _undoGasto={gasto:g,index:i};toast('Gasto excluído.','DESFAZER',undoDelGasto);renderAllGastos();rEnvelopes();
+  _undoGasto={gasto:g,index:i};toast('Gasto excluído.','DESFAZER',undoDelGasto);renderAll();
 }
-async function undoDelGasto(){if(!canMutateNow())return;if(!_undoGasto)return;var u=_undoGasto;_undoGasto=null;if(!S.gastos)S.gastos=[];S.gastos.splice(Math.min(u.index,S.gastos.length),0,u.gasto);var env=(S.envDef||[]).find(function(e){return e.id===u.gasto.cat;});if(env)env.usado=(+env.usado||0)+(+u.gasto.val||0);var saved=await save();if(!saved)return;toast('Gasto restaurado.');renderAllGastos();rEnvelopes();}
+async function undoDelGasto(){if(!canMutateNow())return;if(!_undoGasto)return;var u=_undoGasto;_undoGasto=null;if(!S.gastos)S.gastos=[];S.gastos.splice(Math.min(u.index,S.gastos.length),0,u.gasto);recalcularUsoEnvelopes();var saved=await save();if(!saved)return;toast('Gasto restaurado.');renderAll();}
 
-function limparGastos(){if(!canMutateNow())return;askConfirm('Limpar gastos?','Todos os gastos registrados serão removidos e os envelopes voltarão a zero.',async function(){S.gastos=[];if(S.envDef)S.envDef.forEach(function(e){e.usado=0;});var saved=await save();if(!saved)return;toast('Gastos removidos.');renderAllGastos();rEnvelopes();},true);}
+function limparGastos(){if(!canMutateNow())return;askConfirm('Limpar gastos?','Todos os gastos registrados serão removidos. O histórico conciliado dos envelopes será preservado para não apagar gastos antigos por engano.',async function(){S.gastos=[];recalcularUsoEnvelopes();var saved=await save();if(!saved)return;toast('Gastos removidos.');renderAll();},true);}
 
 async function regNovoEnv(){if(!canMutateNow())return;
   var n=(Q('ne-n')?.value||'').trim(),l=Math.max(0,+Q('ne-l')?.value||0),t=Q('ne-t')?.value||'envelope';
@@ -2481,7 +2533,7 @@ async function regNovoEnv(){if(!canMutateNow())return;
 // ═══════════════════════════════════════════════
 function getTotFixosPix(){return(S.fixosPix||[]).filter(itemAtivoNoMes).reduce(function(a,f){return a+(+f.v||0);},0);}
 function getTotAss(){return(S.fixosAss||[]).filter(itemAtivoNoMes).reduce(function(a,f){return a+(+f.v||0);},0);}
-function getTotVar(){var v=S.fixosVar||{};return Object.values(v).reduce(function(a,x){return a+(+x||0);},0);}
+function getTotVar(){return getVariaveisNoMes(MES);}
 
 function rPix(){
   if(Q('pix-mes'))Q('pix-mes').textContent=MESES[NOW.getMonth()]+' '+NOW.getFullYear()+' · ciclo 08/'+String(NOW.getMonth()+1).padStart(2,'0')+' → 08/'+String(NOW.getMonth()+2).padStart(2,'0');
@@ -2497,7 +2549,7 @@ function rPix(){
   var cfg=S.cfg||{};var sal=+(cfg.sal15||16000)+(+cfg.sal30||13432);
   var totalPix=q15.tot+q22.tot+q30.tot;
   var totalFat=getFaturasDoMes();
-  if(Q('pix-resumo')){var sobraPix=sal-totalPix,proj=getProjecaoFatura();Q('pix-resumo').className='card section-pulse mb8';Q('pix-resumo').innerHTML='<div class="fsb mb8"><div><div class="ctitle" style="margin:0 0 5px">Sobra estimada do mês</div><div class="pulse-value '+(sobraPix>=0?'tg':'tr')+'">'+fmt(sobraPix)+'</div><div class="pulse-caption">Após PIX, boletos e faturas já cadastrados.</div></div><button class="btn bg bsm btn-with-icon" onclick="openOvl(\'ovl-faturas\')">'+icon('edit',13)+'<span>Revisar faturas</span></button></div><div class="row" style="padding:6px 0"><span style="font-size:.74rem">Renda total</span><span class="val vsm tg">'+fmt(sal)+'</span></div><div class="row" style="padding:6px 0"><span style="font-size:.74rem">Contas e cartões</span><span class="val vsm tr">−'+fmt(totalPix)+'</span></div><div class="div"></div><div class="row" style="padding:6px 0"><div><div style="font-size:.74rem">Próxima fatura projetada</div><div style="font-size:.6rem;color:var(--muted)">Assinaturas + parcelas + Localiza; fatura fechada prevalece.</div></div><span class="val vsm ty">'+fmt(proj.total)+'</span></div>';}
+  if(Q('pix-resumo')){var sobraPix=sal-totalPix,proj=getProjecaoFatura();Q('pix-resumo').className='card section-pulse mb8';Q('pix-resumo').innerHTML='<div class="fsb mb8"><div><div class="ctitle" style="margin:0 0 5px">Saldo ainda comprometido no mês</div><div class="pulse-value '+(sobraPix>=0?'tg':'tr')+'">'+fmt(sobraPix)+'</div><div class="pulse-caption">Renda mensal menos somente o que ainda está pendente. Pagamentos confirmados saem do total.</div></div><button class="btn bg bsm btn-with-icon" onclick="openOvl(\'ovl-faturas\')">'+icon('edit',13)+'<span>Revisar faturas</span></button></div><div class="row" style="padding:6px 0"><span style="font-size:.74rem">Renda total</span><span class="val vsm tg">'+fmt(sal)+'</span></div><div class="row" style="padding:6px 0"><span style="font-size:.74rem">Ainda falta pagar</span><span class="val vsm tr">−'+fmt(totalPix)+'</span></div><div class="div"></div><div class="row" style="padding:6px 0"><div><div style="font-size:.74rem">Próxima fatura projetada</div><div style="font-size:.6rem;color:var(--muted)">Assinaturas + parcelas + Localiza; fatura fechada prevalece.</div></div><span class="val vsm ty">'+fmt(proj.total)+'</span></div>';}
 }
 
 function proximoMesKey(){var d=new Date(NOW.getFullYear(),NOW.getMonth()+1,1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
@@ -2510,7 +2562,7 @@ function valorPagamentoFixo(id,referencia,previsto){
 async function togglePagamentoFixo(id,referencia,nome){
   if(!canMutateNow())return;if(!S.pagamentosFixos)S.pagamentosFixos={};var chave=chavePagamentoFixo(id,referencia);
   if(S.pagamentosFixos[chave]){delete S.pagamentosFixos[chave];}else S.pagamentosFixos[chave]={data:hoje(),nome:nome||id};
-  var ok=await save();if(ok){rPix();rHome();toast(S.pagamentosFixos[chave]?'Pagamento confirmado.':'Pagamento reaberto.');}
+  var ok=await save();if(ok){renderAll();toast(S.pagamentosFixos[chave]?'Pagamento confirmado.':'Pagamento reaberto.');}
 }
 async function ajustarValorPagamentoFixo(id,referencia,nome,previsto){
   if(!canMutateNow())return;
@@ -2523,7 +2575,7 @@ async function ajustarValorPagamentoFixo(id,referencia,nome,previsto){
   var valor=parseFloat(String(entrada).replace(/\./g,'').replace(',','.'));
   if(!isFinite(valor)||valor<0){toast('Informe um valor válido.');return;}
   pg.valorPago=valor;pg.valorPrevisto=+previsto||0;pg.ajustadoEm=hoje();
-  var ok=await save();if(ok){rPix();rHome();toast('Valor real salvo: '+fmt(valor)+'.');}
+  var ok=await save();if(ok){renderAll();toast('Valor real salvo: '+fmt(valor)+'.');}
 }
 function pixRow(iconName,n,v,obs,enc,dividaId,pagamentoId,referencia){
   var hoje=getMonthKeySP();var venc=enc&&enc<hoje;
@@ -2537,20 +2589,27 @@ function pixRow(iconName,n,v,obs,enc,dividaId,pagamentoId,referencia){
   }
   return'<div class="row" style="padding:5px 0"><div><div style="font-size:.78rem;display:flex;align-items:center;gap:5px">'+(iconName?icon(iconName,13):'')+esc(n)+(enc?'<span style="font-size:.58rem;margin-left:4px;color:'+(venc?'var(--muted)':'var(--red)')+'">até '+ml(enc)+'</span>':'')+'</div>'+(obs?'<div style="font-size:.6rem;color:var(--muted)">'+esc(obs)+'</div>':'')+(ajustado?'<div style="font-size:.6rem;color:var(--green)">Pago '+fmt(valorReal)+' · previsto '+fmt(v)+'</div>':'')+' </div><div style="display:flex;align-items:center;gap:7px"><span class="val vsm tr">−'+fmt(valorReal)+'</span>'+acao+'</div></div>';
 }
+function pixRowVariavel(conta,referencia){
+  var valor=valorContaVariavelNoMes(conta,referencia),pago=pagamentoVariavelConfirmado(conta.id,referencia);
+  var acao='<button class="btn bg bsm" onclick="togglePagamentoVariavel(\''+escJs(conta.id)+'\',\''+escJs(referencia)+'\',\''+escJs(conta.n)+'\','+valor+')">'+(pago?icon('check',11)+' Pago':'Paguei')+'</button>';
+  return '<div class="row" style="padding:5px 0"><div><div style="font-size:.78rem;display:flex;align-items:center;gap:5px">'+icon('receipt',13)+esc(conta.n)+'</div><div style="font-size:.6rem;color:var(--muted)">conta variável · dia '+esc(String(conta.dia||''))+(conta.obs?' · '+esc(conta.obs):'')+'</div></div><div style="display:flex;align-items:center;gap:7px"><span class="val vsm tr">−'+fmt(valor)+'</span>'+acao+'</div></div>';
+}
 
 function buildPix15(){
   var h='',tot=0;
   var fat=S.faturas||{};
   var cfg=S.cfg||{};
   h+='<div class="row" style="padding:5px 0"><span style="font-size:.78rem;color:var(--green);display:flex;align-items:center;gap:5px">'+icon('dollarSign',13)+'Salário (adiantamento)</span><span class="val vsm tg">+'+fmt(+cfg.sal15||16000)+'</span></div>';
-  if(faturaVenceNoMes()&&fat.nu){h+=pixRow('card','Fatura Nubank CC',fat.nu,'fechada','','fatura_nu',MES);tot+=+fat.nu;}
-  if(faturaVenceNoMes()&&fat.br){h+=pixRow('card','Fatura Bradesco CC',fat.br,'fechada','','fatura_br',MES);tot+=+fat.br;}
-  (S.fixosPix||[]).filter(function(f){return itemAtivoNoMes(f)&&String(f.dia).includes('15');}).forEach(function(f){h+=pixRow(fixoIconMap[f.id]||'card',f.n,f.v,f.obs,f.enc,f.id,f.id,MES);tot+=valorPagamentoFixo(f.id,MES,f.v);});
+  if(faturaVenceNoMes()&&fat.nu){h+=pixRow('card','Fatura Nubank CC',fat.nu,'fechada','','fatura_nu',MES);tot+=valorPendentePagamentoFixo('fatura_nu',MES,fat.nu);}
+  if(faturaVenceNoMes()&&fat.br){h+=pixRow('card','Fatura Bradesco CC',fat.br,'fechada','','fatura_br',MES);tot+=valorPendentePagamentoFixo('fatura_br',MES,fat.br);}
+  (S.fixosPix||[]).filter(function(f){return itemAtivoNoMes(f)&&String(f.dia).includes('15');}).forEach(function(f){h+=pixRow(fixoIconMap[f.id]||'card',f.n,f.v,f.obs,f.enc,f.id,f.id,MES);tot+=valorPendentePagamentoFixo(f.id,MES,f.v);});
+  (S.contasVariaveisAgenda||[]).filter(function(c){return +c.dia<=15;}).forEach(function(c){var v=valorContaVariavelNoMes(c,MES);if(v>0){h+=pixRowVariavel(c,MES);if(!pagamentoVariavelConfirmado(c.id,MES))tot+=v;}});
   return{html:h,tot};
 }
 function buildPix22(){
   var h='',tot=0;
-  (S.fixosPix||[]).filter(function(f){var dia=+f.dia;return itemAtivoNoMes(f)&&dia>=16&&dia<=29;}).forEach(function(f){h+=pixRow(fixoIconMap[f.id]||'card',f.n,f.v,f.obs,f.enc,f.id,f.id,MES);tot+=valorPagamentoFixo(f.id,MES,f.v);});
+  (S.fixosPix||[]).filter(function(f){var dia=+f.dia;return itemAtivoNoMes(f)&&dia>=16&&dia<=29;}).forEach(function(f){h+=pixRow(fixoIconMap[f.id]||'card',f.n,f.v,f.obs,f.enc,f.id,f.id,MES);tot+=valorPendentePagamentoFixo(f.id,MES,f.v);});
+  (S.contasVariaveisAgenda||[]).filter(function(c){var d=+c.dia;return d>=16&&d<=29;}).forEach(function(c){var v=valorContaVariavelNoMes(c,MES);if(v>0){h+=pixRowVariavel(c,MES);if(!pagamentoVariavelConfirmado(c.id,MES))tot+=v;}});
   if(!h)h='<div style="font-size:.74rem;color:var(--muted);padding:5px 0">Nenhum</div>';
   return{html:h,tot};
 }
@@ -2558,7 +2617,7 @@ function buildPix30(){
   var h='',tot=0;
   var cfg=S.cfg||{};
   h+='<div class="row" style="padding:5px 0"><span style="font-size:.78rem;color:var(--green);display:flex;align-items:center;gap:5px">'+icon('dollarSign',13)+'Salário (complemento)</span><span class="val vsm tg">+'+fmt(+cfg.sal30||13432)+'</span></div>';
-  (S.fixosPix||[]).filter(function(f){return itemAtivoNoMes(f)&&(String(f.dia)==='30'||String(f.dia)==='4');}).forEach(function(f){var ref=String(f.dia)==='4'?proximoMesKey():MES;h+=pixRow(fixoIconMap[f.id]||'card',f.n,f.v,f.obs,f.enc,f.id,f.id,ref);tot+=valorPagamentoFixo(f.id,ref,f.v);});
+  (S.fixosPix||[]).filter(function(f){return itemAtivoNoMes(f)&&(String(f.dia)==='30'||String(f.dia)==='4');}).forEach(function(f){var ref=String(f.dia)==='4'?proximoMesKey():MES;h+=pixRow(fixoIconMap[f.id]||'card',f.n,f.v,f.obs,f.enc,f.id,f.id,ref);tot+=valorPendentePagamentoFixo(f.id,ref,f.v);});
   return{html:h,tot};
 }
 
@@ -2569,7 +2628,7 @@ async function saveFaturas(){if(!canMutateNow())return;
   S.faturas.vence=Q('fat-vence')?.value||'';
   var saved=await save();
   if(!saved)return;
-  closeOvl('ovl-faturas');rPix();
+  closeOvl('ovl-faturas');renderAll();
 }
 
 function editPixItem(idx,tipo,nome,valAtual){
@@ -2588,7 +2647,7 @@ async function saveEditPix(){if(!canMutateNow())return;
     S.fixosPix[idx].v=v;
     var saved=await save();
     if(!saved)return;
-    closeOvl('ovl-edit-pix');rPix();rFixos();
+    closeOvl('ovl-edit-pix');renderAll();
   }
 }
 
@@ -2634,8 +2693,8 @@ async function regExtra(){if(!canMutateNow())return;
   // Compras novas parceladas recebem um ID compartilhado. Em edições, atualizamos a
   // obrigação já vinculada em vez de criar outra (o antigo comportamento duplicava parcelas).
   if(viraParcelado&&!installmentId&&idx<0)installmentId=uid();
-  if(idx>=0)S.extras[idx]=Object.assign({},anterior,{v,cat,desc,pgto,banco,cart,np,vp,installmentId:installmentId||undefined});
-  else S.extras.push({id:uid(),v,cat,desc,pgto,banco,cart,np,vp,installmentId,ts:Date.now()});
+  if(idx>=0)S.extras[idx]=Object.assign({},anterior,{v,cat,desc,pgto,banco,cart,np,vp,installmentId:installmentId||undefined,data:anterior.data||hoje()});
+  else S.extras.push({id:uid(),v,cat,desc,pgto,banco,cart,np,vp,installmentId,data:hoje(),ts:Date.now()});
 
   var parcIdx=installmentId?S.parcExtras.findIndex(function(p){return p.id===installmentId;}):-1;
   if(viraParcelado&&installmentId){
@@ -2657,7 +2716,7 @@ async function regExtra(){if(!canMutateNow())return;
   }
   var saved=await save();
   if(!saved)return;
-  toast(idx>=0?'Gasto extra atualizado.':'Gasto extra registrado.');_extEditId=null;if(Q('ext-v'))Q('ext-v').value='';if(Q('ext-d'))Q('ext-d').value='';var b=document.querySelector('#s-extras .btn.bp.bfull');if(b)b.textContent='Registrar';rExtras();
+  toast(idx>=0?'Gasto extra atualizado.':'Gasto extra registrado.');_extEditId=null;if(Q('ext-v'))Q('ext-v').value='';if(Q('ext-d'))Q('ext-d').value='';var b=document.querySelector('#s-extras .btn.bp.bfull');if(b)b.textContent='Registrar';renderAll();
 }
 var _extAnt=false;
 function toggleExtAnt(){
@@ -2695,16 +2754,16 @@ async function moverExtraParaEnvelope(i,destino){if(!canMutateNow())return;
     var anterior=JSON.parse(JSON.stringify(S));
     if(!S.gastos)S.gastos=[];
     S.gastos.push({id:uid(),tipo:'envelope',cat:destino,val:+item.v||0,pgto:item.pgto==='credito'?(item.cart==='BR'?'Crédito Bradesco':'Crédito Nubank'):(item.banco?'Débito/PIX':''),desc:item.desc||item.cat,data:hoje(),ts:item.ts||Date.now(),origem:'extra-reclassificado'});
-    env.usado=(+env.usado||0)+(+item.v||0);S.extras.splice(i,1);
+    S.extras.splice(i,1);recalcularUsoEnvelopes();
     var saved=await save();if(!saved){S=anterior;renderAll();toast('Não foi possível mover o gasto.');return;}
-    toast('Gasto movido para o envelope.');rExtras();rEnvelopes();
+    toast('Gasto movido para o envelope.');renderAll();
   },false);
 }
 async function delExtra(i){if(!canMutateNow())return;
   var item=(S.extras||[])[i];if(!item)return;
   if(item.installmentId&&S.parcExtras)S.parcExtras=S.parcExtras.filter(function(p){return p.id!==item.installmentId;});
   S.extras.splice(i,1);
-  var saved=await save();if(!saved)return;rExtras();rParcelas();
+  var saved=await save();if(!saved)return;renderAll();
 }
 function editExtra(i){var x=(S.extras||[])[i];if(!x)return;_extEditId=x.id||null;if(Q('ext-v'))Q('ext-v').value=x.v||'';if(Q('ext-c'))Q('ext-c').value=x.cat||'outros';if(Q('ext-d'))Q('ext-d').value=x.desc||'';if(Q('ext-pgto'))Q('ext-pgto').value=x.pgto||'debito';extPgtoToggle();if(Q('ext-banco'))Q('ext-banco').value=x.banco||'mp';if(Q('ext-cart'))Q('ext-cart').value=x.cart||'NU';if(Q('ext-np'))Q('ext-np').value=x.np||1;extPreview();var b=document.querySelector('#s-extras .btn.bp.bfull');if(b)b.textContent='Salvar alterações';}
 
@@ -2803,7 +2862,7 @@ function rAgora(){
   var pct=ev.passos.length?Math.round(done/ev.passos.length*100):0;
   var ciclo=getCaixaLivreVerdade(),estrategia=getStrategiaMes(),proj=getProjecaoFatura(),dist=getDistribuicaoEnvelopes(MES),aporte=getAportePlanejadoMes(MES);
   var cicloLivre=ciclo.disponivel===null?'—':fmt(ciclo.disponivel),margem=estrategia.livrePlanejado;
-  var listaComp=(ciclo.compromissos||[]).slice(0,4),pendEntradas=(S.entradas||[]).filter(function(e){return e.s==='pendente';}).reduce(function(a,e){return a+(+e.v||0);},0);
+  var listaComp=(ciclo.compromissos||[]),pendEntradas=(S.entradas||[]).filter(function(e){return e.s==='pendente';}).reduce(function(a,e){return a+(+e.v||0);},0);
   var compHtml=listaComp.length?listaComp.map(function(x){return '<div class="plan-row"><div><strong>'+esc(x.n)+'</strong><small>'+esc(x.t||'compromisso do ciclo')+'</small></div><span class="val vsm tr">−'+fmt(x.v)+'</span></div>';}).join(''):'<div class="plan-mini">Atualize o saldo das contas para listar o que falta até o próximo salário.</div>';
   var aporteTxt=aporte.itens.length?aporte.itens.map(function(x){return esc(x.n)+' '+fmt(x.v);}).join(' · '):'Sem aporte programado para este mês.';
   var linhasConta=[
@@ -2910,7 +2969,7 @@ function rFixosAss(){
 async function toggleFixoAtivo(tipo,i){if(!canMutateNow())return;
   var l=tipo==='pix'?S.fixosPix:S.fixosAss;
   if(l&&l[i]){l[i].ativo=l[i].ativo===false?true:false;var saved=await save();if(!saved)return;}
-  rFixos();
+  renderAll();
 }
 function rFixosVar(){
   var v=S.fixosVar||{},notas=S.fixosVarNotas||{};
@@ -2918,10 +2977,10 @@ function rFixosVar(){
   var h='';itens.forEach(function(it){h+='<div class="fix-item"><span>'+icon(it.ic,16)+'</span><div style="flex:1"><div style="font-size:.8rem">'+it.n+'</div>'+(notas[it.k]?'<div style="font-size:.6rem;color:var(--muted);margin-top:2px">'+esc(notas[it.k])+'</div>':'')+'</div><input type="number" value="'+(v[it.k]||0)+'" onchange="updateFixoVar(\''+it.k+'\',this.value)" step="0.01"></div>';});
   if(Q('fix-var'))Q('fix-var').innerHTML=h;
 }
-async function delFixo(tipo,i){if(!canMutateNow())return;var l=tipo==='pix'?S.fixosPix:S.fixosAss;if(l){var item=l[i];if(item&&item.id){var key=tipo==='pix'?'_fixosPixRemovidos':'_fixosAssRemovidos';if(!S[key])S[key]=[];if(S[key].indexOf(item.id)===-1)S[key].push(item.id);}l.splice(i,1);}var saved=await save();if(!saved)return;rFixos();}
-async function updateFixo(tipo,i,valor){if(!canMutateNow())return;var l=tipo==='pix'?S.fixosPix:S.fixosAss;if(!l||!l[i])return;l[i].v=+valor||0;var saved=await save();if(!saved)return;rFixos();toast('Conta atualizada e salva.');}
-async function updateFixoVar(chave,valor){if(!canMutateNow())return;if(!S.fixosVar)S.fixosVar={};S.fixosVar[chave]=+valor||0;var saved=await save();if(!saved)return;rFixos();toast('Conta atualizada e salva.');}
-async function saveFixos(){if(!canMutateNow())return;var saved=await save();if(!saved)return;rFixos();var el=Q('fix-pix');if(el){el.style.borderColor='var(--green)';setTimeout(function(){el.style.borderColor='';},1500);}}
+async function delFixo(tipo,i){if(!canMutateNow())return;var l=tipo==='pix'?S.fixosPix:S.fixosAss;if(l){var item=l[i];if(item&&item.id){var key=tipo==='pix'?'_fixosPixRemovidos':'_fixosAssRemovidos';if(!S[key])S[key]=[];if(S[key].indexOf(item.id)===-1)S[key].push(item.id);}l.splice(i,1);}var saved=await save();if(!saved)return;renderAll();}
+async function updateFixo(tipo,i,valor){if(!canMutateNow())return;var l=tipo==='pix'?S.fixosPix:S.fixosAss;if(!l||!l[i])return;l[i].v=+valor||0;var saved=await save();if(!saved)return;renderAll();toast('Conta atualizada e salva.');}
+async function updateFixoVar(chave,valor){if(!canMutateNow())return;if(!S.fixosVar)S.fixosVar={};S.fixosVar[chave]=+valor||0;var agendaId={luz:'enel',agua:'sabesp',gas:'gas'}[chave];if(agendaId&&Array.isArray(S.contasVariaveisAgenda)){var conta=S.contasVariaveisAgenda.find(function(x){return x&&x.id===agendaId;});if(conta)conta.v=+valor||0;}var saved=await save();if(!saved)return;renderAll();toast('Conta atualizada e salva em todo o app.');}
+async function saveFixos(){if(!canMutateNow())return;var saved=await save();if(!saved)return;renderAll();var el=Q('fix-pix');if(el){el.style.borderColor='var(--green)';setTimeout(function(){el.style.borderColor='';},1500);}}
 function addFixo(tipo){
   Q('af-tipo').value=tipo;Q('af-title').textContent=tipo==='pix'?'+ PIX/Boleto':'+ Assinatura';
   if(Q('af-cartao-w'))Q('af-cartao-w').style.display=tipo==='ass'?'':'none';
@@ -2936,7 +2995,7 @@ async function saveFixoItem(){if(!canMutateNow())return;
   else{if(!S.fixosAss)S.fixosAss=[];S.fixosAss.push(item);}
   var saved=await save();
   if(!saved)return;
-  closeOvl('ovl-add-fixo');rFixos();
+  closeOvl('ovl-add-fixo');renderAll();
 }
 
 // ═══════════════════════════════════════════════
@@ -3400,7 +3459,7 @@ function editDivSaldo(id){
   if(Q('ds-id'))Q('ds-id').value=d.id;if(Q('ds-nome'))Q('ds-nome').textContent=d.n;if(Q('ds-val'))Q('ds-val').value=d.v;
   openOvl('ovl-div-saldo');
 }
-async function saveDivSaldo(){if(!canMutateNow())return;var id=Q('ds-id')?.value,v=parseFloat(Q('ds-val')?.value||'');if(!id||isNaN(v)||v<0){toast('Informe um saldo válido.');return;}var divs=S.dividas||dfDividas(),d=divs.find(function(x){return x.id===id;});if(!d)return;d.v=v;S.dividas=divs;var saved=await save();if(!saved)return;closeOvl('ovl-div-saldo');toast('Saldo da dívida atualizado.');rDividas();rPix();}
+async function saveDivSaldo(){if(!canMutateNow())return;var id=Q('ds-id')?.value,v=parseFloat(Q('ds-val')?.value||'');if(!id||isNaN(v)||v<0){toast('Informe um saldo válido.');return;}var divs=S.dividas||dfDividas(),d=divs.find(function(x){return x.id===id;});if(!d)return;d.v=v;S.dividas=divs;var saved=await save();if(!saved)return;closeOvl('ovl-div-saldo');toast('Saldo da dívida atualizado.');renderAll();}
 function openDivPag(id,nome,valorSugerido,pagamentoFixoKey){
   _divEditId=id;
   _divPagamentoFixoKey=pagamentoFixoKey||null;
@@ -3435,8 +3494,7 @@ async function regDivPag(){if(!canMutateNow())return;
   if(!saved)return;
   _divPagamentoFixoKey=null;
   closeOvl('ovl-div-pag');
-  rDividas();
-  rPix();
+  renderAll();
   toast(quitouAgora?'Dívida quitada!':'Pagamento registrado.');
 }
 function quitarDiv(id){if(!canMutateNow())return;
@@ -3446,7 +3504,7 @@ function quitarDiv(id){if(!canMutateNow())return;
     appendTimelineAuto(d.n+' quitado.',oldV);
     var saved=await save();
     if(!saved)return;
-    toast('Dívida marcada como quitada.');rDividas();rPix();
+    toast('Dívida marcada como quitada.');renderAll();
   },false);
 }
 // appendTimelineAuto: alteração puramente local (item 13). Não chama save(), renderAll(), toast() ou
@@ -3525,7 +3583,7 @@ function rProgresso(){
   var liquido=ativos-passivos;var score=calcHealthScore();
   var scoreCor=score>=70?'var(--green)':score>=50?'var(--yellow)':'var(--red)';
   if(Q('prog-score'))Q('prog-score').innerHTML='<div class="fsb mb8"><div><div class="ctitle" style="margin:0 0 5px">Saúde financeira</div><div style="font:500 1.05rem Fraunces,serif">Visão geral do seu plano</div><div style="font-size:.68rem;color:var(--muted);margin-top:3px">0 = caótico · 100 = exemplar</div></div><div class="health-dial" style="--dial:'+score+';--dial-color:'+scoreCor+'"><b>'+score+'</b></div></div><div class="health-bar"><div class="health-fill" style="width:'+score+'%;background:'+scoreCor+'"></div></div><div class="fsb mt4"><div style="font-size:.68rem;color:var(--muted)">Patrimônio líquido</div><div class="val vsm '+(liquido>=0?'tg':'tr')+'">'+fmt(liquido)+'</div></div><div class="balance-visual"><div class="balance-piece assets"><span>Guardado</span><b class="tg">'+fmt(ativos)+'</b></div><div class="balance-piece debts"><span>Em dívidas</span><b class="tr">'+fmt(passivos)+'</b></div></div>';
-  var res=+(cx.reserva||0);var mRes=+cfg.m_res||51472;var viag=+(cx.viagem||0);var mViag=+cfg.m_viag||14200;
+  var res=+(cx.reserva||0);var mRes=getMetaCaixinha('reserva',40000);var viag=+(cx.viagem||0);var mViag=+cfg.m_viag||14200;
   var serasaScore=+(cfg.serasa_score||735);
   if(Q('prog-grid'))Q('prog-grid').innerHTML='<div class="card" style="margin:0"><div class="ctitle" style="display:flex;align-items:center;gap:6px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;stroke-width:2;flex-shrink:0;vertical-align:middle" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Reserva</div><div class="val vlg tg">'+fmt(res)+'</div><div class="pt"><div class="pf" style="width:'+Math.min(res/mRes*100,100)+'%;background:var(--blue)"></div></div><div style="font-size:.62rem;color:var(--muted)">'+Math.round(res/mRes*100)+'% de '+fmt(mRes)+'</div></div><div class="card" style="margin:0"><div class="ctitle" style="display:flex;align-items:center;gap:6px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;stroke-width:2;flex-shrink:0;vertical-align:middle" aria-hidden="true"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-1 .1-1.3.5l-.4.6c-.4.5-.2 1.2.3 1.5L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.5 1 .7 1.5.3l.6-.4c.4-.3.6-.8.5-1.3z"/></svg>Viagem</div><div class="val vlg tg">'+fmt(viag)+'</div><div class="pt"><div class="pf" style="width:'+Math.min(viag/mViag*100,100)+'%;background:var(--purple)"></div></div><div style="font-size:.62rem;color:var(--muted)">'+Math.round(viag/mViag*100)+'% de '+fmt(mViag)+'</div></div><div class="card" style="margin:0"><div class="ctitle" style="display:flex;align-items:center;gap:6px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;stroke-width:2;flex-shrink:0;vertical-align:middle" aria-hidden="true"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Dívidas</div><div class="val vlg tr">'+fmt(passivos)+'</div><div style="font-size:.68rem;color:var(--muted);margin-top:4px">'+('Serasa: '+serasaScore)+' · meta: '+(cfg.m_score||600)+'</div></div><div class="card" style="margin:0"><div class="ctitle" style="display:flex;align-items:center;gap:6px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;stroke-width:2;flex-shrink:0;vertical-align:middle" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>Caixinhas total</div><div class="val vlg tg">'+fmt(ativos)+'</div><div style="font-size:.68rem;color:var(--muted);margin-top:4px">Líquido: '+fmt(liquido)+'</div></div>';
   // Fidelity
@@ -3625,8 +3683,8 @@ var REGRAS=[
     var n=(S.parcExtras||[]).filter(function(p){return p.s==='ativa'&&p.origem!=='auto';}).length;
     return n===0?'verde':n<=1?'amarelo':'vermelho';
   },get info(){var n=(S.parcExtras||[]).filter(function(p){return p.s==='ativa'&&p.origem!=='auto';}).length;return n+' parcela'+( n!==1?'s':'')+' nova'+( n!==1?'s':'');}},
-  {id:'delivery',icon:'utensils',t:'Alimentação fora — R$700/mês',d:'Delivery + restaurantes',r:'Quando o envelope zera, alimentação fora acabou.',get s(){var env=(S.envDef||[]).find(function(e){return e.id==='delivery';});var u=+(env&&env.usado||0),l=+(env&&env.lim||700);return u/l<0.7?'verde':u/l<0.9?'amarelo':'vermelho';},get info(){var env=(S.envDef||[]).find(function(e){return e.id==='delivery';});return fmt(+(env&&env.usado||0))+' de '+fmt(+(env&&env.lim||700));}},
-  {id:'lazer',icon:'party',t:'Lazer — R$500/mês',d:'Shows, bares, saídas',r:'Comprou ingresso? Desconta. Quando zera, acabou.',get s(){var env=(S.envDef||[]).find(function(e){return e.id==='lazer';});var u=+(env&&env.usado||0),l=+(env&&env.lim||500);return u/l<0.7?'verde':u/l<0.9?'amarelo':'vermelho';},get info(){var env=(S.envDef||[]).find(function(e){return e.id==='lazer';});return fmt(+(env&&env.usado||0))+' de '+fmt(+(env&&env.lim||500));}},
+  {id:'delivery',icon:'utensils',t:'Alimentação fora — R$700/mês',d:'Delivery + restaurantes',r:'Quando o envelope zera, alimentação fora acabou.',get s(){var env=(S.envDef||[]).find(function(e){return e.id==='delivery';});var u=getUsoEnvelope(env),l=+(env&&env.lim||700);return u/l<0.7?'verde':u/l<0.9?'amarelo':'vermelho';},get info(){var env=(S.envDef||[]).find(function(e){return e.id==='delivery';});return fmt(getUsoEnvelope(env))+' de '+fmt(+(env&&env.lim||700));}},
+  {id:'lazer',icon:'party',t:'Lazer — R$500/mês',d:'Shows, bares, saídas',r:'Comprou ingresso? Desconta. Quando zera, acabou.',get s(){var env=(S.envDef||[]).find(function(e){return e.id==='lazer';});var u=getUsoEnvelope(env),l=+(env&&env.lim||500);return u/l<0.7?'verde':u/l<0.9?'amarelo':'vermelho';},get info(){var env=(S.envDef||[]).find(function(e){return e.id==='lazer';});return fmt(getUsoEnvelope(env))+' de '+fmt(+(env&&env.lim||500));}},
   {id:'fatura',icon:'barChart',t:'Fatura do ciclo',d:'Valor já lançado neste mês',r:'Acompanhe a fatura lançada separadamente da projeção das parcelas. Fatura alta não vira autorização para novas compras.',get s(){var br=+(S.faturas&&S.faturas.br||0),nu=+(S.faturas&&S.faturas.nu||0),renda=(+((S.cfg||{}).sal15||16000))+(+((S.cfg||{}).sal30||13192)),pct=(br+nu)/Math.max(1,renda);return pct<.2?'verde':pct<.3?'amarelo':'vermelho';},get info(){var f=S.faturas||{};return 'NU '+fmt(+f.nu||0)+' · BR '+fmt(+f.br||0);}},
   {id:'limites_cartao',icon:'creditCard',t:'Guardas de cartão pela renda',d:'Limites de orçamento, não limite bancário',r:'Referência do plano: Nubank até 15% e Bradesco até 20% da renda líquida mensal. Revise os alertas em Configurações → Renda quando a renda mudar.',get s(){var c=S.cfg||{},renda=(+c.sal15||16000)+(+c.sal30||13192),p=getProjecaoFatura(),nuMax=Math.max(+c.lim_nu||0,Math.round(renda*.15)),brMax=Math.max(+c.lim_br||0,Math.round(renda*.20)),uso=Math.max(p.NU/Math.max(1,nuMax),p.BR/Math.max(1,brMax));return uso<.75?'verde':uso<.95?'amarelo':'vermelho';},get info(){var c=S.cfg||{},renda=(+c.sal15||16000)+(+c.sal30||13192),p=getProjecaoFatura(),nuMax=Math.max(+c.lim_nu||0,Math.round(renda*.15)),brMax=Math.max(+c.lim_br||0,Math.round(renda*.20));return 'NU '+fmt(p.NU)+'/'+fmt(nuMax)+' · BR '+fmt(p.BR)+'/'+fmt(brMax);}},
   {id:'parcelas_novas',icon:'card',t:'Novas parcelas',d:'Só com espaço projetado no cartão',r:'Antes de parcelar, confira a projeção acima e a margem do mês. Se alguma guarda estiver vermelha ou a margem ficar negativa, não crie parcela nova.',get s(){var p=getProjecaoFatura(),c=S.cfg||{},renda=(+c.sal15||16000)+(+c.sal30||13192),nuMax=Math.max(+c.lim_nu||0,Math.round(renda*.15)),brMax=Math.max(+c.lim_br||0,Math.round(renda*.20)),margem=getStrategiaMes().livrePlanejado,uso=Math.max(p.NU/Math.max(1,nuMax),p.BR/Math.max(1,brMax));return margem<0||uso>=.95?'vermelho':uso>=.75?'amarelo':'verde';},get info(){var p=getProjecaoFatura();return 'Projetado: NU '+fmt(p.NU)+' · BR '+fmt(p.BR);}},
@@ -3700,13 +3758,13 @@ function rInsights(){
   // Inteligência local: leituras explicáveis, calculadas apenas com os dados já carregados.
   var diasNoMes=getDaysInMonthSP(MES),diasRestantes=Math.max(1,diasNoMes-DIA+1);
   var envsInt=(S.envDef||[]).filter(function(e){return e.tipo==='envelope'&&+e.lim>0;});
-  var maiorRisco=envsInt.map(function(e){var usado=+e.usado||0,lim=+e.lim||0;return {e:e,projecao:DIA>0?usado/DIA*diasNoMes:0,pct:lim?usado/lim:0};}).sort(function(a,b){return b.pct-a.pct||b.projecao-a.projecao;})[0];
+  var maiorRisco=envsInt.map(function(e){var usado=getUsoEnvelope(e),lim=+e.lim||0;return {e:e,projecao:DIA>0?usado/DIA*diasNoMes:0,pct:lim?usado/lim:0};}).sort(function(a,b){return b.pct-a.pct||b.projecao-a.projecao;})[0];
   var inteligencia=[];
   if(maiorRisco&&maiorRisco.projecao>+maiorRisco.e.lim){
     var excesso=Math.round(maiorRisco.projecao-(+maiorRisco.e.lim));
     inteligencia.push({icon:'alertTriangle',t:maiorRisco.e.n+' pode estourar o orçamento',d:'No ritmo atual, a projeção é '+fmt(maiorRisco.projecao)+' — cerca de '+fmt(excesso)+' acima do limite.',a:'envelopes',b:'Ajustar envelope'});
   } else if(envsInt.length){
-    var livre=envsInt.reduce(function(a,e){return a+Math.max(0,(+e.lim||0)-(+e.usado||0));},0);
+    var livre=envsInt.reduce(function(a,e){return a+Math.max(0,(+e.lim||0)-getUsoEnvelope(e));},0);
     inteligencia.push({icon:'calendar',t:'Ritmo de gastos está sob controle',d:'Restam '+fmt(livre)+' para '+diasRestantes+' dias: referência de '+fmt(livre/diasRestantes)+' por dia.',a:'envelopes',b:'Ver envelopes'});
   }
   var reservaInt=+((S.cx||{}).reserva||0),itauInt=(S.dividas||[]).find(function(d){return d.id==='itau1'&&+d.v>0;});
@@ -3744,11 +3802,11 @@ function rInsights(){
   if(parcEnd.length)descs.push({icon:'checkCircle',t:parcEnd.length+' parcela(s) encerrando em breve: '+parcEnd.map(function(p){return esc(p.n);}).join(', ')+'.',c:'ag'});
 
   // Envelope delivery
-  var envsData=S.envDef||[];var delEnv=envsData.find(function(e){return e.id==='delivery';});
-  if(delEnv&&delEnv.usado>0)descs.push({icon:'utensils',t:'Alimentação fora: '+fmt(delEnv.usado)+' usados de '+fmt(delEnv.lim)+' ('+Math.round(delEnv.usado/delEnv.lim*100)+'%)',c:delEnv.usado/delEnv.lim>0.9?'ar':'ag'});
+  var envsData=S.envDef||[];var delEnv=envsData.find(function(e){return e.id==='delivery';}),usoDelivery=getUsoEnvelope(delEnv);
+  if(delEnv&&usoDelivery>0)descs.push({icon:'utensils',t:'Alimentação fora: '+fmt(usoDelivery)+' usados de '+fmt(delEnv.lim)+' ('+Math.round(usoDelivery/delEnv.lim*100)+'%)',c:usoDelivery/delEnv.lim>0.9?'ar':'ag'});
 
   // Reserva
-  var cx=S.cx||{};var res=+(cx.reserva||0);var mRes=+(cfg.m_res||51472);
+  var cx=S.cx||{};var res=+(cx.reserva||0);var mRes=getMetaCaixinha('reserva',40000);
   if(res>0)descs.push({icon:'shield',t:'Reserva: '+fmt(res)+' ('+Math.round(res/mRes*100)+'% da meta de '+fmt(mRes)+').',c:res/mRes<0.3?'ay':'ag'});
 
   // Viagem
@@ -3789,7 +3847,7 @@ function rInsights(){
   var acao='';
   if(estrategia.livrePlanejado<0)acao='Neste mês, não faça aportes novos. Primeiro cubra a diferença de '+fmt(Math.abs(estrategia.livrePlanejado))+' entre renda e compromissos planejados.';
   else if(itau1&&itau1.v>0)acao='Itaú 1 ('+fmt(itau1.v)+') — avaliar quitação somente quando a reserva e o caixa mensal permitirem. Taxa cadastrada: 1,29%/mês.';
-  else if(res<mRes*0.5)acao='Prioridade: encher caixinha Reserva. Meta R$51.472 até dezembro.';
+  else if(res<mRes*0.5)acao='Prioridade: encher a Reserva. Meta atual: '+fmt(mRes)+'.';
   else acao='Continue no ritmo. Parcelas somindo, reserva crescendo. Viagem em setembro!';
   if(Q('ins-acao'))Q('ins-acao').innerHTML='<div class="ctitle" style="display:flex;align-items:center;gap:6px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;stroke-width:2;flex-shrink:0;vertical-align:middle" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>Próxima ação recomendada</div><div style="font-size:.82rem;line-height:1.6">'+acao+'</div>';
 }
@@ -3832,7 +3890,7 @@ function cfgTab(t,btn){
   if(t==='renda')rCfgRenda();if(t==='metas')rCfgMetas();if(t==='alertas')rCfgAlertas();if(t==='perfil')rCfgPerfil();
 }
 function rCfgRenda(){var c=S.cfg||{};if(Q('c-sal15'))Q('c-sal15').value=c.sal15||16000;if(Q('c-sal30'))Q('c-sal30').value=c.sal30||13432;if(Q('c-va'))Q('c-va').value=c.va||400;if(Q('c-fc'))Q('c-fc').value=c.flash_c||400;if(Q('c-fi'))Q('c-fi').value=c.flash_i||180;if(Q('c-lnu'))Q('c-lnu').value=c.lim_nu||3500;if(Q('c-lbr'))Q('c-lbr').value=c.lim_br||2000;if(Q('c-renda-tot'))Q('c-renda-tot').textContent=fmt((+(Q('c-sal15')?.value||0))+(+(Q('c-sal30')?.value||0)));['c-sal15','c-sal30'].forEach(function(id){var el=Q(id);if(el)el.addEventListener('input',function(){if(Q('c-renda-tot'))Q('c-renda-tot').textContent=fmt((+(Q('c-sal15')?.value||0))+(+(Q('c-sal30')?.value||0)));});});}
-function rCfgMetas(){var c=S.cfg||{};if(Q('c-mres'))Q('c-mres').value=c.m_res||51472;if(Q('c-mviag'))Q('c-mviag').value=c.m_viag||14200;if(Q('c-mscore'))Q('c-mscore').value=c.m_score||600;if(Q('c-serasa'))Q('c-serasa').value=c.serasa_score||735;var envs=S.envDef||[];var h='';envs.filter(function(e){return e.tipo==='envelope';}).forEach(function(e){h+='<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)"><span>'+categoryIcon(e)+'</span><div style="flex:1;font-size:.8rem">'+esc(e.n)+'</div><input type="number" class="inp-sm inp-mono" style="width:80px;background:var(--s3);border:1px solid var(--border);border-radius:7px;color:var(--text);text-align:right" value="'+e.lim+'" data-env-id="'+e.id+'"></div>';});if(Q('cfg-env-lista'))Q('cfg-env-lista').innerHTML=h;}
+function rCfgMetas(){var c=S.cfg||{};if(Q('c-mres'))Q('c-mres').value=getMetaCaixinha('reserva',40000);if(Q('c-mviag'))Q('c-mviag').value=c.m_viag||14200;if(Q('c-mscore'))Q('c-mscore').value=c.m_score||600;if(Q('c-serasa'))Q('c-serasa').value=c.serasa_score||760;var envs=S.envDef||[];var h='';envs.filter(function(e){return e.tipo==='envelope';}).forEach(function(e){h+='<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)"><span>'+categoryIcon(e)+'</span><div style="flex:1;font-size:.8rem">'+esc(e.n)+'</div><input type="number" class="inp-sm inp-mono" style="width:80px;background:var(--s3);border:1px solid var(--border);border-radius:7px;color:var(--text);text-align:right" value="'+e.lim+'" data-env-id="'+e.id+'"></div>';});if(Q('cfg-env-lista'))Q('cfg-env-lista').innerHTML=h;}
 function rCfgAlertas(){var c=S.cfg||{};if(Q('c-anu'))Q('c-anu').value=c.a_nu||2800;if(Q('c-ares'))Q('c-ares').value=c.a_res||10000;if(Q('c-adays'))Q('c-adays').value=c.a_days||3;}
 function rCfgPerfil(){var c=S.cfg||{};if(Q('c-nome'))Q('c-nome').value=c.nome||'Gustavo';if(Q('c-inicio'))Q('c-inicio').value=c.inicio||'2026-05-08';if(Q('c-bruto'))Q('c-bruto').value=c.bruto||40000;}
 function rConfig(){cfgTab(_cfgTab);}
@@ -3847,13 +3905,13 @@ async function saveCfg(tipo){if(!canMutateNow())return;
       if(env)env.lim=Math.max(0,+inp.value||0);
     });
     var saved=await save();
-    if(saved)toast('Configurações salvas.');
+    if(saved){renderAll();toast('Configurações salvas em todo o app.');}
     return;
   }
   if(tipo==='alertas'){S.cfg.a_nu=+Q('c-anu')?.value;S.cfg.a_res=+Q('c-ares')?.value;S.cfg.a_days=+Q('c-adays')?.value;}
   if(tipo==='perfil'){S.cfg.nome=Q('c-nome')?.value||'Gustavo';S.cfg.inicio=Q('c-inicio')?.value;S.cfg.bruto=+Q('c-bruto')?.value;}
   var savedCfg=await save();
-  if(savedCfg)toast('Configurações salvas.');
+  if(savedCfg){renderAll();toast('Configurações salvas em todo o app.');}
 }
 function downloadJson(obj,nome){var json=JSON.stringify(obj,null,2);var b=new Blob([json],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=nome;a.click();setTimeout(function(){URL.revokeObjectURL(a.href);},1000);}
 function exportDados(){downloadJson(S,'financas-gs-'+MES+'.json');}
@@ -4406,6 +4464,8 @@ function aplicarRevisaoFinanceira16082026(){
       if(!S.regrasCaixaReserva)S.regrasCaixaReserva={};
       S.regrasCaixaReserva.variavelPixPercentual=.40;
       S.regrasCaixaReserva.variavelPixPercentualPorMes=Object.assign({},S.regrasCaixaReserva.variavelPixPercentualPorMes||{}, {'2026-08':0});
+      if(!S.excecoesVariaveis)S.excecoesVariaveis={};
+      S.excecoesVariaveis['2026-08']=Object.assign({},S.excecoesVariaveis['2026-08']||{},{enel:{v:0,obs:'Nenhuma conta ENEL paga em ago/2026; não provisionar neste ciclo.'}});
       S.planoEurosSet2026=Object.assign({},S.planoEurosSet2026||{}, {moeda:'EUR',cambioTeto:6.10,saldoInicial:78.12,orcamentoTotal:1536.34,preEmbarque:{dataLimite:'2026-09-03',eur:1037.84,brl:6330.82,obs:'Alvo pré-embarque revisto; compra sai do salário de 30/ago.'},posSalario:{data:'2026-09-15',eur:420.38,brl:2564.32,obs:'Complemento após salário de 15/set.'},regra:'Aporte de Reserva de agosto foi pulado. Provisione Ademicon em 30/ago; não contar Localiza antes do crédito.'});
       if(!S.planoAportes)S.planoAportes={versao:6,meses:[]};if(!Array.isArray(S.planoAportes.meses))S.planoAportes.meses=[];
       var ap=S.planoAportes.meses.find(function(x){return x&&x.m==='2026-08';}),dadosAp={m:'2026-08',aportes:{'Obrigação':632.12,'Psiquiatra':238,'Imprevistos':300,'Estética':440},nota:'Reserva: R$0 em agosto. Aporte pulado para financiar euros pré-embarque; demais caixinhas apenas se o fechamento real permitir.'};
@@ -4418,6 +4478,45 @@ function aplicarRevisaoFinanceira16082026(){
       S.mig32RevisaoFinanceira1608=true;S.mig32RevisaoFinanceira1608Em=Date.now();
       var ok=await save();if(!ok){S=anterior;renderAll();toast('Não foi possível salvar a revisão. Seus dados foram restaurados.');return;}
       renderAll();toast('Revisão financeira de 16/ago aplicada. Confira a fatura antiga em PIX e a base de setembro no Planejamento.');
+    },false);
+}
+// Consolidação operacional posterior à revisão: registra somente pagamentos que
+// o usuário confirmou nos extratos. Não estima fatura, não cria gasto e não toca
+// na Reserva. Pode ser rodada uma única vez com backup automático.
+function aplicarConsolidacao16082026(){
+  if(!canMutateNow())return;
+  if(S.mig33Consolidacao1608){toast('Os pagamentos confirmados de 16/ago já foram sincronizados.');return;}
+  askConfirm('Sincronizar pagamentos confirmados?',
+    'Será criado um backup. Vou marcar Itaú 1, Itaú 2 e a parcela de energia solar de agosto como pagos; ENEL ficará zerada em agosto. Nenhuma fatura futura, compra no cartão, envelope ou caixinha será alterado.',
+    async function(){
+      var anterior=JSON.parse(JSON.stringify(S));
+      downloadJson(anterior,'financas-gs-antes-consolidacao-16-ago-2026-'+getTodayKeySP()+'.json');
+      if(!S.pagamentosFixos)S.pagamentosFixos={};
+      var marcar=function(id,nome,valor){S.pagamentosFixos['2026-08|'+id]={data:'2026-08-16',nome:nome,valorPago:valor,valorPrevisto:valor,origem:'consolidacao_confirmada'};};
+      marcar('itau1','Itaú 1',522.98);
+      marcar('itau2','Itaú 2',422.90);
+      marcar('energia_solar','Energia Solar — agosto',966.68);
+      if(!S.fixosPix)S.fixosPix=[];
+      var faturaAnt=S.fixosPix.find(function(x){return x&&x.id==='fatura_bradesco_anterior_1708';});
+      var dadosFaturaAnt={id:'fatura_bradesco_anterior_1708',e:'',n:'Fatura Bradesco anterior',v:12664.50,dia:'17',inicio:'2026-08',enc:'2026-08',ativo:true,obs:'Vencimento 17/08/2026: R$956,11 (3848) + R$11.708,39 (6575). Não é a fatura de 15/set.'};
+      if(faturaAnt)Object.assign(faturaAnt,dadosFaturaAnt);else S.fixosPix.push(dadosFaturaAnt);
+      if(!S.excecoesVariaveis)S.excecoesVariaveis={};
+      S.excecoesVariaveis['2026-08']=Object.assign({},S.excecoesVariaveis['2026-08']||{},{enel:{v:0,obs:'Sem pagamento ENEL em ago/2026; não incluir no caixa ou agenda deste mês.'}});
+      if(!S.cfg)S.cfg={};S.cfg.m_res=40000;S.cfg.serasa_score=760;
+      if(!S.cxDef)S.cxDef={fixas:[],uso:[],provisoes:[]};if(!Array.isArray(S.cxDef.fixas))S.cxDef.fixas=[];
+      var metaReserva=S.cxDef.fixas.find(function(x){return x&&x.id==='reserva';});
+      if(metaReserva)metaReserva.m=40000;
+      var divs=S.dividas||[];
+      var itau2=divs.find(function(d){return d&&d.id==='itau2';});
+      if(itau2){
+        if(!itau2.pags)itau2.pags=[];
+        var jaPago=itau2.pags.some(function(p){return p&&p.data==='2026-08-16'&&Math.abs((+p.v||0)-422.90)<.01;});
+        if(!jaPago){itau2.pags.push({v:422.90,tipo:'parcela',data:'2026-08-16',origem:'consolidacao_confirmada'});itau2.v=Math.max(0,(+itau2.v||0)-422.90);}
+      }
+      recalcularUsoEnvelopes();
+      S.mig33Consolidacao1608=true;S.mig33Consolidacao1608Em=Date.now();
+      var ok=await save();if(!ok){S=anterior;renderAll();toast('Não foi possível salvar a consolidação. Seus dados foram restaurados.');return;}
+      renderAll();toast('Pagamentos confirmados sincronizados em todas as abas.');
     },false);
 }
 function aplicarPlanoSegundoSemestre2026(){
@@ -4577,7 +4676,7 @@ var TL_MARCOS_AUTO=[
   {id:'consumidor_gov',icon:'book',t:'Consumidor.gov aberto vs C6',d:'Protocolo RDR2026/718532. Argumento: publicidade enganosa (CDC art. 30/37).',data:'2026-05-08',tipo:'outro'},
   {id:'ir2025',icon:'wallet',t:'IR 2025 restituído',d:'R$10.362,45 recebidos no Bradesco.',data:'2026-06-01',tipo:'receita'},
   {id:'c6_cartao',icon:'checkCircle',t:'C6 cartão QUITADO',d:'R$107.446 → R$15.692,48. Desconto de ~85% via Consumidor.gov.',data:'2026-06-01',tipo:'quitacao'},
-  {id:'score735',icon:'trendingUp',t:'Serasa 735!',d:'Score saltou para 735 — categoria BOA. Resultado direto das quitações.',data:'2026-06-04',tipo:'score'},
+  {id:'score760',icon:'trendingUp',t:'Serasa 760',d:'Score em faixa excelente no Serasa. Resultado direto das quitações.',data:'2026-06-04',tipo:'score'},
   {id:'passagem',icon:'plane',t:'Passagem Lisboa comprada',d:'R$6.767,63 em 10x no Bradesco. Viagem set/2026.',data:'2026-06-04',tipo:'meta'},
 ];
 
