@@ -1348,8 +1348,21 @@ function enterApp(user){
 async function resetPassword(){
   var email=(Q('email')?.value||'').trim(),err=Q('lerr');
   if(!email){if(err)err.textContent='Digite seu e-mail primeiro.';return;}
-  try{await auth.sendPasswordResetEmail(email);if(err)err.textContent='';toast('Enviamos um link para redefinir sua senha.');}
-  catch(e){if(err)err.textContent='Não foi possível enviar o link. Confira o e-mail.';}
+  if(!auth){if(err)err.textContent='O acesso seguro ainda não carregou. Atualize a página e tente novamente.';return;}
+  try{
+    await auth.sendPasswordResetEmail(email);
+    if(err)err.textContent='';
+    toast('Link enviado. Confira a caixa de entrada e o Spam.');
+  }catch(e){
+    var code=e&&e.code||'';
+    var msg={
+      'auth/invalid-email':'Esse e-mail parece inválido. Confira e tente novamente.',
+      'auth/too-many-requests':'Muitas tentativas seguidas. Aguarde alguns minutos e tente de novo.',
+      'auth/network-request-failed':'Sem conexão com o serviço de acesso. Verifique sua internet e tente novamente.'
+    }[code]||'Não foi possível enviar o link agora. Tente novamente em alguns minutos.';
+    if(err)err.textContent=msg;
+    console.warn('Falha ao enviar redefinição de senha:',code);
+  }
 }
 async function doLogout(){try{if(_unsubscribeFirestore){_unsubscribeFirestore();_unsubscribeFirestore=null;}}catch(e){}try{if(auth)await auth.signOut();}catch(e){}location.reload();}
 
