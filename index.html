@@ -4526,12 +4526,17 @@ function aplicarConsolidacao16082026(){
 // de verdade do caixa e do cartão.
 function conciliarEnvelopes16082026(){
   if(!canMutateNow())return;
-  if(S.mig34Envelopes1608){toast('Os gastos de cartões de 16/ago já foram conciliados nos envelopes.');return;}
+  var chaveNu='2026-08|fatura_nu';
+  if(S.mig34Envelopes1608&&S.pagamentosFixos&&S.pagamentosFixos[chaveNu]){toast('Os gastos e o pagamento Nubank de 16/ago já foram conciliados.');return;}
   askConfirm('Conciliar gastos nos envelopes?',
-    'Será criado um backup. Registra somente compras categorizadas nos extratos: mercado, farmácia, alimentação fora, lazer, transporte e compras. Não mexe no valor das faturas, pagamentos, parcelas, caixa ou caixinhas.',
+    'Será criado um backup. Confirma o pagamento Nubank de R$4.985,25 em 14/ago e registra somente compras categorizadas nos extratos: mercado, farmácia, alimentação fora, lazer, transporte e compras. Não altera a fatura Bradesco, parcelas, caixa ou caixinhas.',
     async function(){
       var anterior=JSON.parse(JSON.stringify(S));
       downloadJson(anterior,'financas-gs-antes-envelopes-cartoes-16-ago-2026-'+getTodayKeySP()+'.json');
+      if(!S.pagamentosFixos)S.pagamentosFixos={};
+      // OFX Nubank e extrato Bradesco confirmam o pagamento em 14/ago. A
+      // fatura Bradesco permanece pendente: não existe inferência conjunta.
+      S.pagamentosFixos[chaveNu]={data:'2026-08-14',nome:'Fatura Nubank CC',valorPago:4985.25,valorPrevisto:4985.25,origem:'ofx_nubank_2026-09-15'};
       if(!S.gastos)S.gastos=[];
       var itens=[
         {id:'conc1608-barbosa',cat:'super',val:117.04,pgto:'Crédito Bradesco',desc:'Barbosa Loja 38',data:'2026-08-12'},
@@ -4554,7 +4559,7 @@ function conciliarEnvelopes16082026(){
       S.mig34Envelopes1608=true;S.mig34Envelopes1608Em=Date.now();
       var ok=await save();
       if(!ok){S=anterior;renderAll();toast('Não foi possível salvar a conciliação. Seus dados foram restaurados.');return;}
-      renderAll();toast('Gastos dos cartões conciliados nos envelopes sem duplicar a fatura.');
+      renderAll();toast('Nubank pago e gastos dos cartões conciliados sem duplicar a fatura Bradesco.');
     },false);
 }
 function aplicarPlanoSegundoSemestre2026(){
