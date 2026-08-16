@@ -2331,8 +2331,11 @@ function normalizarEnvelopeLedger(){
 }
 function getUsoEnvelope(env){
   if(!env)return 0;
-  normalizarEnvelopeLedger();
-  return Math.max(0,(+env.ajusteConciliacao||0)+(+mapaUsoRastreadoEnvelopes()[env.id]||0));
+  // Esta função é usada por telas de leitura (inclusive Planejamento). Ela não
+  // deve criar campos nem alterar o estado só para calcular um valor exibido.
+  var mapa=mapaUsoRastreadoEnvelopes(),rastreado=+mapa[env.id]||0;
+  var ajuste=env.ajusteConciliacao===undefined?Math.max(0,(+env.usado||0)-rastreado):(+env.ajusteConciliacao||0);
+  return Math.max(0,ajuste+rastreado);
 }
 function recalcularUsoEnvelopes(){
   normalizarEnvelopeLedger();
@@ -2836,6 +2839,9 @@ var _agoraTab=0;
 // Firestore, e não apenas a sessão aberta no navegador. O campo é criado apenas
 // quando necessário, preservando checklists já marcados em qualquer dispositivo.
 function getAgoraCk(){
+  return S.agoraChecklist&&typeof S.agoraChecklist==='object'&&!Array.isArray(S.agoraChecklist)?S.agoraChecklist:{};
+}
+function garantirAgoraCk(){
   if(!S.agoraChecklist||typeof S.agoraChecklist!=='object'||Array.isArray(S.agoraChecklist))S.agoraChecklist={};
   return S.agoraChecklist;
 }
@@ -2924,7 +2930,7 @@ function rAgora(){
 function setAgoraTab(i){_agoraTab=i;rAgora();}
 async function toggleAgoraCk(ev,stepKey){
   if(!canMutateNow())return;
-  var checklist=getAgoraCk();
+  var checklist=garantirAgoraCk();
   if(!checklist[ev])checklist[ev]={};
   if(checklist[ev][stepKey])delete checklist[ev][stepKey];
   else checklist[ev][stepKey]=true;
@@ -2939,7 +2945,7 @@ async function saveAgoraCk(){
 }
 async function resetAgoraCk(ev){
   if(!canMutateNow())return;
-  getAgoraCk()[ev]={};
+  garantirAgoraCk()[ev]={};
   rAgora();
   await save();
 }
