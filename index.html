@@ -4619,14 +4619,14 @@ function conciliarFaturas23082026(){
       itens.forEach(function(item){
         if(!S.gastos.some(function(g){return g&&g.origem===item.id;}))S.gastos.push({id:uid(),tipo:(item.cat==='lazer'||item.cat==='compras')?'envelope':'livre',cat:item.cat,val:item.val,pgto:item.pgto,desc:item.desc,data:item.data,ts:Date.now(),origem:item.id});
       });
-      // A tela antiga carregava uma projeção de R$10,2 mil que misturava a
-      // fatura paga em 17/ago com o ciclo que vence em 15/set. Aqui ficam só
-      // os lançamentos efetivamente observados no ciclo novo, até 23/ago.
+      // O total de 16/ago já era o ciclo novo, sem a fatura quitada em 17/ago.
+      // Somamos apenas os lançamentos observados depois dele; não substituímos
+      // a base Bradesco pelo recorte de tela de 19–22/ago.
       S.monitoramentoFaturaSet2026={
         referencia:'23/ago/2026 · extratos conciliados até esta data',vence:'2026-09-15',status:'aberta',
-        nubankNovo:3217.60,bradescoNovo:974.54,bradescoSaldoAnterior:0,nubankPagamentoAnterior:4985.25,
-        variavelCartaoEstimada:0,total:4192.14,parcelasEncerrando:657.11,
-        obs:'Valor observado, não previsão: Nubank R$3.217,60 + Bradesco R$974,54. Novas compras até o fechamento serão acrescentadas à fatura.'
+        nubankNovo:3217.60,bradescoNovo:6767.88,bradescoSaldoAnterior:0,nubankPagamentoAnterior:4985.25,
+        variavelCartaoEstimada:0,total:9985.48,parcelasEncerrando:657.11,
+        obs:'Valor observado: Bradesco R$6.000,17 em 16/ago + R$767,71 de lançamentos confirmados em 19–22/ago; Nubank R$3.217,60. Localiza já estava dentro da base Bradesco. Novas compras até o fechamento serão acrescentadas à fatura.'
       };
       recalcularUsoEnvelopes();
       S.conciliacaoFaturas23082026={feitaEm:getTodayKeySP(),fonte:'OFX Nubank e fatura Bradesco aberta até 23/ago/2026',itens:itens.map(function(i){return i.id;})};
