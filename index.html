@@ -738,6 +738,7 @@ button,.card,.month-event,.tab,.home-action{touch-action:manipulation}@media (pr
               <button class="btn bg bfull mt8 btn-with-icon" onclick="Q('import-file').click()"><span class="ui-icon" data-icon="upload" data-icon-size="14" aria-hidden="true"></span><span>Importar backup JSON</span></button>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarConsolidacao16082026()"><span class="ui-icon" data-icon="shieldCheck" data-icon-size="14" aria-hidden="true"></span><span>Sincronizar pagamentos confirmados — 16/ago</span></button>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="conciliarEnvelopes16082026()"><span class="ui-icon" data-icon="receipt" data-icon-size="14" aria-hidden="true"></span><span>Conciliar gastos de cartões nos envelopes — 16/ago</span></button>
+              <button class="btn bp bfull mt8 btn-with-icon" onclick="conciliarFaturas23082026()"><span class="ui-icon" data-icon="receipt" data-icon-size="14" aria-hidden="true"></span><span>Atualizar faturas e parcelas — 23/ago</span></button>
               <details class="mt8"><summary style="cursor:pointer;font-size:.74rem;color:var(--muted);padding:8px 0">Ferramentas históricas e migrações antigas</summary>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarConciliacaoExtratos25072026()"><span class="ui-icon" data-icon="refreshCw" data-icon-size="14" aria-hidden="true"></span><span>Conciliar extratos de 25/jul/2026</span></button>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarAjustesFinanceiros25072026Parte1()"><span class="ui-icon" data-icon="sliders" data-icon-size="14" aria-hidden="true"></span><span>Aplicar ajustes financeiros — parte 1</span></button>
@@ -2331,11 +2332,8 @@ function normalizarEnvelopeLedger(){
 }
 function getUsoEnvelope(env){
   if(!env)return 0;
-  // Esta função é usada por telas de leitura (inclusive Planejamento). Ela não
-  // deve criar campos nem alterar o estado só para calcular um valor exibido.
-  var mapa=mapaUsoRastreadoEnvelopes(),rastreado=+mapa[env.id]||0;
-  var ajuste=env.ajusteConciliacao===undefined?Math.max(0,(+env.usado||0)-rastreado):(+env.ajusteConciliacao||0);
-  return Math.max(0,ajuste+rastreado);
+  normalizarEnvelopeLedger();
+  return Math.max(0,(+env.ajusteConciliacao||0)+(+mapaUsoRastreadoEnvelopes()[env.id]||0));
 }
 function recalcularUsoEnvelopes(){
   normalizarEnvelopeLedger();
@@ -2839,9 +2837,6 @@ var _agoraTab=0;
 // Firestore, e não apenas a sessão aberta no navegador. O campo é criado apenas
 // quando necessário, preservando checklists já marcados em qualquer dispositivo.
 function getAgoraCk(){
-  return S.agoraChecklist&&typeof S.agoraChecklist==='object'&&!Array.isArray(S.agoraChecklist)?S.agoraChecklist:{};
-}
-function garantirAgoraCk(){
   if(!S.agoraChecklist||typeof S.agoraChecklist!=='object'||Array.isArray(S.agoraChecklist))S.agoraChecklist={};
   return S.agoraChecklist;
 }
@@ -2930,7 +2925,7 @@ function rAgora(){
 function setAgoraTab(i){_agoraTab=i;rAgora();}
 async function toggleAgoraCk(ev,stepKey){
   if(!canMutateNow())return;
-  var checklist=garantirAgoraCk();
+  var checklist=getAgoraCk();
   if(!checklist[ev])checklist[ev]={};
   if(checklist[ev][stepKey])delete checklist[ev][stepKey];
   else checklist[ev][stepKey]=true;
@@ -2945,7 +2940,7 @@ async function saveAgoraCk(){
 }
 async function resetAgoraCk(ev){
   if(!canMutateNow())return;
-  garantirAgoraCk()[ev]={};
+  getAgoraCk()[ev]={};
   rAgora();
   await save();
 }
@@ -4578,6 +4573,67 @@ function conciliarEnvelopes16082026(){
       var ok=await save();
       if(!ok){S=anterior;renderAll();toast('Não foi possível salvar a conciliação. Seus dados foram restaurados.');return;}
       renderAll();toast('Nubank pago e gastos dos cartões conciliados sem duplicar a fatura Bradesco.');
+    },false);
+}
+// Atualização baseada nos extratos Nubank e Bradesco de 23/ago. Mantém o
+// cartão como meio de pagamento (não reduz caixa) e só coloca nos envelopes
+// as compras cuja categoria foi confirmada ou é inequívoca no extrato.
+function conciliarFaturas23082026(){
+  if(!canMutateNow())return;
+  if(S.mig35Faturas2308){toast('A atualização de 23/ago já foi aplicada.');return;}
+  askConfirm('Atualizar faturas e parcelas?',
+    'Será criado um backup. Inclui Renner (roupas de academia), dívida OAB 2025, Denga por três meses, duas Folhas reais e os gastos categorizados de mercado, combustível, lazer e compras. Não marca nenhuma fatura como paga nem altera saldo em conta.',
+    async function(){
+      var anterior=JSON.parse(JSON.stringify(S));
+      downloadJson(anterior,'financas-gs-antes-faturas-23-ago-2026-'+getTodayKeySP()+'.json');
+      if(!Array.isArray(S.parcExtras))S.parcExtras=[];
+      var addParcela=function(d){
+        var i=S.parcExtras.findIndex(function(p){return p&&p.id===d.id;});
+        if(i<0)S.parcExtras.push(d);else S.parcExtras[i]=Object.assign({},S.parcExtras[i],d);
+      };
+      // As parcelas começaram na fatura aberta de agosto e serão pagas de set
+      // em diante. cp é o número de cobranças ainda ativas, incluindo a atual.
+      addParcela({id:'audit_renner_academia_202608',n:'Roupas de academia — Renner',b:'Bradesco CC',vp:233.04,tp:3,cp:3,cur_p:1,f:'Out/2026',mesFim:'2026-10',mesInicio:'2026-08',s:'ativa',origem:'extratos-23-ago-2026'});
+      addParcela({id:'audit_oab_2025_202608',n:'OAB 2025 em atraso',b:'Nubank CC',vp:93.14,tp:12,cp:12,cur_p:1,f:'Jul/2027',mesFim:'2027-07',mesInicio:'2026-08',s:'ativa',origem:'extratos-23-ago-2026'});
+      addParcela({id:'audit_amazon_v_202608',n:'Amazon BR V',b:'Nubank CC',vp:67,tp:10,cp:10,cur_p:1,f:'Mai/2027',mesFim:'2027-05',mesInicio:'2026-08',s:'ativa',origem:'extratos-23-ago-2026'});
+      if(!Array.isArray(S.fixosAss))S.fixosAss=[];
+      var denga={id:'denga',e:'📺',n:'Denga',v:49.90,cartao:'NU',inicio:'2026-08',enc:'2026-10',ativo:true,obs:'Assinatura temporária de 3 meses · confirmada em 23/ago/2026'};
+      var dengaIdx=S.fixosAss.findIndex(function(x){return x&&x.id==='denga';});
+      if(dengaIdx<0)S.fixosAss.push(denga);else S.fixosAss[dengaIdx]=Object.assign({},S.fixosAss[dengaIdx],denga);
+      var folha=S.fixosAss.find(function(x){return x&&x.id==='folhasp';});
+      if(folha){folha.v=19.80;folha.obs='Duas cobranças reais de R$9,90 confirmadas em ago/2026.';}
+      else S.fixosAss.push({id:'folhasp',e:'📰',n:'Folha de S.Paulo',v:19.80,cartao:'NU',ativo:true,obs:'Duas cobranças reais de R$9,90 confirmadas em ago/2026.'});
+      if(!Array.isArray(S.gastos))S.gastos=[];
+      var itens=[
+        {id:'conc2308-renner',cat:'compras',val:233.04,pgto:'Crédito Bradesco',desc:'Roupas de academia — Renner · 1/3',data:'2026-08-19'},
+        {id:'conc2308-banca',cat:'lazer',val:3,pgto:'Crédito Bradesco',desc:'Banca Trianon',data:'2026-08-19'},
+        {id:'conc2308-swift',cat:'super',val:126.82,pgto:'Crédito Bradesco',desc:'Swift Juventus',data:'2026-08-20'},
+        {id:'conc2308-shopee-dusk',cat:'compras',val:27.89,pgto:'Crédito Bradesco',desc:'Shopee Duskstor',data:'2026-08-21'},
+        {id:'conc2308-shopee-vip',cat:'compras',val:9.90,pgto:'Crédito Bradesco',desc:'Shopee VIP',data:'2026-08-21'},
+        {id:'conc2308-dia',cat:'super',val:124.54,pgto:'Crédito Bradesco',desc:'Dia Brasil',data:'2026-08-21'},
+        {id:'conc2308-sao-luiz',cat:'super',val:39.99,pgto:'Crédito Bradesco',desc:'Mercado São Luiz',data:'2026-08-21'},
+        {id:'conc2308-center-carne',cat:'super',val:90.12,pgto:'Crédito Bradesco',desc:'Center Carne JF',data:'2026-08-21'},
+        {id:'conc2308-autoposto',cat:'comb',val:39.22,pgto:'Crédito Bradesco',desc:'Autoposto Mikeltda',data:'2026-08-22'},
+        {id:'conc2308-hiperpetro',cat:'comb',val:63.29,pgto:'Crédito Bradesco',desc:'Hiperpetro II',data:'2026-08-22'}
+      ];
+      itens.forEach(function(item){
+        if(!S.gastos.some(function(g){return g&&g.origem===item.id;}))S.gastos.push({id:uid(),tipo:(item.cat==='lazer'||item.cat==='compras')?'envelope':'livre',cat:item.cat,val:item.val,pgto:item.pgto,desc:item.desc,data:item.data,ts:Date.now(),origem:item.id});
+      });
+      // A tela antiga carregava uma projeção de R$10,2 mil que misturava a
+      // fatura paga em 17/ago com o ciclo que vence em 15/set. Aqui ficam só
+      // os lançamentos efetivamente observados no ciclo novo, até 23/ago.
+      S.monitoramentoFaturaSet2026={
+        referencia:'23/ago/2026 · extratos conciliados até esta data',vence:'2026-09-15',status:'aberta',
+        nubankNovo:3217.60,bradescoNovo:974.54,bradescoSaldoAnterior:0,nubankPagamentoAnterior:4985.25,
+        variavelCartaoEstimada:0,total:4192.14,parcelasEncerrando:657.11,
+        obs:'Valor observado, não previsão: Nubank R$3.217,60 + Bradesco R$974,54. Novas compras até o fechamento serão acrescentadas à fatura.'
+      };
+      recalcularUsoEnvelopes();
+      S.conciliacaoFaturas23082026={feitaEm:getTodayKeySP(),fonte:'OFX Nubank e fatura Bradesco aberta até 23/ago/2026',itens:itens.map(function(i){return i.id;})};
+      S.mig35Faturas2308=true;S.mig35Faturas2308Em=Date.now();
+      var ok=await save();
+      if(!ok){S=anterior;renderAll();toast('Não foi possível salvar a atualização. Seus dados foram restaurados.');return;}
+      renderAll();toast('Faturas, parcelas e envelopes atualizados até 23/ago.');
     },false);
 }
 function aplicarPlanoSegundoSemestre2026(){
