@@ -740,6 +740,7 @@ button,.card,.month-event,.tab,.home-action{touch-action:manipulation}@media (pr
               <button class="btn bp bfull mt8 btn-with-icon" onclick="conciliarEnvelopes16082026()"><span class="ui-icon" data-icon="receipt" data-icon-size="14" aria-hidden="true"></span><span>Conciliar gastos de cartões nos envelopes — 16/ago</span></button>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="conciliarFaturas23082026()"><span class="ui-icon" data-icon="receipt" data-icon-size="14" aria-hidden="true"></span><span>Atualizar faturas e parcelas — 23/ago</span></button>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarPlanoOdontologiaAfropunk29082026()"><span class="ui-icon" data-icon="activity" data-icon-size="14" aria-hidden="true"></span><span>Aplicar plano odontologia e Afropunk — 29/ago</span></button>
+              <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarConsolidacaoFinal29082026()"><span class="ui-icon" data-icon="shieldCheck" data-icon-size="14" aria-hidden="true"></span><span>Sincronizar pendências PIX e duplicatas — 29/ago</span></button>
               <details class="mt8"><summary style="cursor:pointer;font-size:.74rem;color:var(--muted);padding:8px 0">Ferramentas históricas e migrações antigas</summary>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarConciliacaoExtratos25072026()"><span class="ui-icon" data-icon="refreshCw" data-icon-size="14" aria-hidden="true"></span><span>Conciliar extratos de 25/jul/2026</span></button>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarAjustesFinanceiros25072026Parte1()"><span class="ui-icon" data-icon="sliders" data-icon-size="14" aria-hidden="true"></span><span>Aplicar ajustes financeiros — parte 1</span></button>
@@ -4694,6 +4695,72 @@ function aplicarPlanoOdontologiaAfropunk29082026(){
       S.mig36PlanoOdontologiaAfropunk2908=true;S.mig36PlanoOdontologiaAfropunk2908Em=Date.now();
       var ok=await save();if(!ok){S=anterior;renderAll();toast('Não foi possível salvar o plano. Seus dados foram restaurados.');return;}
       renderAll();toast('Plano de odontologia, Axé, Afropunk e faturas de setembro atualizado.');
+    },false);
+}
+
+// Consolidação final dos itens trazidos depois do fechamento de 28/ago.
+// Não inventa vencimento: itens sem data ficam visíveis como pendência, mas
+// não entram no caixa projetado até o usuário agendar o pagamento.
+function aplicarConsolidacaoFinal29082026(){
+  if(!canMutateNow())return;
+  if(S.mig37ConsolidacaoFinal2908){toast('As pendências PIX e duplicatas já foram sincronizadas.');return;}
+  askConfirm('Sincronizar pendências PIX e duplicatas?',
+    'Será criado um backup. Mantém uma única parcela de Óculos e Wandemberg, registra o gabinete como pendência de entrega, adiciona a aula de Axé de R$520 e deixa Marlos de R$400 fora dos totais enquanto o cancelamento estiver em análise.',
+    async function(){
+      var anterior=JSON.parse(JSON.stringify(S));
+      downloadJson(anterior,'financas-gs-antes-consolidacao-final-29-ago-2026-'+getTodayKeySP()+'.json');
+      if(!S.parcExtras)S.parcExtras=[];
+      if(!S.parc)S.parc={};
+      if(!S.dividas)S.dividas=[];
+      if(!S.fixosPix)S.fixosPix=[];
+      var norm=function(t){return String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();};
+      var substituirParcela=function(id,teste,dados){
+        var anteriorParcela=S.parcExtras.find(function(p){return p&&(p.id===id||teste(norm(p.n)));})||{};
+        S.parcExtras=S.parcExtras.filter(function(p){return !(p&&(p.id===id||teste(norm(p.n))));});
+        S.parcExtras.push(Object.assign({},anteriorParcela,dados,{id:id,s:'ativa'}));
+      };
+      // As duas migrações antigas usavam nomes diferentes. Estas são as únicas
+      // versões válidas, com a parcela corrente que já estava auditada.
+      substituirParcela('audit_oculos',function(n){return n.indexOf('lahtref')>=0;},{
+        n:'Óculos (Pb*Lahtref)',b:'Nubank CC',vp:159.20,tp:6,cp:5,cur_p:2,
+        f:'Dez/2026',mesFim:'2026-12',mesInicio:'2026-08',origem:'consolidacao-final-29-ago-2026',
+        obs:'Uma única entrada. Parcela 2 de 6 observada na fatura de 15/set/2026.'
+      });
+      substituirParcela('audit_wandemberg',function(n){return n.indexOf('wandemberg')>=0;},{
+        n:'Clínica Dr. Wandemberg',b:'Bradesco CC',vp:375,tp:4,cp:3,cur_p:2,
+        f:'Out/2026',mesFim:'2026-10',mesInicio:'2026-08',origem:'consolidacao-final-29-ago-2026',
+        obs:'Uma única entrada. Parcela 2 de 4 observada na fatura de 15/set/2026.'
+      });
+      // As duas PIX do gabinete só são devidas após a entrega: não são parcela
+      // ativa nem provisão antes de haver data, mas continuam registradas.
+      delete S.parc.gabinete;
+      S.parcExtras=S.parcExtras.filter(function(p){return !(p&&norm(p.n).indexOf('gabinete')>=0);});
+      var upsertDivida=function(d){
+        var i=S.dividas.findIndex(function(x){return x&&x.id===d.id;});
+        if(i<0)S.dividas.push(Object.assign({pags:[]},d));
+        else S.dividas[i]=Object.assign({},S.dividas[i],d,{pags:S.dividas[i].pags||[]});
+      };
+      upsertDivida({id:'gabinete_cozinha_magaly',n:'Gabinete cozinha (Magaly)',v:624,m:312,urgencia:0,
+        obs:'2 PIX de R$312 pendentes. Pagar apenas depois da entrega; data ainda não definida.'});
+      upsertDivida({id:'aula_axe_2026',n:'Aula de Axé',v:520,m:520,urgencia:1,
+        obs:'PIX pendente de R$520. Data de pagamento a definir; só entra no caixa quando for agendada.'});
+      var marlos={id:'marlos_estetica_pendente',e:'✨',n:'Marlos — estética (aguardando cancelamento)',v:400,dia:'',inicio:'2026-09',enc:'2026-09',ativo:false,
+        obs:'PIX de R$400. Fora dos totais e provisões enquanto o cancelamento estiver em análise.'};
+      var mi=S.fixosPix.findIndex(function(x){return x&&x.id===marlos.id;});
+      if(mi<0)S.fixosPix.push(marlos);else S.fixosPix[mi]=Object.assign({},S.fixosPix[mi],marlos);
+      if(!S.auditoriaFinanceira)S.auditoriaFinanceira={};
+      S.auditoriaFinanceira.consolidacao29082026={
+        feitaEm:getTodayKeySP(),
+        parcelasCanonicas:['audit_oculos','audit_wandemberg'],
+        pendencias:['gabinete_cozinha_magaly','aula_axe_2026'],
+        foraDoCaixa:['marlos_estetica_pendente'],
+        regra:'Pendência sem vencimento não é descontada do saldo livre; agendar a data antes de confiar na projeção do período.'
+      };
+      recalcularUsoEnvelopes();
+      S.mig37ConsolidacaoFinal2908=true;S.mig37ConsolidacaoFinal2908Em=Date.now();
+      var ok=await save();
+      if(!ok){S=anterior;renderAll();toast('Não foi possível salvar a consolidação. Seus dados foram restaurados.');return;}
+      renderAll();toast('Pendências PIX e duplicatas sincronizadas. Marlos segue fora dos totais.');
     },false);
 }
 
