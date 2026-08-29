@@ -739,6 +739,7 @@ button,.card,.month-event,.tab,.home-action{touch-action:manipulation}@media (pr
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarConsolidacao16082026()"><span class="ui-icon" data-icon="shieldCheck" data-icon-size="14" aria-hidden="true"></span><span>Sincronizar pagamentos confirmados — 16/ago</span></button>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="conciliarEnvelopes16082026()"><span class="ui-icon" data-icon="receipt" data-icon-size="14" aria-hidden="true"></span><span>Conciliar gastos de cartões nos envelopes — 16/ago</span></button>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="conciliarFaturas23082026()"><span class="ui-icon" data-icon="receipt" data-icon-size="14" aria-hidden="true"></span><span>Atualizar faturas e parcelas — 23/ago</span></button>
+              <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarPlanoOdontologiaAfropunk29082026()"><span class="ui-icon" data-icon="activity" data-icon-size="14" aria-hidden="true"></span><span>Aplicar plano odontologia e Afropunk — 29/ago</span></button>
               <details class="mt8"><summary style="cursor:pointer;font-size:.74rem;color:var(--muted);padding:8px 0">Ferramentas históricas e migrações antigas</summary>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarConciliacaoExtratos25072026()"><span class="ui-icon" data-icon="refreshCw" data-icon-size="14" aria-hidden="true"></span><span>Conciliar extratos de 25/jul/2026</span></button>
               <button class="btn bp bfull mt8 btn-with-icon" onclick="aplicarAjustesFinanceiros25072026Parte1()"><span class="ui-icon" data-icon="sliders" data-icon-size="14" aria-hidden="true"></span><span>Aplicar ajustes financeiros — parte 1</span></button>
@@ -1652,16 +1653,16 @@ async function save(){
 
 // DEFAULTS
 function dfCxFixas(){return[
-  {id:'reserva',e:'🔒',n:'Reserva Emergência',m:40000,ap:0,fim:'2027-03',r:'Usar só para emergências reais. Não usar para viagem, carta do carro ou multa da Localiza.',o:'meta R$40.000 · revisada para fev-mar/2027 (base caiu de R$10.737 estimados para R$2.747,75 reais em jul/2026)',tipo:'fixa'},
+  {id:'reserva',e:'🔒',n:'Reserva Emergência',m:40000,ap:0,fim:'2027-04',r:'Usar só para emergências reais. Não usar para viagem, odontologia, carta do carro ou multa da Localiza.',o:'meta R$40.000 · varredura do excedente real · com cerâmica, previsão mar-abr/2027',tipo:'fixa'},
   {id:'viagem',e:'✈️',n:'Viagem Portugal+Grécia',m:14200,ap:2500,fim:'2026-09',r:'Pagar tudo à vista. Não parcelar nada na viagem.',o:'set/2026',tipo:'fixa'},
-  {id:'obrigacao',e:'⚱️',n:'Obrigação',m:5000,ap:707.58,fim:'2027-04',r:'Manter separado. Meta de R$5.000 antes de abril/2027; não usar para outros gastos.',o:'setembro/2026 pausado · aporte de R$707,58 em ago e out–mar',tipo:'fixa'},
+  {id:'obrigacao',e:'⚱️',n:'Obrigação/Axé',m:7000,ap:875,fim:'2027-06',r:'Manter aplicado e separado até junho/2027. Não antecipar o pagamento nem usar em outros gastos.',o:'meta R$7.000 · R$875/mês de out/2026 a mai/2027',tipo:'fixa'},
   {id:'carro_2028',e:'🚗',n:'Troca do carro 2028/29',m:70000,ap:0,fim:'2028-08',r:'Não aportar antes de a Reserva chegar a R$40 mil e de reavaliar a carta com a Ademicon. Cobre complemento, TDA Localiza e custos iniciais.',o:'meta condicional · sem aporte por enquanto',tipo:'fixa'},
 ];}
 function dfCxUso(){return[
   {id:'imprevistos',e:'🚨',n:'Imprevistos',m:3000,ap:300,fim:'',r:'Saúde, família, carro, casa. Acima de R$3.000: decisão consciente.',o:'meta R$3.000 · retomar em out/2026',tipo:'uso'},
   {id:'estetica',e:'💇',n:'Estética',m:880,ap:440,fim:'',r:'Igor 2×R$120 + Karolina 2×R$100. Não usar para outros fins.',o:'Igor+Karolina',tipo:'uso'},
   {id:'psiquiatra',e:'🧠',n:'Psiquiatra',m:950,ap:238,fim:'',r:'Reiniciar após cada consulta.',o:'ciclo 4 meses',tipo:'uso'},
-  {id:'odontologia_planejada',e:'🦷',n:'Odontologia',m:0,ap:0,fim:'',r:'Em avaliação: possível correção ortodôntica antes do tratamento. Não criar gasto ou aporte até ter orçamento, forma de pagamento e data.',o:'aguardando definição clínica',tipo:'uso'},
+  {id:'odontologia_planejada',e:'🦷',n:'Odontologia cerâmica',m:37056,ap:2935.60,fim:'2027-08',r:'Tratamento escolhido. Gengivoplastia em 09/out/2026; laboratório de R$7.700 à vista em dez/2026; parcelas só após confirmar o cronograma de cobrança.',o:'Não usar Reserva. Confirmar se os R$2.500 da gengivoplastia abatem as parcelas.',tipo:'uso'},
 ];}
 function dfDividas(){return[
   {id:'c6',n:'C6 Bank',v:0,m:0,obs:'QUITADO jun/2026 · R$15.692,48 · desconto ~85%',urgencia:0,pags:[]},
@@ -2855,8 +2856,11 @@ function getAgoraEventos(){
   if(faturaVenceNoMes()&&+fat.nu>0&&!pagamentoFixoConfirmado('fatura_nu',MES))passos15.push({t:'Pagar fatura Nubank '+fmt(fat.nu),s:'Valor atual cadastrado na aba PIX. Evite parcelar a fatura.',a:'pix'});
   if(faturaVenceNoMes()&&+fat.br>0&&!pagamentoFixoConfirmado('fatura_br',MES))passos15.push({t:'Pagar fatura Bradesco '+fmt(fat.br),s:'Valor atual cadastrado na aba PIX. Evite parcelar a fatura.',a:'pix'});
   passos15=passos15.concat(d15,d22);
-  var odontologiaAtiva=(S.fixosPix||[]).some(function(f){return /dentista|odontologia/i.test(String(f.n||''))&&itemAtivoNoMes(f)&&(+f.v||0)>0;});
-  if(!odontologiaAtiva){passos15.push({t:'Odontologia em avaliação',s:'Possível correção ortodôntica antes do tratamento. Não reservar nem lançar parcelas até ter orçamento, forma de pagamento e data.',a:'caixinhas'});}
+  var odonto=S.regrasCaixaReserva&&S.regrasCaixaReserva.odontologia;
+  var odontologiaAtiva=(S.fixosPix||[]).some(function(f){return /odontologia ceramica.*parcelas/i.test(String(f.n||''))&&itemAtivoNoMes(f)&&(+f.v||0)>0;});
+  if(odonto&&odonto.opcao==='ceramica'){
+    passos15.push({t:'Odontologia cerâmica: conferir cronograma',s:'Gengivoplastia em 09/out · laboratório '+fmt(odonto.laboratorio||7700)+' em dez. As parcelas ficam desativadas até a dentista confirmar se a gengivoplastia abate a série.',a:'pix'});
+  }else if(!odontologiaAtiva){passos15.push({t:'Odontologia em avaliação',s:'Possível correção ortodôntica antes do tratamento. Não reservar nem lançar parcelas até ter orçamento, forma de pagamento e data.',a:'caixinhas'});}
   passos15.push({t:'Separar orçamento de categorias: '+fmt(dist.total),s:dist.itens.map(function(x){return x.n+' '+fmt(x.v);}).join(' · ')+' · '+dist.nota+'. Transfira só depois de fatura e PIX; registre o gasto mesmo quando for no cartão.',a:'envelopes'});
   passos15.push({t:'Provisão da próxima fatura: '+fmt(projecao.total),s:'Projeção composta por assinaturas '+fmt(projecao.assinaturas.NU+projecao.assinaturas.BR)+', parcelas '+fmt(projecao.parcelas.NU+projecao.parcelas.BR)+' e Localiza '+fmt(projecao.localiza)+'. É previsão; a fatura fechada prevalece.',a:'caixinhas'});
   passos15.push({t:caixaLivre.disponivel===null?'Atualizar saldo em conta antes de aportar':'Aportar apenas o que continuar livre',s:caixaLivre.disponivel===null?'Sem saldo real atualizado, o app não chama nenhum valor de livre.':'Livre até '+(caixaLivre.prox?caixaLivre.prox.rotulo:'o próximo salário')+': '+fmt(caixaLivre.disponivel)+'. Reserva e Obrigação só recebem o valor efetivamente separado.',a:'caixinhas'});
@@ -3048,7 +3052,9 @@ function rPlanoAportes(){
     var partes=[];Object.keys(item.aportes||{}).forEach(function(k){if(+item.aportes[k]>0)partes.push(esc(k)+': '+fmt(item.aportes[k]));});
     h+='<div style="padding:7px 0;border-top:1px solid var(--border)"><div class="fsb"><strong style="font-size:.75rem">'+esc(ml(item.m))+'</strong><span style="font:500 .72rem DM Mono,monospace;color:var(--green)">'+fmt(total)+'</span></div><div style="font-size:.63rem;color:var(--muted);line-height:1.45;margin-top:2px">'+(partes.length?partes.join(' · '):'Sem aporte programado')+(item.nota?' · '+esc(item.nota):'')+'</div></div>';
   });
-  h+='<div style="font-size:.65rem;color:var(--muted);background:var(--s3);border-radius:7px;padding:8px;margin-top:8px;line-height:1.5">Carro: meta futura sem aporte antes de Reserva R$40 mil e da revisão da carta em jan/2027. Odontologia: aguardando orçamento e data.</div></div>';
+  var odonto=S.regrasCaixaReserva&&S.regrasCaixaReserva.odontologia;
+  var notaOdonto=odonto&&odonto.opcao==='ceramica'?'Odontologia: cerâmica escolhida · gengivoplastia em 09/out · laboratório em dez com 13º · parcelas aguardam confirmação de composição.':'Odontologia: aguardando orçamento e data.';
+  h+='<div style="font-size:.65rem;color:var(--muted);background:var(--s3);border-radius:7px;padding:8px;margin-top:8px;line-height:1.5">Carro: meta futura sem aporte antes de Reserva R$40 mil e da revisão da carta em jan/2027. '+esc(notaOdonto)+'</div></div>';
   Q('cx-plano').innerHTML=h;
 }
 function rCxGrupo(elId,lista,cx){
@@ -3666,7 +3672,8 @@ function rProgresso(){
   // Substitui benchmarks abstratos por metas que existem no seu próprio plano.
   var metaReserva=getMetaCaixinha('reserva',cfg.m_res||40000),metaObrigacao=getMetaCaixinha('obrigacao',5000);
   var obrigacao=+(cx.obrigacao||0),aportePlano=getAportePlanejadoMes(MES),margemLivre=Math.max(0,estrategia.livrePlanejado);
-  if(Q('prog-fidelity'))Q('prog-fidelity').innerHTML='<div class="ctitle">Metas patrimoniais do seu plano</div><div class="plan-card-title" style="margin:4px 0 8px">O que importa antes de pensar em investimentos</div><div class="plan-row"><div><strong>Reserva de emergência</strong><small>'+fmt(res)+' de '+fmt(metaReserva)+' · faltam '+fmt(Math.max(0,metaReserva-res))+'</small></div><span class="chip '+(res>=metaReserva?'cg':'cy')+'">'+Math.min(100,Math.round(res/Math.max(1,metaReserva)*100))+'%</span></div><div class="plan-row"><div><strong>Caixinha Obrigação</strong><small>'+fmt(obrigacao)+' de '+fmt(metaObrigacao)+' · meta antes de abr/2027</small></div><span class="chip '+(obrigacao>=metaObrigacao?'cg':'cy')+'">'+Math.min(100,Math.round(obrigacao/Math.max(1,metaObrigacao)*100))+'%</span></div><div class="plan-row"><div><strong>Dívidas em aberto</strong><small>Não trate cartão nem reserva como investimento.</small></div><span class="val vsm tr">'+fmt(passivos)+'</span></div>';
+  var defObrigacao=(S.cxDef&&S.cxDef.fixas||[]).find(function(x){return x&&x.id==='obrigacao';})||{};
+  if(Q('prog-fidelity'))Q('prog-fidelity').innerHTML='<div class="ctitle">Metas patrimoniais do seu plano</div><div class="plan-card-title" style="margin:4px 0 8px">O que importa antes de pensar em investimentos</div><div class="plan-row"><div><strong>Reserva de emergência</strong><small>'+fmt(res)+' de '+fmt(metaReserva)+' · faltam '+fmt(Math.max(0,metaReserva-res))+'</small></div><span class="chip '+(res>=metaReserva?'cg':'cy')+'">'+Math.min(100,Math.round(res/Math.max(1,metaReserva)*100))+'%</span></div><div class="plan-row"><div><strong>Caixinha Obrigação/Axé</strong><small>'+fmt(obrigacao)+' de '+fmt(metaObrigacao)+' · meta até '+esc(ml(defObrigacao.fim||'2027-06'))+'</small></div><span class="chip '+(obrigacao>=metaObrigacao?'cg':'cy')+'">'+Math.min(100,Math.round(obrigacao/Math.max(1,metaObrigacao)*100))+'%</span></div><div class="plan-row"><div><strong>Dívidas em aberto</strong><small>Não trate cartão nem reserva como investimento.</small></div><span class="val vsm tr">'+fmt(passivos)+'</span></div>';
   if(Q('prog-projecao'))Q('prog-projecao').innerHTML='<div class="ctitle">Próximo passo financeiro</div><div class="plan-card-title" style="margin:4px 0 8px">'+(margemLivre>0?'Preservar a margem antes de aportar':'O mês não fecha para novos aportes')+'</div><div class="plan-row"><div><strong>Margem do mês</strong><small>Depois de contas, faturas e categorias.</small></div><span class="val vsm '+(estrategia.livrePlanejado>=0?'tg':'tr')+'">'+fmt(estrategia.livrePlanejado)+'</span></div><div class="plan-row"><div><strong>Aporte previsto</strong><small>'+esc(aportePlano.nota||'orientação do plano; só transfira depois de pagar')+'</small></div><span class="val vsm ty">'+fmt(aportePlano.total)+'</span></div><div class="plan-row"><div><strong>Decisão</strong><small>'+ (margemLivre>=aportePlano.total?'O aporte cabe no planejamento; confirme o saldo real antes de transferir.':'Não antecipe aporte: primeiro garanta o caixa e as obrigações.') +'</small></div><button class="btn bg bsm" onclick="go(\'agora\')">Ver planejamento</button></div>';
 }
 async function addSnapshot(){if(!canMutateNow())return;
@@ -4636,6 +4643,60 @@ function conciliarFaturas23082026(){
       renderAll();toast('Faturas, parcelas e envelopes atualizados até 23/ago.');
     },false);
 }
+// Consolidação posterior aos extratos de 28/ago. Mantém rastreabilidade e não
+// cria uma parcela odontológica automática enquanto a dentista não confirmar
+// se a gengivoplastia abate (ou não) a série de parcelas.
+function aplicarPlanoOdontologiaAfropunk29082026(){
+  if(!canMutateNow())return;
+  if(S.mig36PlanoOdontologiaAfropunk2908){toast('O plano de odontologia e Afropunk já foi aplicado.');return;}
+  askConfirm('Aplicar plano odontologia e Afropunk?',
+    'Será criado um backup. Registra a passagem do Afropunk no Nubank, atualiza as faturas observadas de setembro, a Reserva real, a meta do Axé e o plano de cerâmica. Não cria cobrança odontológica mensal sem cronograma confirmado.',
+    async function(){
+      var anterior=JSON.parse(JSON.stringify(S));
+      downloadJson(anterior,'financas-gs-antes-plano-odontologia-afropunk-29-ago-2026-'+getTodayKeySP()+'.json');
+      if(!S.parcExtras)S.parcExtras=[];
+      var afropunk={id:'afropunk_salvador_202608',n:'Passagem Afropunk Salvador',b:'Nubank CC',vp:87.38,tp:8,cp:8,cur_p:1,f:'Abr/2027',mesFim:'2027-04',mesInicio:'2026-08',s:'ativa',origem:'plano-29-ago-2026',obs:'R$699 em 8x; primeira cobrança na fatura de 15/set/2026; hospedagem sem custo; ida dia 05 e volta dia 08.'};
+      var ai=S.parcExtras.findIndex(function(p){return p&&p.id===afropunk.id;});
+      if(ai<0)S.parcExtras.push(afropunk);else S.parcExtras[ai]=Object.assign({},S.parcExtras[ai],afropunk);
+      if(!S.gastos)S.gastos=[];
+      if(!S.gastos.some(function(g){return g&&g.origem==='afropunk_salvador_202608';}))S.gastos.push({id:uid(),tipo:'envelope',cat:'lazer',val:699,pgto:'Crédito Nubank',desc:'Passagem Afropunk Salvador · 8x R$87,38',data:'2026-08-29',ts:Date.now(),origem:'afropunk_salvador_202608'});
+      if(!S.faturas)S.faturas={};
+      // A primeira parcela do Afropunk entra na fatura de 15/set.
+      S.faturas.nu=3619.36;S.faturas.br=11045.93;S.faturas.vence='2026-09-15';
+      S.monitoramentoFaturaSet2026={referencia:'28-29/ago/2026 · faturas abertas observadas',vence:'2026-09-15',status:'aberta',nubankNovo:3619.36,bradescoNovo:11045.93,bradescoSaldoAnterior:0,nubankPagamentoAnterior:0,variavelCartaoEstimada:0,total:14665.29,parcelasEncerrando:0,obs:'Bradesco consolidado R$11.045,93 + Nubank R$3.531,98 observado em 28/ago + Afropunk R$87,38. Novos lançamentos até o fechamento devem ser conciliados antes de pagar.'};
+      if(!S.cx)S.cx={};S.cx.reserva=7067.44;
+      if(!S.cxDef)S.cxDef={fixas:[],uso:[],provisoes:[]};
+      if(!Array.isArray(S.cxDef.fixas))S.cxDef.fixas=[];
+      if(!Array.isArray(S.cxDef.uso))S.cxDef.uso=[];
+      var upsertCx=function(tipo,d){var lista=tipo==='fixa'?S.cxDef.fixas:S.cxDef.uso;var i=lista.findIndex(function(x){return x&&x.id===d.id;});if(i<0)lista.push(d);else lista[i]=Object.assign({},lista[i],d);};
+      upsertCx('fixa',{id:'reserva',e:'🔒',n:'Reserva Emergência',m:40000,ap:0,fim:'2027-04',r:'Usar só para emergências reais. Não usar para viagem, odontologia, carta do carro ou multa da Localiza.',o:'Saldo confirmado R$7.067,44 em ago/2026 · varredura do excedente real · com cerâmica, previsão mar-abr/2027',tipo:'fixa'});
+      upsertCx('fixa',{id:'obrigacao',e:'⚱️',n:'Obrigação/Axé',m:7000,ap:875,fim:'2027-06',r:'Manter aplicado e separado até junho/2027. Não antecipar o pagamento nem usar em outros gastos.',o:'Meta R$7.000 · R$875/mês de out/2026 a mai/2027',tipo:'fixa'});
+      upsertCx('uso',{id:'odontologia_planejada',e:'🦷',n:'Odontologia cerâmica',m:37056,ap:2935.60,fim:'2027-08',r:'Não usar Reserva. Gengivoplastia em 09/out; laboratório à vista em dezembro; só ativar as parcelas após a dentista confirmar a composição da cobrança.',o:'Cerâmica escolhida · total R$37.056 · laboratório R$7.700 · restante de R$29.356 em 10x',tipo:'uso'});
+      if(!S.fixosPix)S.fixosPix=[];
+      var upsertPix=function(d){var i=S.fixosPix.findIndex(function(x){return x&&x.id===d.id;});if(i<0)S.fixosPix.push(d);else S.fixosPix[i]=Object.assign({},S.fixosPix[i],d);};
+      upsertPix({id:'gengivoplastia_202610',e:'🦷',n:'Gengivoplastia (planejada)',v:2500,dia:'9',inicio:'2026-10',enc:'2026-10',ativo:true,obs:'Procedimento marcado em 09/out/2026. Confirmar se este valor abate as 10 parcelas antes de marcar como pago.'});
+      upsertPix({id:'laboratorio_ceramica_202612',e:'🦷',n:'Laboratório cerâmica (planejado)',v:7700,dia:'15',inicio:'2026-12',enc:'2026-12',ativo:true,obs:'Peças protéticas à vista; usar o 13º somente após crédito confirmado.'});
+      upsertPix({id:'parcelas_ceramica',e:'🦷',n:'Odontologia cerâmica — parcelas',v:2935.60,dia:'15',inicio:'2026-10',enc:'2027-07',ativo:false,obs:'10x planejadas após retirar R$7.700 do laboratório. ATIVAR SOMENTE após a dentista confirmar se a gengivoplastia de R$2.500 é abatida ou adicional.'});
+      if(!S.planoAportes)S.planoAportes={versao:6,meses:[]};
+      var plano=[
+        {m:'2026-09',aportes:{},nota:'Viagem e fatura de setembro: sem aporte automático.'},
+        {m:'2026-10',aportes:{'Obrigação/Axé':875},nota:'Pagar gengivoplastia se cobrada; proteger novembro; varrer excedente real para Reserva.'},
+        {m:'2026-11',aportes:{'Obrigação/Axé':875},nota:'Tratamento cerâmico: ativar parcela somente com cronograma confirmado; varrer excedente para Reserva.'},
+        {m:'2026-12',aportes:{'Obrigação/Axé':875},nota:'Laboratório R$7.700 sai do 13º após crédito; proteger janeiro antes de Itaú, Carnaval ou carro.'}
+      ];
+      plano.forEach(function(d){var i=S.planoAportes.meses.findIndex(function(x){return x&&x.m===d.m;});if(i<0)S.planoAportes.meses.push(d);else S.planoAportes.meses[i]=Object.assign({},S.planoAportes.meses[i],d);});
+      if(!S.entradas)S.entradas=[];
+      var acordo=S.entradas.find(function(e){return e&&e.id==='acordo_localiza_2026';});
+      if(acordo)Object.assign(acordo,{v:13500,data:'2026-08-27',m:'2026-08',s:'recebido',o:'Recebido em 27/ago/2026. R$5.000 direcionados à Reserva; demais recursos já pertencem ao fluxo realizado.'});
+      if(!S.planoAcordoLocaliza)S.planoAcordoLocaliza={};Object.assign(S.planoAcordoLocaliza,{valorRecebido:13500,status:'recebido',dataRecebimento:'2026-08-27',reservaDirecionada:5000,regra:'Acordo já recebido. Não contar novamente como entrada futura.'});
+      if(!S.regrasCaixaReserva)S.regrasCaixaReserva={};Object.assign(S.regrasCaixaReserva,{metaReserva:40000,inicioVarredura:'2026-10',obrigacao:{meta:7000,aporteMensal:875,inicio:'2026-10',fim:'2027-05',vencimento:'2027-06'},odontologia:{opcao:'ceramica',total:37056,gengivoplastia:2500,dataGengivoplastia:'2026-10-09',laboratorio:7700,mesLaboratorio:'2026-12',parcelasPlanejadas:10,valorParcela:2935.60,statusParcelas:'aguardando_confirmacao_da_dentista'},afropunk:{total:699,parcelas:8,valorParcela:87.38,cartao:'Nubank',primeiraFatura:'2026-09'}});
+      recalcularUsoEnvelopes();
+      S.mig36PlanoOdontologiaAfropunk2908=true;S.mig36PlanoOdontologiaAfropunk2908Em=Date.now();
+      var ok=await save();if(!ok){S=anterior;renderAll();toast('Não foi possível salvar o plano. Seus dados foram restaurados.');return;}
+      renderAll();toast('Plano de odontologia, Axé, Afropunk e faturas de setembro atualizado.');
+    },false);
+}
+
 function aplicarPlanoSegundoSemestre2026(){
   if(!canMutateNow())return;
   if(S.mig14Feito){toast('O plano financeiro jul–dez/2026 já foi aplicado.');return;}
