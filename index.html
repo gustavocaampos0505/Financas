@@ -852,11 +852,11 @@ button,.card,.month-event,.tab,.home-action{touch-action:manipulation}@media (pr
     <div class="modal" onclick="event.stopPropagation()">
       <div class="mhdl"></div><div class="mtitle btn-with-icon" style="justify-content:flex-start"><span class="ui-icon" data-icon="wallet" data-icon-size="16" aria-hidden="true"></span><span>Saldo das contas de uso</span></div>
       <div class="alert ab mb8"><span class="ui-icon" data-icon="info" data-icon-size="16" aria-hidden="true"></span><div style="font-size:.72rem">Informe apenas dinheiro disponível nas contas. Não inclua Reserva, Obrigação, envelopes ou outras caixinhas do Mercado Pago.</div></div>
-      <label>Bradesco (R$)</label><input type="number" class="inp inp-mono" id="cx-livre-br" step="0.01" min="0" placeholder="0" oninput="atualizarTotalCaixaLivre()">
+      <label>Bradesco (R$)</label><input type="number" class="inp inp-mono" id="cx-livre-br" step="0.01" placeholder="0" oninput="atualizarTotalCaixaLivre()">
       <label>Nubank conta (R$)</label><input type="number" class="inp inp-mono" id="cx-livre-nu" step="0.01" min="0" placeholder="0" oninput="atualizarTotalCaixaLivre()">
       <label>Itaú / demais contas (R$)</label><input type="number" class="inp inp-mono" id="cx-livre-outros" step="0.01" min="0" placeholder="0" oninput="atualizarTotalCaixaLivre()">
       <label>Mercado Pago disponível fora das caixinhas (R$)</label><input type="number" class="inp inp-mono" id="cx-livre-mp" step="0.01" min="0" placeholder="0" oninput="atualizarTotalCaixaLivre()">
-      <div class="fsb mt12"><span style="font-size:.75rem;color:var(--muted)">Total em contas</span><strong class="val vsm tg" id="cx-livre-total">R$0,00</strong></div>
+      <div class="fsb mt12"><span style="font-size:.75rem;color:var(--muted)">Total em contas</span><strong class="val vsm" id="cx-livre-total">R$0,00</strong></div>
       <div class="g2 mt16"><button class="btn bg" onclick="closeOvl('ovl-caixa-livre')">Cancelar</button><button class="btn bp" onclick="saveCaixaLivre()">Salvar saldo</button></div>
     </div>
   </div>
@@ -1420,7 +1420,7 @@ function loadData(){
   }
 }
 function applyRemoteSnapshot(remoteData,remoteRevision){
-  var precisaCorrigirSaldos=false;
+  var precisaCorrigirSaldos=false,precisaReconciliarPosViagem=false;
   _applyingRemoteState=true;
   try{
     S=remoteData;
@@ -1430,6 +1430,9 @@ function applyRemoteSnapshot(remoteData,remoteRevision){
     // Correção autorizada pelo Gustavo em 19/jul/2026. É idempotente e salva
     // em seguida via a transação normal, sem sobrescrever alterações paralelas.
     precisaCorrigirSaldos=aplicarCorrecaoSaldosJulho2026();
+    // Revisão pós-viagem autorizada em 26/set/2026. Centraliza o saldo real,
+    // as faturas abertas de outubro e a odontologia adiada, sem criar aporte.
+    precisaReconciliarPosViagem=aplicarReconciliacaoPosViagem26092026();
     try{localStorage.setItem('financas-gs-lastsnapshot-'+DOC,JSON.stringify(S));}catch(e){}
     hideConnErrorScreen();
     if(_entered)renderAll();
@@ -1437,10 +1440,10 @@ function applyRemoteSnapshot(remoteData,remoteRevision){
   } finally {
     _applyingRemoteState=false;
   }
-  if(precisaCorrigirSaldos){
+  if(precisaCorrigirSaldos||precisaReconciliarPosViagem){
     setTimeout(async function(){
       var saved=await save();
-      if(saved){renderAll();toast('Saldos de quitação do Itaú e saldo do Santander atualizados.');}
+      if(saved){renderAll();toast(precisaReconciliarPosViagem?'Revisão pós-viagem aplicada: caixa, faturas e odontologia atualizados.':'Saldos de quitação do Itaú e saldo do Santander atualizados.');}
     },0);
   }
 }
@@ -1559,6 +1562,57 @@ function aplicarCorrecaoSaldosJulho2026(){
   if(!san.pags.some(function(p){return String(p.data||'')==='2026-07-04'&&+p.v===972;}))san.pags.push({v:972,tipo:'parcela',data:'2026-07-04'});
   S.mig15SaldosReaisFeito=true;
   S.mig15SaldosReaisAplicadaEm=Date.now();
+  return true;
+}
+
+// Fonte da revisão: faturas abertas de 26/set, extrato Mercado Pago e saldos
+// conferidos pelo Gustavo. Esta migração não registra pagamentos nem transfere
+// dinheiro; apenas substitui projeções antigas por fatos e por tetos explícitos.
+function aplicarReconciliacaoPosViagem26092026(){
+  if(S.mig40ReconciliacaoPosViagem2609)return false;
+  if(!S||typeof S!=='object')return false;
+  if(!S.cx)S.cx={};
+  S.cx.reserva=2146.90;
+  if(!S.caixaOperacional)S.caixaOperacional={};
+  S.caixaOperacional={
+    data:'2026-09-26',
+    contasBRL:{bradesco:-842.45,nubank:0.04,outros:0,mercadoPagoDisponivel:60.79},
+    obs:'Conferido em 26/set/2026. Bradesco está negativo; caixinhas ficam fora deste saldo.'
+  };
+  S.faturas={nu:5062.89,br:8051.55,vence:'2026-10-15',
+    obs:'Faturas abertas conferidas em 26/set/2026; Nubank + Bradesco = R$13.114,44.'};
+  S.projecoesFaturas={
+    '2026-10':{nu:5062.89,br:8051.55,total:13114.44,status:'observada',fonte:'Faturas abertas conferidas em 26/set/2026.'},
+    '2026-11':{total:8300,status:'teto_de_trabalho',fonte:'Teto conservador; substituir pela fatura real quando fechar.'},
+    '2026-12':{total:8000,status:'teto_de_trabalho',fonte:'Teto conservador; substituir pela fatura real quando fechar.'}
+  };
+  if(!S.fixosPix)S.fixosPix=[];
+  var upsertPix=function(d){var i=S.fixosPix.findIndex(function(x){return x&&x.id===d.id;});if(i<0)S.fixosPix.push(d);else S.fixosPix[i]=Object.assign({},S.fixosPix[i],d);};
+  upsertPix({id:'personal',e:'🏋️',n:'Personal Rafael',v:2100,dia:'30',ativo:true,obs:'3x por semana · R$2.100/mês · pago no dia 30.',enc:''});
+  upsertPix({id:'gengivoplastia_202610',e:'🦷',n:'Gengivoplastia (adiada)',v:2500,dia:'',inicio:'',enc:'',ativo:false,obs:'Adiada em 26/set/2026. Não provisionar nem tratar como conta até nova data.'});
+  upsertPix({id:'laboratorio_ceramica_202612',e:'🦷',n:'Laboratório cerâmica (adiado)',v:7700,dia:'',inicio:'',enc:'',ativo:false,obs:'Sem cobrança ativa. Só reabrir após Reserva atingir R$40.000 e fundo do laboratório estar separado.'});
+  upsertPix({id:'parcelas_ceramica',e:'🦷',n:'Odontologia cerâmica — parcelas (adiada)',v:2935.60,dia:'',inicio:'',enc:'',ativo:false,obs:'Sem cobrança ativa. Referência futura: 10x após a contratação, sem usar a Reserva.'});
+  if(!S.fixosAss)S.fixosAss=[];
+  var meli=S.fixosAss.find(function(x){return x&&x.id==='meli_mega';});
+  if(meli)Object.assign(meli,{v:19.90,ativo:true,obs:'Plano reduzido para R$19,90; confirmado na revisão pós-viagem.'});
+  if(!S.cxDef)S.cxDef={fixas:[],uso:[],provisoes:[]};
+  if(!Array.isArray(S.cxDef.fixas))S.cxDef.fixas=[];
+  if(!Array.isArray(S.cxDef.uso))S.cxDef.uso=[];
+  var upsertCx=function(lista,d){var i=lista.findIndex(function(x){return x&&x.id===d.id;});if(i<0)lista.push(d);else lista[i]=Object.assign({},lista[i],d);};
+  upsertCx(S.cxDef.fixas,{id:'reserva',e:'🔒',n:'Reserva Emergência',m:40000,ap:0,fim:'2027-03',r:'Reserva é a última fonte de cobertura. Depois de proteger a próxima janela, todo excedente real pode ir para ela.',o:'Saldo confirmado R$2.146,90 em 26/set/2026 · sem aporte automático · varredura só após proteger a próxima janela.',tipo:'fixa'});
+  upsertCx(S.cxDef.fixas,{id:'obrigacao',e:'⚱️',n:'Obrigação/Axé',m:7000,ap:875,fim:'2027-06',r:'Manter aplicado e separado até junho/2027. Não antecipar o pagamento nem usar em outros gastos.',o:'Meta R$7.000 · R$875/mês de out/2026 a mai/2027',tipo:'fixa'});
+  upsertCx(S.cxDef.uso,{id:'odontologia_planejada',e:'🦷',n:'Odontologia cerâmica (adiada)',m:37056,ap:0,fim:'',r:'Tratamento adiado. Não iniciar nem criar parcela antes de Reserva R$40.000 e laboratório de R$7.700 separado.',o:'Cerâmica escolhida; gengivoplastia e laboratório sem data ativa.',tipo:'uso'});
+  if(!S.planoAportes)S.planoAportes={versao:7,meses:[]};
+  var plano=[
+    {m:'2026-10',aportes:{'Obrigação/Axé':875},nota:'Fatura real de R$13.114,44 em 15/out. Sem aporte automático à Reserva; primeiro estabilizar o caixa e proteger novembro.'},
+    {m:'2026-11',aportes:{'Obrigação/Axé':875},nota:'Teto de fatura R$8.300. Depois de proteger dezembro, o excedente real pode ir à Reserva.'},
+    {m:'2026-12',aportes:{'Obrigação/Axé':875},nota:'Teto de fatura R$8.000. Cenário-base não conta com 13º; proteger janeiro antes de varrer excedente à Reserva.'}
+  ];
+  plano.forEach(function(d){var i=S.planoAportes.meses.findIndex(function(x){return x&&x.m===d.m;});if(i<0)S.planoAportes.meses.push(d);else S.planoAportes.meses[i]=Object.assign({},S.planoAportes.meses[i],d);});
+  if(!S.regrasCaixaReserva)S.regrasCaixaReserva={};
+  Object.assign(S.regrasCaixaReserva,{metaReserva:40000,inicioVarredura:'2026-10',variavelPixPercentual:.40,obrigacao:{meta:7000,aporteMensal:875,inicio:'2026-10',fim:'2027-05',vencimento:'2027-06'},odontologia:{opcao:'ceramica',total:37056,gengivoplastia:2500,dataGengivoplastia:'',laboratorio:7700,mesLaboratorio:'',parcelasPlanejadas:10,valorParcela:2935.60,statusParcelas:'adiada_ate_reserva_40000_e_fundo_laboratorio'},afropunk:{total:699,parcelas:8,valorParcela:87.38,cartao:'Nubank',primeiraFatura:'2026-09'}});
+  S.mig40ReconciliacaoPosViagem2609=true;
+  S.mig40ReconciliacaoPosViagem2609Em=Date.now();
   return true;
 }
 
@@ -1854,6 +1908,12 @@ function getParcelasCartaoAtivas(){
   Object.keys(S.parc||{}).forEach(function(k){add(S.parc[k]);});(S.parcExtras||[]).forEach(add);return out;
 }
 function getProjecaoFatura(){
+  // Quando existe fatura aberta já conciliada para o próximo vencimento, ela
+  // prevalece sobre a soma genérica de assinaturas/parcelas.
+  var fat=S.faturas||{},vence=String(fat.vence||'');
+  if(/^\d{4}-\d{2}-\d{2}$/.test(vence)&&vence>=getTodayKeySP()&&((+fat.nu||0)+(+fat.br||0)>0)){
+    return {NU:+fat.nu||0,BR:+fat.br||0,assinaturas:{NU:0,BR:0},parcelas:{NU:0,BR:0},localiza:0,total:(+fat.nu||0)+(+fat.br||0),observada:true,referencia:'Faturas abertas · vencimento '+vence.split('-').reverse().join('/')};
+  }
   // Enquanto a fatura de setembro estiver aberta, o extrato conciliado é mais
   // confiável que a soma de regras genéricas. Ele já exclui saldo anterior.
   var mon=S.monitoramentoFaturaSet2026||{};
@@ -1897,6 +1957,10 @@ function getParcelasCartaoEmMesCobranca(mesCobranca){
   Object.keys(S.parc||{}).forEach(function(k){add(S.parc[k]);});(S.parcExtras||[]).forEach(add);return out;
 }
 function getProjecaoFaturaNoVencimento(mesVencimento){
+  var manual=(S.projecoesFaturas||{})[mesVencimento];
+  if(manual&&(+manual.total||0)>0){
+    return {NU:+manual.nu||0,BR:+manual.br||0,total:+manual.total||0,assinaturas:{NU:0,BR:0},parcelas:{NU:0,BR:0},localiza:0,manual:true,status:manual.status||'',fonte:manual.fonte||''};
+  }
   var mesCobranca=addMes(mesVencimento,-1),ass={NU:0,BR:0};
   (S.fixosAss||[]).filter(function(x){return itemAtivoEmMes(x,mesCobranca);}).forEach(function(x){var b=String(x.cartao||'').toUpperCase();if(b==='NU')ass.NU+=(+x.v||0);if(b==='BR')ass.BR+=(+x.v||0);});
   var parc=getParcelasCartaoEmMesCobranca(mesCobranca),loc=S.localizaCartao||{};
@@ -2029,7 +2093,7 @@ async function atualizarCaixaLivre(){
   if(Q('cx-livre-mp'))Q('cx-livre-mp').value=c.mercadoPagoDisponivel||0;
   atualizarTotalCaixaLivre();openOvl('ovl-caixa-livre');
 }
-function atualizarTotalCaixaLivre(){var total=['cx-livre-br','cx-livre-nu','cx-livre-outros','cx-livre-mp'].reduce(function(a,id){return a+(+Q(id)?.value||0);},0);if(Q('cx-livre-total'))Q('cx-livre-total').textContent=fmt(total);}
+function atualizarTotalCaixaLivre(){var total=['cx-livre-br','cx-livre-nu','cx-livre-outros','cx-livre-mp'].reduce(function(a,id){return a+(+Q(id)?.value||0);},0),el=Q('cx-livre-total');if(el){el.textContent=fmt(total);el.className='val vsm '+(total>=0?'tg':'tr');}}
 async function saveCaixaLivre(){
   if(!canMutateNow())return;
   var contas={bradesco:+Q('cx-livre-br')?.value||0,nubank:+Q('cx-livre-nu')?.value||0,outros:+Q('cx-livre-outros')?.value||0,mercadoPagoDisponivel:+Q('cx-livre-mp')?.value||0};
@@ -2793,24 +2857,24 @@ var AGORA_EVENTOS=[
   {id:'sal15',icon:'wallet',lbl:'Salário Dia 15',passos:[
     {t:'Pagar fatura Nubank total',s:'Sem parcelar. Aba PIX → valor exato.',a:'pix'},
     {t:'Pagar fatura Bradesco total',s:'Sem parcelar. Aba PIX → valor exato.',a:'pix'},
-    {t:'PIX: Psicóloga R$600',s:'2 sessões · Alessandra Christina. Dia 15.',a:'pix'},
+    {t:'PIX: Psicóloga R$549',s:'2 sessões · Alessandra Christina. Dia 15.',a:'pix'},
     {t:'PIX: Rose 1ª parcela R$1.000',s:'Dia 15. Ver aba PIX.',a:'pix'},
     {t:'PIX: Dentista R$481',s:'Dia 22. Ver aba PIX.',a:'pix'},
     {t:'PIX: Seguro Residencial R$162,90 + Spotify R$14',s:'Dia 15. Ver aba PIX.',a:'pix'},
-    {t:'Encher caixinhas MP',s:'Reserva + Viagem + Estética + Imprevistos + Psiquiatra.',a:'caixinhas'},
-    {t:'Encher envelopes MP',s:'Alimentação fora R$700 + Lazer R$500 + Compras + Roupas + Supermercado.',a:'envelopes'},
-    {t:'Conferir reserva de emergência',s:'Verificar saldo na caixinha MP. Meta R$51.472.',a:'caixinhas'},
+    {t:'Proteger a próxima janela antes de aportar',s:'Aporte à Reserva só existe depois de fatura, PIX, parcelas e variáveis protegidos.',a:'caixinhas'},
+    {t:'Respeitar os envelopes de corte',s:'Compras e roupas ficam zeradas; variáveis vão para cartão dentro do teto definido.',a:'envelopes'},
+    {t:'Conferir reserva de emergência',s:'Saldo real e meta de R$40.000; não usar para odontologia ou gastos planejados.',a:'caixinhas'},
   ]},
   {id:'sal30',icon:'wallet',lbl:'Salário Dia 30',passos:[
-    {t:'PIX Personal Rafael R$2.720 (vira R$2.000 em set)',s:'Dia 30. Ver aba PIX.',a:'pix'},
+    {t:'PIX Personal Rafael R$2.100',s:'3x por semana · dia 30. Ver aba PIX.',a:'pix'},
     {t:'PIX Rose 2ª parcela R$1.000',s:'Dia 30. Ver aba PIX.',a:'pix'},
     {t:'Localiza no cartão',s:'Cobrança mensal de R$ 3.118,32 entra no cartão e é paga somente na fatura seguinte.',a:'parcelas'},
     {t:'PIX Itaú 1 R$510,23',s:'Enquanto não quitado. Ver aba PIX.',a:'pix'},
     {t:'PIX Santander R$972',s:'Vence dia 4. Pagar junto com o dia 30.',a:'pix'},
-    {t:'Recarregar Alimentação fora 2ª quinzena',s:'R$350 no envelope.',a:'envelopes'},
+    {t:'Separar excedente real',s:'Depois de proteger o próximo ciclo, o excedente vai para a Reserva até R$40.000.',a:'caixinhas'},
   ]},
   {id:'itau1',icon:'bank',lbl:'Quitar Itaú 1',passos:[
-    {t:'Verificar saldo atual na aba Dívidas',s:'Taxa 1,29%/mês. Quitar quando reserva > R$20k.',a:'dividas'},
+    {t:'Verificar saldo atual na aba Dívidas',s:'Reavaliar somente após Reserva atingir R$40.000 e fechamento real do mês.',a:'dividas'},
     {t:'Transferir valor exato via PIX',s:'Pegar saldo devedor atualizado no app do Itaú.',a:'pix'},
     {t:'Zerar Itaú 1 na aba Dívidas',s:'Atualizar saldo para R$0. Libera R$510/mês.',a:'dividas'},
     {t:'Registrar na Linha do Tempo',s:'Marco: +R$510/mês de folga!',a:'timeline'},
@@ -3054,7 +3118,7 @@ function rPlanoAportes(){
     h+='<div style="padding:7px 0;border-top:1px solid var(--border)"><div class="fsb"><strong style="font-size:.75rem">'+esc(ml(item.m))+'</strong><span style="font:500 .72rem DM Mono,monospace;color:var(--green)">'+fmt(total)+'</span></div><div style="font-size:.63rem;color:var(--muted);line-height:1.45;margin-top:2px">'+(partes.length?partes.join(' · '):'Sem aporte programado')+(item.nota?' · '+esc(item.nota):'')+'</div></div>';
   });
   var odonto=S.regrasCaixaReserva&&S.regrasCaixaReserva.odontologia;
-  var notaOdonto=odonto&&odonto.opcao==='ceramica'?'Odontologia: cerâmica escolhida · gengivoplastia em 09/out · laboratório em dez com 13º · parcelas aguardam confirmação de composição.':'Odontologia: aguardando orçamento e data.';
+  var notaOdonto=odonto&&odonto.statusParcelas==='adiada_ate_reserva_40000_e_fundo_laboratorio'?'Odontologia: cerâmica escolhida, mas adiada. Sem gengivoplastia, laboratório ou parcelas ativos até Reserva R$40 mil e fundo do laboratório separado.':(odonto&&odonto.opcao==='ceramica'?'Odontologia: cerâmica escolhida; cronograma ainda precisa ser confirmado.':'Odontologia: aguardando orçamento e data.');
   h+='<div style="font-size:.65rem;color:var(--muted);background:var(--s3);border-radius:7px;padding:8px;margin-top:8px;line-height:1.5">Carro: meta futura sem aporte antes de Reserva R$40 mil e da revisão da carta em jan/2027. '+esc(notaOdonto)+'</div></div>';
   Q('cx-plano').innerHTML=h;
 }
