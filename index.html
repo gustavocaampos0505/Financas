@@ -1436,6 +1436,7 @@ function applyRemoteSnapshot(remoteData,remoteRevision){
     // Fechamento conferido em 09/out: faturas de outubro e o orçamento por
     // salário substituem o teto provisório criado após a viagem.
     precisaRevisarOutubro=aplicarOrcamentoQuinzenal09102026();
+    precisaRevisarOutubro=aplicarConfirmacoes10102026()||precisaRevisarOutubro;
     try{localStorage.setItem('financas-gs-lastsnapshot-'+DOC,JSON.stringify(S));}catch(e){}
     hideConnErrorScreen();
     if(_entered)renderAll();
@@ -1675,6 +1676,20 @@ function aplicarOrcamentoQuinzenal09102026(){
   if(S.fixosVar.luzTransicao)S.fixosVar.luzTransicao.valorPosSolar=13.20;
   ['2026-10','2026-11','2026-12'].forEach(function(m){var x=S.planoAportes.meses.find(function(z){return z.m===m;});if(x){x.aportes={'Obrigação/Axé':875};x.nota='Reserva: só excedente real após obrigações e proteção do próximo ciclo. Sem aporte automático; faturas futuras em auditoria.';}});
   S.mig41OrcamentoQuinzenal0910=true;S.mig42RevisaoCaixa0910=true;S.mig41OrcamentoQuinzenal0910Em=Date.now();
+  return true;
+}
+
+function aplicarConfirmacoes10102026(){
+  if(S.mig43Confirmacoes1010)return false;
+  S.confirmacoesFinanceiras1010={gabinete:'integralmente_pago',paula:'paga_sem_pendencia',flash:{recorrente:true,v:12.87},decimo:{estimado:26488,prazosReferencia:['2026-11-30','2026-12-20'],recebido:false}};
+  (S.dividas||[]).forEach(function(d){
+    if(d&&['gabinete_cozinha_magaly','aula_axe_2026'].indexOf(d.id)>=0){d.v=0;d.m=0;d.s='quitada';d.obs='Pagamento integral confirmado pelo Gustavo em 10/out/2026; data efetiva não informada. Não descontar novamente do saldo.';}
+  });
+  if(!S.fixosPix)S.fixosPix=[];
+  var f=S.fixosPix.find(function(x){return x&&x.id==='flash_recorrente';});
+  if(!f){f={id:'flash_recorrente',e:'💳',n:'Flash recorrente'};S.fixosPix.push(f);}
+  Object.assign(f,{v:12.87,dia:'30',ativo:true,obs:'Recorrência confirmada em 10/out/2026. Financiada pelo salário do dia 30; dia exato do pagamento a confirmar.'});
+  S.mig43Confirmacoes1010=true;
   return true;
 }
 
@@ -2224,7 +2239,7 @@ function calcularRevisaoCaixa(conservador){
       add('Rose 2ª',pix('rose2',1000));add('Rafael',pix('personal',2720));
       add('Itaú 1 — valor provisório',522.98);add('Santander',pix('santander',972));
       add('Consórcio dia 07',1452.40);add('Spotify',pix('spotify',14));
-      add('Flash — recorrência a confirmar',12.87);add('Provisão Axé junho/2027 (não é despesa)',875);
+      add('Flash recorrente',pix('flash_recorrente',12.87));add('Provisão Axé junho/2027 (não é despesa)',875);
     }
     add('Variáveis do ciclo',i===0?+o.variavelOutubro||0:varNormal);
     var renda=+(dia==='15'?S.cfg.sal15:S.cfg.sal30)||0;
@@ -2253,7 +2268,7 @@ function getRevisaoCaixaHtml(){
   });
   h+='<details><summary>Contas itemizadas por ciclo (cenário-base)</summary>';
   calcularRevisaoCaixa(false).forEach(function(c){h+='<h4>'+esc(c.id)+'</h4>'+c.itens.map(function(x){return '<div class="plan-row"><span>'+esc(x.n)+'</span><span>'+fmt(x.v)+'</span></div>';}).join('');});
-  h+='</details><p>Varreduras ilustrativas ao final de cada ciclo, não transferências automáticas. Dependem do próximo salário; não equivalem a proteger a próxima fatura inteira sem renda futura. R$267,97 é sobra de referência, não colchão operacional aprovado.</p><p>Pendências: diferença R$139,69 e assinaturas nos cartões; saldo e parcelas Itaú 2; Flash recorrente; Paula R$520 e gabinete R$624 sem data confirmada. Estes PIX incertos estão fora dos totais e reduzem o resultado quando devidos. Dentista sem cobrança ativa. Sabesp pode voltar a R$246,09. Solar dia 17/19 não altera o ciclo.</p><p>Reserva-meta R$40.000; Axé R$7.000 em junho separado. 13º estimado R$26.488: decidir aporte só após recebimento e provisão de janeiro.</p></div>';
+  h+='</details><p>Varreduras ilustrativas ao final de cada ciclo, não transferências automáticas. Dependem do próximo salário; não equivalem a proteger a próxima fatura inteira sem renda futura. R$267,97 é sobra de referência, não colchão operacional aprovado.</p><p>Confirmado em 10/out: gabinete integralmente pago e Paula paga, sem pendências. Não descontar novamente. Flash recorrente R$12,87 já incluído.</p><p>Pendências: diferença R$139,69 e assinaturas nos cartões; saldo e parcelas Itaú 2. Dentista sem cobrança ativa. Sabesp pode voltar a R$246,09. Solar dia 17/19 não altera o ciclo.</p><p>Reserva-meta R$40.000; Axé R$7.000 em junho separado. 13º estimado R$26.488; prazos legais de referência 30/11 e 20/12, não datas específicas confirmadas pelo RH. Decidir aporte só após recebimento e provisão de janeiro. O último saldo da tabela é anterior ao pagamento da fatura de 15/jan.</p></div>';
   return h;
 }
 
@@ -4932,6 +4947,7 @@ function aplicarConsolidacaoFinal29082026(){
       delete S.parc.gabinete;
       S.parcExtras=S.parcExtras.filter(function(p){return !(p&&norm(p.n).indexOf('gabinete')>=0);});
       var upsertDivida=function(d){
+        if(S.confirmacoesFinanceiras1010&&['gabinete_cozinha_magaly','aula_axe_2026'].indexOf(d.id)>=0){d.v=0;d.m=0;d.s='quitada';d.obs='Pagamento integral confirmado em 10/out/2026. Não reabrir pendência.';}
         var i=S.dividas.findIndex(function(x){return x&&x.id===d.id;});
         if(i<0)S.dividas.push(Object.assign({pags:[]},d));
         else S.dividas[i]=Object.assign({},S.dividas[i],d,{pags:S.dividas[i].pags||[]});
