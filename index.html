@@ -1420,7 +1420,7 @@ function loadData(){
   }
 }
 function applyRemoteSnapshot(remoteData,remoteRevision){
-  var precisaCorrigirSaldos=false,precisaReconciliarPosViagem=false;
+  var precisaCorrigirSaldos=false,precisaReconciliarPosViagem=false,precisaRevisarOutubro=false;
   _applyingRemoteState=true;
   try{
     S=remoteData;
@@ -1433,6 +1433,9 @@ function applyRemoteSnapshot(remoteData,remoteRevision){
     // Revisão pós-viagem autorizada em 26/set/2026. Centraliza o saldo real,
     // as faturas abertas de outubro e a odontologia adiada, sem criar aporte.
     precisaReconciliarPosViagem=aplicarReconciliacaoPosViagem26092026();
+    // Fechamento conferido em 09/out: faturas de outubro e o orçamento por
+    // salário substituem o teto provisório criado após a viagem.
+    precisaRevisarOutubro=aplicarOrcamentoQuinzenal09102026();
     try{localStorage.setItem('financas-gs-lastsnapshot-'+DOC,JSON.stringify(S));}catch(e){}
     hideConnErrorScreen();
     if(_entered)renderAll();
@@ -1440,10 +1443,10 @@ function applyRemoteSnapshot(remoteData,remoteRevision){
   } finally {
     _applyingRemoteState=false;
   }
-  if(precisaCorrigirSaldos||precisaReconciliarPosViagem){
+  if(precisaCorrigirSaldos||precisaReconciliarPosViagem||precisaRevisarOutubro){
     setTimeout(async function(){
       var saved=await save();
-      if(saved){renderAll();toast(precisaReconciliarPosViagem?'Revisão pós-viagem aplicada: caixa, faturas e odontologia atualizados.':'Saldos de quitação do Itaú e saldo do Santander atualizados.');}
+      if(saved){renderAll();toast(precisaRevisarOutubro?'Orçamento quinzenal de outubro aplicado: faturas reais e ciclos de salário atualizados.':(precisaReconciliarPosViagem?'Revisão pós-viagem aplicada: caixa, faturas e odontologia atualizados.':'Saldos de quitação do Itaú e saldo do Santander atualizados.'));}
     },0);
   }
 }
@@ -1613,6 +1616,65 @@ function aplicarReconciliacaoPosViagem26092026(){
   Object.assign(S.regrasCaixaReserva,{metaReserva:40000,inicioVarredura:'2026-10',variavelPixPercentual:.40,obrigacao:{meta:7000,aporteMensal:875,inicio:'2026-10',fim:'2027-05',vencimento:'2027-06'},odontologia:{opcao:'ceramica',total:37056,gengivoplastia:2500,dataGengivoplastia:'',laboratorio:7700,mesLaboratorio:'',parcelasPlanejadas:10,valorParcela:2935.60,statusParcelas:'adiada_ate_reserva_40000_e_fundo_laboratorio'},afropunk:{total:699,parcelas:8,valorParcela:87.38,cartao:'Nubank',primeiraFatura:'2026-09'}});
   S.mig40ReconciliacaoPosViagem2609=true;
   S.mig40ReconciliacaoPosViagem2609Em=Date.now();
+  return true;
+}
+
+// Revisão de 09/out/2026. Esta atualização parte das faturas fechadas de
+// outubro, não do extrato aberto de novembro (que ainda continha o saldo
+// anterior de outubro). Ela também registra a regra prática do Gustavo:
+// salário do dia 15 paga cartões; salário do dia 30 banca Rafael, Rose,
+// Itaú e os boletos do começo do mês seguinte.
+function aplicarOrcamentoQuinzenal09102026(){
+  if(S.mig42RevisaoCaixa0910)return false;
+  if(!S||typeof S!=='object')return false;
+  if(!S.cfg)S.cfg={};
+  S.cfg.sal15=16000;S.cfg.sal30=13192.38;
+  if(!S.faturas)S.faturas={};
+  // 15/out: Nubank R$6.067,45 + Bradesco Principal R$10.048,18 +
+  // Bradesco Signature R$756,10. O app tem um único campo Bradesco.
+  S.faturas={nu:6067.45,br:10804.28,vence:'2026-10-15',
+    obs:'Faturas fechadas de 15/out/2026: Nubank R$6.067,45 + Bradesco Principal R$10.048,18 + Signature R$756,10. Total R$16.871,73.'};
+  if(!S.projecoesFaturas)S.projecoesFaturas={};
+  // Não usar R$11.923,30 como novembro: aquele extrato aberto incluía R$10.048,18
+  // ainda não pago da fatura de outubro. Esta é a base contratual conhecida,
+  // antes de novas compras até o fechamento.
+  S.projecoesFaturas['2026-10']={nu:6067.45,br:10804.28,total:16871.73,status:'fechada',fonte:'Faturas fechadas em 09/out/2026.'};
+  S.projecoesFaturas['2026-11']={nu:2030.13,br:7735.18,total:9765.31,status:'base_sem_novas_compras',fonte:'Nubank aberto R$2.030,13 + Bradesco contratual R$7.735,18; não inclui novas compras após 09/out.'};
+  if(!S.fixosPix)S.fixosPix=[];
+  var upsertPix=function(d){var i=S.fixosPix.findIndex(function(x){return x&&x.id===d.id;});if(i<0)S.fixosPix.push(d);else S.fixosPix[i]=Object.assign({},S.fixosPix[i],d);};
+  upsertPix({id:'personal',e:'🏋️',n:'Personal Rafael',v:2720,dia:'30',ativo:true,obs:'3x por semana · R$2.720/mês · pago com o salário do dia 30.',enc:''});
+  // Pagamento de uma parcela não é quitação do contrato.
+  var i2=S.fixosPix.find(function(x){return x.id==='itau2';});
+  if(i2&&i2.n==='Itaú 2 (quitado)'){i2.n='Itaú 2 — saldo a confirmar';i2.v=423;i2.ativo=true;i2.dia='22';i2.obs='Baixa indevida corrigida: falta confirmar saldo e parcelas restantes. Não incluído no cenário de referência; cada parcela pendente reduz a sobra.';}
+  upsertPix({id:'energia_solar',e:'☀️',n:'Energia Solar',v:966.66,dia:'17',inicio:'2026-08',enc:'2026-11',ativo:true,obs:'Agosto e setembro pagos. Outubro e novembro pendentes; dia 17/19 a confirmar.'});
+  upsertPix({id:'gengivoplastia_202610',e:'🦷',n:'Gengivoplastia (remarcada)',v:2500,dia:'',inicio:'',enc:'',ativo:false,obs:'Remarcada; sem saída ativa até nova data confirmada.'});
+  if(!S.cx)S.cx={};
+  S.cx.reserva=5718.63;
+  // Saldo em conta informado. Caixinhas MP continuam fora do dinheiro livre.
+  S.caixaOperacional={data:'2026-10-09',contasBRL:{bradesco:2622.79,nubank:0.04,outros:0,mercadoPagoDisponivel:0},obs:'Saldo de conta informado em 09/out. Reserva MP (R$5.718,63) é protegida e não entra como dinheiro livre.'};
+  // Este mapa não mistura os dois salários. A coluna "livre" só aparece
+  // depois das saídas atribuídas àquele salário; não é saldo total em conta.
+  S.planoCiclosSalario={
+    atualizadoEm:'2026-10-09',
+    regra:'Dia 15 paga cartões e Alessandra. Dia 30 financia Rose 2ª, Rafael, Itaú 1 e boletos do início do mês seguinte. Reserva só recebe excedente após estas provisões.',
+    ciclos:[
+      {id:'2026-10-15',titulo:'15–30/out',entrada:[{n:'Carry confirmado',v:4400},{n:'Salário dia 15',v:16000}],saidas:[{n:'Cartões vencimento 15/out',v:16871.73},{n:'Alessandra / psicóloga',v:549}],livre:2979.27,nota:'Ponte operacional até 30/out. Não desconta Rose, Rafael ou Itaú: eles pertencem ao salário de 30.'},
+      {id:'2026-10-30',titulo:'30/out–15/nov',entrada:[{n:'Salário dia 30',v:13192.38}],saidas:[{n:'Rose 2ª',v:1000},{n:'Personal Rafael',v:2720},{n:'Santander (04/nov)',v:972},{n:'Ademicon / consórcio (07/nov)',v:1452.50},{n:'Itaú 1',v:522.98}],livre:6524.90,nota:'Antes de contas variáveis com valor ainda não confirmado e antes do aporte de R$875 para a Obrigação/Axé.'},
+      {id:'2026-11-15',titulo:'15–30/nov',entrada:[{n:'Salário dia 15',v:16000}],saidas:[{n:'Fatura novembro — base sem novas compras',v:9765.31},{n:'Alessandra / psicóloga',v:549},{n:'Rose 1ª',v:1000},{n:'Seguro residencial',v:162.90},{n:'Spotify',v:14}],livre:4508.79,nota:'Base de trabalho: congelar cartão até o fechamento. A fatura fechada prevalece.'}
+    ]
+  };
+  if(!S.planoAportes)S.planoAportes={versao:8,meses:[]};
+  var outubro={m:'2026-10',aportes:{'Obrigação/Axé':875},nota:'Sem aporte automático à Reserva. Primeiro pagar outubro e proteger o ciclo 30/out–15/nov; qualquer excedente real remanescente vai para a Reserva.'};
+  var oi=S.planoAportes.meses.findIndex(function(x){return x&&x.m==='2026-10';});if(oi<0)S.planoAportes.meses.push(outubro);else S.planoAportes.meses[oi]=outubro;
+  S.projecoesFaturas['2026-11']={nu:2030.13,br:8168.14,total:10198.27,status:'estimativa_em_auditoria',fonte:'Inclui pendentes R$432,96. Avulsos já lançados não são somados novamente. Diferença R$139,69 e assinaturas a conferir.'};
+  S.projecoesFaturas['2026-12']={total:6729.37,status:'estimativa_em_auditoria',fonte:'Projeção provisória revisada; depende das parcelas, assinaturas e novas compras.'};
+  S.projecoesFaturas['2027-01']={total:6121.60,status:'estimativa_em_auditoria',fonte:'Projeção provisória; não é fatura fechada.'};
+  S.orcamentoRevisado={data:'2026-10-09',saldoInicial:2622.79,reservaInicial:5718.63,resgatePlanejado:2000,variavelOutubro:583.33,variavelBase:1450,variavelConservador:1950,adicionalFaturaConservador:2000,decimoEstimado:26488};
+  S.planoCiclosSalario=null; // Substituído pelo cálculo único, sem carry duplicado.
+  S.fixosVar=Object.assign({},S.fixosVar,{luz:13.20,agua:108,gas:0});
+  if(S.fixosVar.luzTransicao)S.fixosVar.luzTransicao.valorPosSolar=13.20;
+  ['2026-10','2026-11','2026-12'].forEach(function(m){var x=S.planoAportes.meses.find(function(z){return z.m===m;});if(x){x.aportes={'Obrigação/Axé':875};x.nota='Reserva: só excedente real após obrigações e proteção do próximo ciclo. Sem aporte automático; faturas futuras em auditoria.';}});
+  S.mig41OrcamentoQuinzenal0910=true;S.mig42RevisaoCaixa0910=true;S.mig41OrcamentoQuinzenal0910Em=Date.now();
   return true;
 }
 
@@ -2126,6 +2188,73 @@ function getStrategiaMes(){
   var dias=Math.max(1,getDaysInMonthSP(MES)-DIA+1);
   var prox=(S.fixosPix||[]).filter(function(x){return itemAtivoNoMes(x)&&(+x.dia||99)>=DIA;}).sort(function(a,b){return(+a.dia||99)-(+b.dia||99);})[0]||null;
   return {renda:renda,pix:pix,pixPendente:pixPendente,assinaturas:assinaturas,variaveis:variaveis,variaveisPendentes:variaveisPendentes,faturas:faturas,faturasPendentes:faturasPendentes,obrigacoes:obrigacoes,obrigacoesPendentes:pixPendente+variaveisPendentes+faturasPendentes,orcado:orcado,usado:usado,restanteEnvelope:restanteEnvelope,margem:margem,livrePlanejado:livrePlanejado,dias:dias,referenciaDia:Math.max(0,Math.min(restanteEnvelope/dias,livrePlanejado/dias)),proxima:prox};
+}
+function getPlanoCiclosSalarioHtml(){
+  if(S.orcamentoRevisado)return getRevisaoCaixaHtml();
+  var plano=S.planoCiclosSalario||{},ciclos=Array.isArray(plano.ciclos)?plano.ciclos:[];
+  if(!ciclos.length)return '';
+  var h='<div class="card plan-panel plan-ledger mb12"><div class="plan-ledger-head"><div><div class="ctitle">Mapa por salário</div><div class="plan-card-title" style="margin-top:4px">Livre só depois das contas do ciclo</div></div><span class="plan-auto-badge">revisado</span></div><div class="plan-ledger-note">'+esc(plano.regra||'')+'</div>';
+  ciclos.forEach(function(c){
+    var entra=(c.entrada||[]).reduce(function(a,x){return a+(+x.v||0);},0),sai=(c.saidas||[]).reduce(function(a,x){return a+(+x.v||0);},0);
+    h+='<div class="div"></div><div class="fsb" style="margin:10px 0 5px"><strong style="font-size:.8rem">'+esc(c.titulo||'Ciclo')+'</strong><span class="chip cb">'+fmt(entra)+' entra</span></div>';
+    (c.entrada||[]).forEach(function(x){h+='<div class="plan-row"><div><strong>'+esc(x.n)+'</strong><small>entrada do ciclo</small></div><span class="val vsm tg">+'+fmt(x.v)+'</span></div>';});
+    (c.saidas||[]).forEach(function(x){h+='<div class="plan-row"><div><strong>'+esc(x.n)+'</strong><small>já atribuído a este salário</small></div><span class="val vsm tr">−'+fmt(x.v)+'</span></div>';});
+    h+='<div class="plan-row"><div><strong>Livre após contas deste ciclo</strong><small>'+esc(c.nota||'')+'</small></div><span class="val vsm '+((+c.livre||0)>=0?'tg':'tr')+'">'+fmt(c.livre)+'</span></div>';
+  });
+  return h+'</div>';
+}
+
+// Um único motor para as duas tabelas. Nada aqui marca pagamentos ou movimenta saldos.
+function calcularRevisaoCaixa(conservador){
+  var o=S.orcamentoRevisado||{},cent=function(v){return Math.round(v*100)/100;};
+  var caixa=+o.saldoInicial||0,reserva=+o.reservaInicial||0;
+  var varNormal=+(conservador?o.variavelConservador:o.variavelBase)||0;
+  var ciclos=['2026-10-15','2026-10-30','2026-11-15','2026-11-30','2026-12-15','2026-12-30'],rows=[];
+  var resultados=ciclos.map(function(id,i){
+    var mes=id.slice(0,7),dia=id.slice(8),itens=[],add=function(n,v){itens.push({n:n,v:v});};
+    var pix=function(id,base){var x=(S.fixosPix||[]).find(function(z){return z.id===id;});return x?(x.ativo===false?0:+x.v||0):base;};
+    if(dia==='15'){
+      add('Cartões '+(i===0?'fechados':'estimados'),i===0?(+S.faturas.nu||0)+(+S.faturas.br||0):getProjecaoFaturaNoVencimento(mes).total+(conservador?+o.adicionalFaturaConservador||0:0));
+      add('Rose 1ª',pix('rose',1000));add('Alessandra',pix('psicologa',549));
+      add('Sabesp — estimativa futura',+(S.fixosVar||{}).agua||0);add('Axé mensal',100);
+      add('Seguro residencial',pix('seg_res',162.90));add('ENEL — estimativa futura',+(S.fixosVar||{}).luz||0);
+      if(mes<='2026-11')add('Solar pendente',pix('energia_solar',966.66));
+      if(mes==='2026-11')add('Psiquiatra 24/11',950);
+    }else{
+      add('Rose 2ª',pix('rose2',1000));add('Rafael',pix('personal',2720));
+      add('Itaú 1 — valor provisório',522.98);add('Santander',pix('santander',972));
+      add('Consórcio dia 07',1452.40);add('Spotify',pix('spotify',14));
+      add('Flash — recorrência a confirmar',12.87);add('Provisão Axé junho/2027 (não é despesa)',875);
+    }
+    add('Variáveis do ciclo',i===0?+o.variavelOutubro||0:varNormal);
+    var renda=+(dia==='15'?S.cfg.sal15:S.cfg.sal30)||0;
+    return {id:id,renda:renda,itens:itens,resultado:cent(renda-itens.reduce(function(a,x){return a+x.v;},0))};
+  });
+  // Mantém a sobra de outubro como referência, não como piso aprovado.
+  var referencia=Math.max(0,cent(caixa+resultados[0].resultado+(+o.resgatePlanejado||0)));
+  resultados.forEach(function(c,i){
+    var inicial=caixa,resgate=i===0?+o.resgatePlanejado||0:0;
+    var pre=cent(caixa+c.resultado+resgate),retencao=i+1<resultados.length?Math.max(0,-resultados[i+1].resultado):0;
+    var varredura=i===0?0:Math.max(0,cent(pre-referencia-retencao));
+    caixa=cent(pre-varredura);reserva=cent(reserva-resgate+varredura);
+    rows.push(Object.assign({},c,{inicial:inicial,resgate:resgate,retencao:retencao,varredura:varredura,caixa:caixa,reserva:reserva}));
+  });
+  return rows;
+}
+function getRevisaoCaixaHtml(){
+  var h='<div class="card plan-panel mb12"><div class="ctitle">Orçamento revisado · outubro a janeiro</div><p>Fatos em 09/10/2026. Faturas futuras são estimativas em auditoria. Resgate de R$2.000 é planejado, não executado. Não inclui 13º, reembolsos ou dinheiro da empresa.</p>';
+  [false,true].forEach(function(cons){
+    h+='<h3>'+(cons?'Conservador: cartão +R$2.000 e variáveis R$1.950/ciclo':'Base: variáveis R$1.450/ciclo')+'</h3><div style="overflow-x:auto"><table style="width:100%;font-size:.75rem"><thead><tr><th>Ciclo</th><th>Inicial</th><th>Salário</th><th>Saídas</th><th>Resultado</th><th>Resgate</th><th>Varredura</th><th>Conta final</th><th>Reserva final</th></tr></thead><tbody>';
+    calcularRevisaoCaixa(cons).forEach(function(c,i){
+      var fim=i===5?'15/01/2027':(c.id.slice(8)==='15'?'30/'+c.id.slice(5,7):'15/'+String(+c.id.slice(5,7)+1).padStart(2,'0'));
+      h+='<tr><td>'+c.id.slice(8)+'/'+c.id.slice(5,7)+' → '+fim+'</td>'+[c.inicial,c.renda,c.renda-c.resultado,c.resultado,c.resgate,c.varredura,c.caixa,c.reserva].map(function(v){return '<td>'+fmt(v)+'</td>';}).join('')+'</tr>';
+    });
+    h+='</tbody></table></div>';
+  });
+  h+='<details><summary>Contas itemizadas por ciclo (cenário-base)</summary>';
+  calcularRevisaoCaixa(false).forEach(function(c){h+='<h4>'+esc(c.id)+'</h4>'+c.itens.map(function(x){return '<div class="plan-row"><span>'+esc(x.n)+'</span><span>'+fmt(x.v)+'</span></div>';}).join('');});
+  h+='</details><p>Varreduras ilustrativas ao final de cada ciclo, não transferências automáticas. Dependem do próximo salário; não equivalem a proteger a próxima fatura inteira sem renda futura. R$267,97 é sobra de referência, não colchão operacional aprovado.</p><p>Pendências: diferença R$139,69 e assinaturas nos cartões; saldo e parcelas Itaú 2; Flash recorrente; Paula R$520 e gabinete R$624 sem data confirmada. Estes PIX incertos estão fora dos totais e reduzem o resultado quando devidos. Dentista sem cobrança ativa. Sabesp pode voltar a R$246,09. Solar dia 17/19 não altera o ciclo.</p><p>Reserva-meta R$40.000; Axé R$7.000 em junho separado. 13º estimado R$26.488: decidir aporte só após recebimento e provisão de janeiro.</p></div>';
+  return h;
 }
 
 // ═══════════════════════════════════════════════
@@ -2859,17 +2988,17 @@ var AGORA_EVENTOS=[
     {t:'Pagar fatura Bradesco total',s:'Sem parcelar. Aba PIX → valor exato.',a:'pix'},
     {t:'PIX: Psicóloga R$549',s:'2 sessões · Alessandra Christina. Dia 15.',a:'pix'},
     {t:'PIX: Rose 1ª parcela R$1.000',s:'Dia 15. Ver aba PIX.',a:'pix'},
-    {t:'PIX: Dentista R$481',s:'Dia 22. Ver aba PIX.',a:'pix'},
+    {t:'Odontologia: sem cobrança ativa',s:'Gengivoplastia foi remarcada; não separar parcela até nova data confirmada.',a:'caixinhas'},
     {t:'PIX: Seguro Residencial R$162,90 + Spotify R$14',s:'Dia 15. Ver aba PIX.',a:'pix'},
     {t:'Proteger a próxima janela antes de aportar',s:'Aporte à Reserva só existe depois de fatura, PIX, parcelas e variáveis protegidos.',a:'caixinhas'},
     {t:'Respeitar os envelopes de corte',s:'Compras e roupas ficam zeradas; variáveis vão para cartão dentro do teto definido.',a:'envelopes'},
     {t:'Conferir reserva de emergência',s:'Saldo real e meta de R$40.000; não usar para odontologia ou gastos planejados.',a:'caixinhas'},
   ]},
   {id:'sal30',icon:'wallet',lbl:'Salário Dia 30',passos:[
-    {t:'PIX Personal Rafael R$2.100',s:'3x por semana · dia 30. Ver aba PIX.',a:'pix'},
+    {t:'PIX Personal Rafael R$2.720',s:'3x por semana · pago com o salário do dia 30.',a:'pix'},
     {t:'PIX Rose 2ª parcela R$1.000',s:'Dia 30. Ver aba PIX.',a:'pix'},
     {t:'Localiza no cartão',s:'Cobrança mensal de R$ 3.118,32 entra no cartão e é paga somente na fatura seguinte.',a:'parcelas'},
-    {t:'PIX Itaú 1 R$510,23',s:'Enquanto não quitado. Ver aba PIX.',a:'pix'},
+    {t:'PIX Itaú 1 R$522,98',s:'Separar no salário do dia 30 para o vencimento do ciclo seguinte.',a:'pix'},
     {t:'PIX Santander R$972',s:'Vence dia 4. Pagar junto com o dia 30.',a:'pix'},
     {t:'Separar excedente real',s:'Depois de proteger o próximo ciclo, o excedente vai para a Reserva até R$40.000.',a:'caixinhas'},
   ]},
@@ -2958,25 +3087,28 @@ function rAgora(){
   var contaHtml=linhasConta.map(function(x){return '<div class="plan-ledger-row"><div><strong>'+x.n+'</strong><small>'+x.d+'</small></div><span class="val vsm '+x.cor+'">'+x.s+fmt(x.v)+'</span></div>';}).join('');
   contaHtml='<div class="card plan-panel plan-ledger mb12"><div class="plan-ledger-head"><div><div class="ctitle">Orçamento mensal</div><div class="plan-card-title" style="margin-top:4px">Resultado planejado do mês inteiro</div></div><span class="plan-auto-badge">recalcula sozinho</span></div><div class="plan-ledger-note">Aqui entram todos os salários e todos os compromissos de '+ml(MES)+', inclusive os já pagos. Para saber o dinheiro utilizável hoje, veja “Dinheiro livre agora” acima. A próxima fatura é uma provisão separada.</div>'+contaHtml+'<div class="plan-ledger-total"><div><strong>Margem do orçamento mensal</strong><small>Depois de todos os compromissos e do limite integral das categorias.</small></div><b class="'+(margem>=0?'tg':'tr')+'">'+fmt(margem)+'</b></div></div>';
   if(Q('agora-progress'))Q('agora-progress').innerHTML='<div class="plan-overview"><div class="card agora-hero plan-panel"><div class="fsb"><div><div class="ctitle">Dinheiro livre agora</div><div style="font:500 1.45rem DM Mono,monospace;margin:4px 0">'+cicloLivre+'</div><p>'+ (ciclo.disponivel===null?'Informe o saldo das contas para separar o que é caixa do que já está comprometido.':'É o saldo em conta depois de reservar os compromissos até '+ciclo.prox.rotulo+'.') +'</p></div><button class="btn bg bsm" onclick="atualizarCaixaLivre()">'+icon('edit',12)+' Atualizar</button></div><div class="plan-kpis"><div class="plan-kpi"><span>Próx. salário</span><b>'+ (ciclo.prox?ciclo.prox.rotulo:'—') +'</b></div><div class="plan-kpi"><span>Comprometido</span><b>'+ (ciclo.disponivel===null?'—':fmt(ciclo.total)) +'</b></div><div class="plan-kpi"><span>Próx. fatura</span><b>'+fmt(proj.total)+'</b></div></div></div><div class="card plan-panel"><div class="ctitle">Até o próximo salário</div><div class="plan-card-title" style="margin-top:4px">O que ainda sai do saldo atual</div>'+compHtml+'<button class="btn bg bsm mt8" onclick="go(\'pix\')">Ver agenda de pagamentos</button></div></div><div class="plan-grid"><div class="card plan-panel"><div class="ctitle">Orçamento do mês</div><div class="plan-big '+(margem>=0?'tg':'tr')+'">'+fmt(margem)+'</div><div class="plan-mini">Margem do mês inteiro: usa todas as rendas, faturas e categorias, independentemente de já estarem pagas.</div><div class="plan-row"><div><strong>Renda mensal</strong><small>dia 15 + dia 30</small></div><span class="val vsm tg">'+fmt(estrategia.renda)+'</span></div><div class="plan-row"><div><strong>Contas e faturas do mês</strong><small>PIX, boletos, variáveis e faturas completas</small></div><span class="val vsm tr">−'+fmt(estrategia.obrigacoes)+'</span></div></div><div class="card plan-panel"><div class="ctitle">Separar antes de gastar</div><div class="plan-big ty">'+fmt(dist.total)+'</div><div class="plan-mini">Categorias do mês · '+esc(dist.nota)+'</div><div class="plan-row"><div><strong>Restante para categorias</strong><small>'+fmt(estrategia.usado)+' já registrado</small></div><span class="val vsm ty">'+fmt(estrategia.restanteEnvelope)+'</span></div><button class="btn bg bsm mt8" onclick="go(\'envelopes\')">Ver envelopes</button></div><div class="card plan-panel plan-callout"><div class="ctitle">Aporte do plano</div><div class="plan-big tg">'+fmt(aporte.total)+'</div><div class="plan-mini">'+aporteTxt+'</div><div class="plan-row"><div><strong>Regra de segurança</strong><small>Aporte só acontece depois de faturas, PIX e categorias separados.</small></div><span>'+icon('shieldCheck',16)+'</span></div><button class="btn bg bsm mt8" onclick="go(\'caixinhas\')">Ver caixinhas</button></div></div>';
+  // A leitura por salário vem antes da projeção mensal: evita chamar de
+  // "livre" um dinheiro que já tem destino no ciclo seguinte.
+  if(Q('agora-progress'))Q('agora-progress').insertAdjacentHTML('beforeend',getPlanoCiclosSalarioHtml());
   var visaoDez=getProjecaoAteDezembro();
   var fimDez=visaoDez.meses.length?visaoDez.meses[visaoDez.meses.length-1]:null;
   var valorProj=function(v){return v===null||v===undefined?'—':fmt(v);};
   var linhasDez=(visaoDez.meses||[]).map(function(x){return '<div class="plan-row"><div><strong>'+ml(x.m)+'</strong><small>renda '+fmt(x.renda)+' · obrigações, fatura, envelopes e aportes</small></div><span class="val vsm '+(x.resultado>=0?'tg':'tr')+'">'+(x.resultado>=0?'+':'')+fmt(x.resultado)+'</span></div>';}).join('');
   var visaoDezHtml='<div class="card plan-panel plan-ledger mb12"><div class="plan-ledger-head"><div><div class="ctitle">Até dezembro · leitura certa</div><div class="plan-card-title" style="margin-top:4px">Carry, reserva e dinheiro utilizável não são a mesma coisa</div></div><span class="plan-auto-badge">recalcula sozinho</span></div><div class="plan-ledger-note">A projeção considera salários cadastrados, PIX/boletos, variáveis, envelopes, faturas e aportes registrados. O 13º e entradas extras ficam fora até serem marcados como recebidos. Fatura fechada sempre prevalece sobre a previsão.</div><div class="plan-kpis"><div class="plan-kpi"><span>Livre em conta · 31/dez</span><b class="tg">'+valorProj(visaoDez.caixa)+'</b></div><div class="plan-kpi"><span>Reserva protegida · 31/dez</span><b class="tb">'+valorProj(visaoDez.reserva)+'</b></div><div class="plan-kpi"><span>Carry total · 31/dez</span><b>'+valorProj(visaoDez.carry)+'</b></div></div><div class="plan-mini" style="margin:8px 0 4px">Livre em conta = o que sobra depois de tudo até dezembro. Reserva protegida não é dinheiro para gastar. Carry total soma caixa e caixinhas.</div>'+linhasDez+'</div>';
-  if(Q('agora-progress'))Q('agora-progress').insertAdjacentHTML('beforeend',visaoDezHtml);
+  if(Q('agora-progress')&&!S.orcamentoRevisado)Q('agora-progress').insertAdjacentHTML('beforeend',visaoDezHtml);
   var monitor=S.monitoramentoFaturaSet2026;
-  if(Q('agora-progress')&&monitor){
+  if(Q('agora-progress')&&monitor&&!S.orcamentoRevisado){
     var rotuloMonitor=monitor.status==='aberta'?'em aberto · pode mudar até o fechamento':'fechada';
     Q('agora-progress').insertAdjacentHTML('beforeend','<div class="card plan-panel plan-callout mb12"><div class="fsb"><div><div class="ctitle">Fatura de 15/set · acompanhamento real</div><div class="plan-card-title" style="margin-top:4px">'+esc(rotuloMonitor)+'</div></div><span class="chip cy">provisão</span></div><div class="plan-big ty" style="margin-top:8px">'+fmt(monitor.total||0)+'</div><div class="plan-mini">Este valor já tem destino. Não é saldo livre e não substitui a fatura fechada quando ela sair.</div><div class="plan-row"><div><strong>Bradesco · gastos do ciclo</strong><small>Saldo anterior de '+fmt(monitor.bradescoSaldoAnterior||0)+' foi excluído.</small></div><span class="val vsm tr">'+fmt(monitor.bradescoNovo||0)+'</span></div><div class="plan-row"><div><strong>Nubank · ciclo novo</strong><small>Pagamento de '+fmt(monitor.nubankPagamentoAnterior||0)+' pertence à fatura anterior.</small></div><span class="val vsm tr">'+fmt(monitor.nubankNovo||0)+'</span></div><div class="plan-mini">Atualizado em '+esc(monitor.referencia||'')+'. As parcelas que acabam neste ciclo liberam '+fmt(monitor.parcelasEncerrando||0)+' por mês a partir do próximo ciclo, se não houver novas compras parceladas.</div></div>');
   }
-  if(Q('agora-progress'))Q('agora-progress').insertAdjacentHTML('beforeend',contaHtml);
+  if(Q('agora-progress')&&!S.orcamentoRevisado)Q('agora-progress').insertAdjacentHTML('beforeend',contaHtml);
   var regraCaixa=S.regrasCaixaReserva||{};
   if(Q('agora-progress')&&regraCaixa.inicioVarredura){
     var mesVarredura=MES>=regraCaixa.inicioVarredura;
     Q('agora-progress').insertAdjacentHTML('beforeend','<div class="card plan-panel plan-callout mb12"><div class="ctitle">Fechamento e varredura da Reserva</div><div class="plan-card-title" style="margin-top:4px">'+(mesVarredura?'Fechamento real do mês: use a ordem abaixo':'Regra ativa a partir de outubro/2026')+'</div><div class="plan-mini" style="margin:7px 0">1. Fatura fechada real · 2. PIX, boleto e parcelas · 3. Variáveis · 4. Viagem. Só então separe a provisão da próxima janela.</div><div class="plan-row"><div><strong>Provisão obrigatória</strong><small>Próxima fatura + contas, parcelas e variáveis até o próximo dia 15; sem contar com salário futuro.</small></div><span>'+icon('shield',16)+'</span></div><div class="plan-row"><div><strong>Destino do excedente real</strong><small>Depois da provisão, 100% vai para a Reserva até '+fmt(regraCaixa.metaReserva||40000)+'. O app não transfere sozinho.</small></div><span>'+icon('arrowUpCircle',16)+'</span></div><div class="plan-mini">O 13º só entra quando recebido; depois, só completa o que faltar para a meta. Cofrinhos não emergenciais não recebem aporte automático em agosto e setembro.</div></div>');
   }
   var planoEuros=S.planoEurosSet2026;
-  if(Q('agora-progress')&&planoEuros){
+  if(Q('agora-progress')&&planoEuros&&!S.orcamentoRevisado){
     var pre=planoEuros.preEmbarque||{},pos=planoEuros.posSalario||{},ponte=planoEuros.reservaPonte||{};
     Q('agora-progress').insertAdjacentHTML('beforeend','<div class="card plan-panel mb12"><div class="ctitle">Euros · viagem de setembro</div><div class="plan-card-title" style="margin-top:4px">Orçamento separado da fatura</div><div class="plan-row"><div><strong>Saldo atual Revolut</strong><small>Saldo observado; não inclui compras futuras.</small></div><span class="val vsm tb">€ '+Number(planoEuros.saldoInicial||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'</span></div><div class="plan-row"><div><strong>Antes de 03/set</strong><small>Comprar € '+Number(pre.eur||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+' somente depois da fatura de 15/ago e das contas prioritárias.</small></div><span class="val vsm tr">'+fmt(pre.brl||0)+'</span></div><div class="plan-row"><div><strong>Após o salário de 15/set</strong><small>Completa os últimos dias; já considera o saldo remanescente no Revolut.</small></div><span class="val vsm tr">'+fmt(pos.brl||0)+'</span></div>'+(ponte.brl?'<div class="plan-row"><div><strong>Ponte planejada da Reserva</strong><small>Somente em 15/set, para manter R$560 entre a volta ao Brasil e o salário do dia 30.</small></div><span class="val vsm ty">'+fmt(ponte.brl)+'</span></div>':'')+'<div class="plan-mini">Câmbio-teto do plano: R$ '+Number(planoEuros.cambioTeto||0).toLocaleString('pt-BR',{minimumFractionDigits:2})+' por euro. O consórcio vence dia 07 e deve estar provisionado no fechamento anterior.</div></div>');
   }
@@ -3120,7 +3252,7 @@ function rPlanoAportes(){
   var odonto=S.regrasCaixaReserva&&S.regrasCaixaReserva.odontologia;
   var notaOdonto=odonto&&odonto.statusParcelas==='adiada_ate_reserva_40000_e_fundo_laboratorio'?'Odontologia: cerâmica escolhida, mas adiada. Sem gengivoplastia, laboratório ou parcelas ativos até Reserva R$40 mil e fundo do laboratório separado.':(odonto&&odonto.opcao==='ceramica'?'Odontologia: cerâmica escolhida; cronograma ainda precisa ser confirmado.':'Odontologia: aguardando orçamento e data.');
   h+='<div style="font-size:.65rem;color:var(--muted);background:var(--s3);border-radius:7px;padding:8px;margin-top:8px;line-height:1.5">Carro: meta futura sem aporte antes de Reserva R$40 mil e da revisão da carta em jan/2027. '+esc(notaOdonto)+'</div></div>';
-  Q('cx-plano').innerHTML=h;
+  Q('cx-plano').innerHTML=(S.orcamentoRevisado?getRevisaoCaixaHtml():'')+h;
 }
 function rCxGrupo(elId,lista,cx){
   var h='';
