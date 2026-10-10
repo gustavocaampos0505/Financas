@@ -1437,6 +1437,8 @@ function applyRemoteSnapshot(remoteData,remoteRevision){
     // salário substituem o teto provisório criado após a viagem.
     precisaRevisarOutubro=aplicarOrcamentoQuinzenal09102026();
     precisaRevisarOutubro=aplicarConfirmacoes10102026()||precisaRevisarOutubro;
+    precisaRevisarOutubro=aplicarContratosItau10102026()||precisaRevisarOutubro;
+    precisaRevisarOutubro=aplicarPendenciasItau10102026()||precisaRevisarOutubro;
     try{localStorage.setItem('financas-gs-lastsnapshot-'+DOC,JSON.stringify(S));}catch(e){}
     hideConnErrorScreen();
     if(_entered)renderAll();
@@ -1690,6 +1692,37 @@ function aplicarConfirmacoes10102026(){
   if(!f){f={id:'flash_recorrente',e:'💳',n:'Flash recorrente'};S.fixosPix.push(f);}
   Object.assign(f,{v:12.87,dia:'30',ativo:true,obs:'Recorrência confirmada em 10/out/2026. Financiada pelo salário do dia 30; dia exato do pagamento a confirmar.'});
   S.mig43Confirmacoes1010=true;
+  return true;
+}
+
+function aplicarContratosItau10102026(){
+  if(S.mig44ContratosItau1010)return false;
+  if(!S.fixosPix)S.fixosPix=[];
+  [{id:'itau1',n:'Itaú 1',v:510.23,dia:'12',enc:'2027-11',obs:'Outubro/2026: parcela 10 de 23. PIX R$523 de 02/out ainda não identificado.'},
+   {id:'itau2',n:'Itaú 2',v:422.90,dia:'22',enc:'2028-04',obs:'Outubro/2026: parcela 6 de 24; restam 19 incluindo outubro. Pagamento de outubro ainda não confirmado.'}].forEach(function(d){
+    var f=S.fixosPix.find(function(x){return x&&x.id===d.id;});if(f)Object.assign(f,d,{ativo:true});else S.fixosPix.push(Object.assign({e:'🏦',ativo:true},d));
+    var div=(S.dividas||[]).find(function(x){return x&&x.id===d.id;});
+    if(div){div.m=d.v;div.obs=d.obs;div.parcelaReferencia=d.id==='itau1'?10:6;div.totalParcelas=d.id==='itau1'?23:24;div.referenciaParcelas='2026-10';div.saldoQuitacaoAConfirmar=true;}
+  });
+  S.mig44ContratosItau1010=true;
+  return true;
+}
+
+function aplicarPendenciasItau10102026(){
+  if(S.mig45ItauPendente1010)return false;
+  if(S.orcamentoRevisado){
+    S.orcamentoRevisado.data='2026-10-10';
+    S.orcamentoRevisado.resgatePlanejado=2933.13;
+    S.orcamentoRevisado.itauOutubroNaoPago=true;
+  }
+  (S.fixosPix||[]).forEach(function(f){
+    if(f.id==='itau1')f.obs='Outubro não pago: parcela 10/23, R$510,23 em 12/out, antes do salário. PIX R$523 de 02/out é transferência própria para Revolut, não pagamento deste empréstimo.';
+    if(f.id==='itau2')f.obs='Outubro não pago: parcela 6/24, R$422,90 em 22/out. Restam 19 parcelas incluindo outubro.';
+    if(f.id==='itau1'||f.id==='itau2'){
+      var d=(S.dividas||[]).find(function(x){return x.id===f.id;});if(d)d.obs=f.obs;
+    }
+  });
+  S.mig45ItauPendente1010=true;
   return true;
 }
 
@@ -2235,9 +2268,11 @@ function calcularRevisaoCaixa(conservador){
       add('Seguro residencial',pix('seg_res',162.90));add('ENEL — estimativa futura',+(S.fixosVar||{}).luz||0);
       if(mes<='2026-11')add('Solar pendente',pix('energia_solar',966.66));
       if(mes==='2026-11')add('Psiquiatra 24/11',950);
+      if(i>0||!pagamentoFixoConfirmado('itau2',mes))add('Itaú 2 — dia 22',pix('itau2',422.90));
+      if(i===0&&!pagamentoFixoConfirmado('itau1',mes))add('Itaú 1 pendente — 12/out, antes do salário',pix('itau1',510.23));
     }else{
       add('Rose 2ª',pix('rose2',1000));add('Rafael',pix('personal',2720));
-      add('Itaú 1 — valor provisório',522.98);add('Santander',pix('santander',972));
+      add('Itaú 1 — dia 12 do mês seguinte',pix('itau1',510.23));add('Santander',pix('santander',972));
       add('Consórcio dia 07',1452.40);add('Spotify',pix('spotify',14));
       add('Flash recorrente',pix('flash_recorrente',12.87));add('Provisão Axé junho/2027 (não é despesa)',875);
     }
@@ -2257,18 +2292,26 @@ function calcularRevisaoCaixa(conservador){
   return rows;
 }
 function getRevisaoCaixaHtml(){
-  var h='<div class="card plan-panel mb12"><div class="ctitle">Orçamento revisado · outubro a janeiro</div><p>Fatos em 09/10/2026. Faturas futuras são estimativas em auditoria. Resgate de R$2.000 é planejado, não executado. Não inclui 13º, reembolsos ou dinheiro da empresa.</p>';
+  var o=S.orcamentoRevisado||{},base=calcularRevisaoCaixa(false),consRows=calcularRevisaoCaixa(true);
+  var primeiro=base[0],itauAntes=(primeiro.itens.find(function(x){return x.n.indexOf('12/out')>=0;})||{}).v||0;
+  var minimo=Math.max(0,-(primeiro.inicial+primeiro.resultado));
+  var h='<div class="card plan-panel mb12"><div class="ctitle">Orçamento revisado · outubro a janeiro</div><p>Atualizado em 10/10/2026: os dois Itaús de outubro estão pendentes. Faturas futuras são estimativas em auditoria. Não inclui 13º, reembolsos futuros ou dinheiro da empresa.</p>';
+  h+='<div class="plan-row"><span>Conta observada antes de 12/out</span><strong>'+fmt(primeiro.inicial)+'</strong></div><div class="plan-row"><span>Itaú 1 em 12/out — antes do salário</span><strong>−'+fmt(itauAntes)+'</strong></div><div class="plan-row"><span>Conta após esse vencimento, sem outros movimentos</span><strong>'+fmt(primeiro.inicial-itauAntes)+'</strong></div>';
+  h+='<p>Outubro precisa de <strong>'+fmt(minimo)+'</strong> de cobertura para não terminar negativo. O cenário abaixo planeja um resgate total de <strong>'+fmt(o.resgatePlanejado||0)+'</strong>, preservando '+fmt(primeiro.caixa)+' em conta. É simulação: nenhum resgate, pagamento ou aporte foi registrado por este cálculo.</p>';
   [false,true].forEach(function(cons){
     h+='<h3>'+(cons?'Conservador: cartão +R$2.000 e variáveis R$1.950/ciclo':'Base: variáveis R$1.450/ciclo')+'</h3><div style="overflow-x:auto"><table style="width:100%;font-size:.75rem"><thead><tr><th>Ciclo</th><th>Inicial</th><th>Salário</th><th>Saídas</th><th>Resultado</th><th>Resgate</th><th>Varredura</th><th>Conta final</th><th>Reserva final</th></tr></thead><tbody>';
     calcularRevisaoCaixa(cons).forEach(function(c,i){
       var fim=i===5?'15/01/2027':(c.id.slice(8)==='15'?'30/'+c.id.slice(5,7):'15/'+String(+c.id.slice(5,7)+1).padStart(2,'0'));
-      h+='<tr><td>'+c.id.slice(8)+'/'+c.id.slice(5,7)+' → '+fim+'</td>'+[c.inicial,c.renda,c.renda-c.resultado,c.resultado,c.resgate,c.varredura,c.caixa,c.reserva].map(function(v){return '<td>'+fmt(v)+'</td>';}).join('')+'</tr>';
+      h+='<tr><td>'+(i===0?'10/10 → 30/10 (inclui 12/out)':c.id.slice(8)+'/'+c.id.slice(5,7)+' → '+fim)+'</td>'+[c.inicial,c.renda,c.renda-c.resultado,c.resultado,c.resgate,c.varredura,c.caixa,c.reserva].map(function(v){return '<td>'+fmt(v)+'</td>';}).join('')+'</tr>';
     });
     h+='</tbody></table></div>';
   });
   h+='<details><summary>Contas itemizadas por ciclo (cenário-base)</summary>';
   calcularRevisaoCaixa(false).forEach(function(c){h+='<h4>'+esc(c.id)+'</h4>'+c.itens.map(function(x){return '<div class="plan-row"><span>'+esc(x.n)+'</span><span>'+fmt(x.v)+'</span></div>';}).join('');});
-  h+='</details><p>Varreduras ilustrativas ao final de cada ciclo, não transferências automáticas. Dependem do próximo salário; não equivalem a proteger a próxima fatura inteira sem renda futura. R$267,97 é sobra de referência, não colchão operacional aprovado.</p><p>Confirmado em 10/out: gabinete integralmente pago e Paula paga, sem pendências. Não descontar novamente. Flash recorrente R$12,87 já incluído.</p><p>Pendências: diferença R$139,69 e assinaturas nos cartões; saldo e parcelas Itaú 2. Dentista sem cobrança ativa. Sabesp pode voltar a R$246,09. Solar dia 17/19 não altera o ciclo.</p><p>Reserva-meta R$40.000; Axé R$7.000 em junho separado. 13º estimado R$26.488; prazos legais de referência 30/11 e 20/12, não datas específicas confirmadas pelo RH. Decidir aporte só após recebimento e provisão de janeiro. O último saldo da tabela é anterior ao pagamento da fatura de 15/jan.</p></div>';
+  h+='</details><p>Varreduras ilustrativas ao final de cada ciclo, não transferências automáticas. Dependem do próximo salário; não equivalem a proteger a próxima fatura inteira sem renda futura. R$267,97 é sobra de referência, não colchão operacional aprovado. As variáveis já foram descontadas; qualquer gasto adicional reduz a varredura.</p><p>Confirmado: gabinete e Paula pagos, sem pendências. Flash recorrente R$12,87. Itaú 1 R$510,23 dia 12; Itaú 2 R$422,90 dia 22, incluído todos os meses. PIX R$523 de 02/out foi Revolut, não Itaú. Não reaplicar PIX históricos ao saldo observado.</p><p>Em novembro conservador, reter '+fmt(consRows[1].retencao)+' antes de varrer: o ciclo seguinte tem déficit desse valor. A reserva não é dinheiro livre para gastar.</p>';
+  h+='<h3>Meta de R$40 mil · posição em 30/dez</h3><div style="overflow-x:auto"><table style="width:100%;font-size:.8rem"><thead><tr><th>Cenário</th><th>Reserva sem 13º</th><th>Falta para meta</th><th>Aporte do 13º estimado</th><th>13º fora da reserva</th><th>Meta ainda faltante</th></tr></thead><tbody>';
+  [base,consRows].forEach(function(rows,i){var r=rows[4].reserva,falta=Math.max(0,40000-r),decimo=+o.decimoEstimado||0,aporte=Math.min(falta,decimo);h+='<tr><td>'+(i?'Conservador':'Base')+'</td>'+[r,falta,aporte,decimo-aporte,Math.max(0,falta-aporte)].map(function(v){return '<td>'+fmt(v)+'</td>';}).join('')+'</tr>';});
+  h+='</tbody></table></div><p>13º estimado, não recebido: simulação de aporte, não decisão executada. Valores fora da reserva ainda dependem de provisões e compromissos de janeiro.</p><p>Pendências: diferença R$139,69 e assinaturas nos cartões; cotação de quitação dos Itaús. Dentista sem cobrança ativa. Sabesp pode voltar a R$246,09. Solar outubro e novembro incluídos; dia 17/19 não altera o ciclo. Psiquiatra R$950 só em 24/nov nesta janela; próxima em fevereiro.</p><p>Axé R$7.000 em junho separado: provisão de R$875 por salário do dia 30. 13º estimado R$26.488, referências 30/11 e 20/12, não datas confirmadas pelo RH. O último saldo da tabela é <strong>anterior</strong> ao pagamento da fatura de 15/jan.</p></div>';
   return h;
 }
 
