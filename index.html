@@ -1439,6 +1439,7 @@ function applyRemoteSnapshot(remoteData,remoteRevision){
     precisaRevisarOutubro=aplicarConfirmacoes10102026()||precisaRevisarOutubro;
     precisaRevisarOutubro=aplicarContratosItau10102026()||precisaRevisarOutubro;
     precisaRevisarOutubro=aplicarPendenciasItau10102026()||precisaRevisarOutubro;
+    precisaRevisarOutubro=aplicarAuditoriaBase10102026()||precisaRevisarOutubro;
     try{localStorage.setItem('financas-gs-lastsnapshot-'+DOC,JSON.stringify(S));}catch(e){}
     hideConnErrorScreen();
     if(_entered)renderAll();
@@ -1726,6 +1727,50 @@ function aplicarPendenciasItau10102026(){
   return true;
 }
 
+// Referências são meses de VENCIMENTO, não datas de compra/pagamento.
+function parcelasAuditadas1010(){return [
+ ['BR','Savana',63,5,7,10],['BR','Shopee Toalhas',65.76,3,6,10],['BR','Prime anual parcelado',13.90,3,12,10],['BR','Mantoan',46.63,2,3,10],['BR','Renner',233.03,2,3,10],['BR','Shopee Essência',76.13,2,3,10],['BR','Marllos',325.44,2,2,10],['BR','Retropy',173.33,2,3,10],['BR','Tassia',465,5,6,10],['BR','Azul 10x',636.97,4,10,10],['BR','HM Brasil',108.26,4,6,10],['BR','Amazon 6x',47.68,4,6,10],['BR','ML 5x',50,3,5,10],['BR','ML 4x',54.08,3,4,10],['BR','Favela Hype',115.36,3,5,10],['BR','Parafin 1',74.87,2,2,10],['BR','Parafin 2',9.65,2,2,10],['BR','Amazon Marketplace',45.94,2,6,10],['BR','Azul 7x',92,1,7,10],['BR','ML Electro',32.45,1,4,10],
+ ['BR','Signature Adidas',62.99,8,10,10],['BR','Signature Empório',169.59,6,6,10],['BR','Signature ML GMMOVEI',101.65,11,12,10],['BR','Signature Electrolux',40.54,10,20,10],['BR','Signature OAB',94,9,12,10],['BR','Signature Shopee Ti',223.25,8,12,10],['BR','Signature Shopee Charles',64.08,4,12,10],
+ ['NU','Airbnb Afropunk',242.84,1,6,11],['NU','Amazon 12x',105.69,5,12,11],['NU','ML 10x',55.90,8,10,11],['NU','Wandemberg',375,4,4,11],['NU','Amazon 8x',31.86,5,8,11],['NU','Wix Retropy',129.88,3,4,11],['NU','Amazon 10x',67,3,10,11],['NU','Quero Melancia',107.40,4,4,11],['NU','OAB MG',93.05,3,12,11],['NU','Latam Afropunk',87.47,3,8,11],['NU','Lahtref',159.20,4,6,11],['NU','TikTok',69.74,2,2,11],['NU','Amo Promo',30.60,4,5,11]
+];}
+function aplicarAuditoriaBase10102026(){
+ if(S.mig46AuditoriaBase1010)return false;
+ S.backupAuditoria46={parc:S.parc||{},parcExtras:S.parcExtras||[],projecoes:S.projecoesFaturas||{},envelopes:S.envDef||[],em:Date.now()};
+ S.parc={};S.parcExtras=[];
+ parcelasAuditadas1010().forEach(function(p,i){var ref='2026-'+p[5],fim=addMes(ref,p[4]-p[3]);S.parc['audit46_'+i]={n:p[1],b:p[0],vp:p[2],cp:p[3],tp:p[4],referenciaVencimento:ref,mesInicio:addMes(ref,-p[3]+1),f:ml(addMes(fim,-1)),fimVencimento:fim,obs:'Conferida nas faturas de 09/out; parcela de referência não significa paga.',s:'ativa'};});
+ var ass=[['wellhub','Wellhub',220,'BR'],['shopeevip','Shopee VIP',9.90,'BR'],['lightroom','Lightroom',9.90,'BR'],['apple_ic','iCloud',19.90,'BR'],['chatgpt','ChatGPT',99.90,'BR'],['seg_sup','Seguro Superprotegido',9.99,'BR'],['google','Google One',14.99,'BR'],['meli_mega','Meli+',19.90,'BR'],['youtube','YouTube Premium',16.90,'BR'],['estac','Estacionamento',380,'BR'],['pier','Pier seguro',184.50,'NU'],['ifc','iFood Club',12.90,'NU'],['folhasp','Folha',9.90,'NU'],['conectcar','ConectCar — provisão de recargas',100,'BR']];
+ S.fixosAss=S.fixosAss||[];
+ S.fixosAss.forEach(function(a){if(a.id==='netflix'||a.id==='oab'||a.id==='apple_li'||/macpaw|grammarly/i.test(a.n||'')){a.ativo=false;a.obs='Auditoria 10/out: Netflix encerrada; OAB é parcela; anuais não se repetem mensalmente.';}});
+ ass.forEach(function(a){var x=S.fixosAss.find(function(z){return z.id===a[0];});if(!x){x={id:a[0]};S.fixosAss.push(x);}Object.assign(x,{n:a[1],v:a[2],cartao:a[3],ativo:true,periodicidade:'mensal',audit46:true});});
+ S.custosAnuaisConfirmados=[{n:'MacPaw',v:164.78,iof:5.76,periodicidade:'anual',ultimaCobranca:'2026-10-03'},{n:'Grammarly',v:753.12,iof:26.36,periodicidade:'anual',ultimaCobranca:'2026-10-06'}];
+ S.fixosPix=S.fixosPix||[];
+ [{id:'itau1',v:510.23,dia:'12',enc:'',obs:'Outubro não pago. Parcela informada 10/23; cotação de quitação diverge da contagem. Mantido mensalmente, sem quitação ou baixa automática.'},{id:'itau2',v:422.90,dia:'22',enc:'2027-03',obs:'Outubro não pago. Seis restantes incluindo outubro, confirmado pelo Gustavo. Próximas até março/2027.'},{id:'ademicon',v:1452.50,dia:'7',obs:'Setembro R$1.348 por compensação; mensalidade real R$1.452,50.'}].forEach(function(f){var x=S.fixosPix.find(function(z){return z.id===f.id;});if(x)Object.assign(x,f);});
+ (S.dividas||[]).forEach(function(d){if(d.id==='itau2'){d.m=422.90;d.parcelasRestantesReferencia=6;d.referenciaParcelas='2026-10';d.obs='6 restantes incluindo outubro não pago; fim março/2027. Quitação não efetuada.';}if(d.id==='itau1')d.obs='R$510,23 dia 12; outubro não pago. Manter prestações; divergência de contagem/quitação em conferência.';});
+ S.orcamentoRevisado=Object.assign({},S.orcamentoRevisado,{versao:46,data:'2026-10-10',variavelBase:500,variavelConservador:1000,metaVariavelMensal:2500,variavelCartaoMensal:1500,resgatePlanejado:2665.16,caixaProtegidoProposto:2000});
+ S.auditoria46={assIds:ass.map(function(a){return a[0];}),avulsosNovBR:1432.10,avulsosNovNU:474.50,metaVariavelTotal:2500,metaCartao:1500,metaPix:1000,cenario:'base',axe:{meta:7000,aporte:875,prazo:'2027-06'},carnaval:{meta:3500,passagem:1500,custos:2000,status:'planejado_nao_pago'},decimoProposta:{reserva:10000,carnaval:3500,laboratorio:7700,gengivo:2500,margem:2788,status:'proposta_nao_decisao'},odonto:{total:37056,laboratorio:7700,gengivo:2500,restante:26856,parcela:2685.60,quantidade:10,status:'sem_parcelas_ativas'}};
+ var limites={super:1000,comb:350,farm:400,delivery:200,lazer:0,compras:0,roupas:0};
+ S.envDef=S.envDef||[];
+ S.envDef.forEach(function(e){if(Object.prototype.hasOwnProperty.call(limites,e.id))e.lim=limites[e.id];else if(e.id!=='cabelo46'&&e.id!=='extras46')e.lim=0;});
+ [{id:'cabelo46',n:'Cabelo/barba',e:'✂️',lim:450,tipo:'envelope',usado:0},{id:'extras46',n:'Pequenos extras',e:'🧾',lim:100,tipo:'envelope',usado:0}].forEach(function(e){if(!S.envDef.some(function(x){return x.id===e.id;}))S.envDef.push(e);});
+ S.planoEnvelopes=S.planoEnvelopes||{meses:[]};S.planoEnvelopes.meses=S.planoEnvelopes.meses||[];
+ ['2026-11','2026-12','2027-01','2027-02','2027-03','2027-04','2027-05','2027-06'].forEach(function(m){var x=S.planoEnvelopes.meses.find(function(z){return z.m===m;});if(!x){x={m:m};S.planoEnvelopes.meses.push(x);}x.total=2500;x.nota='Teto total cartão + PIX: R$1.500 no cartão e R$1.000 no PIX; compras/roupas zero.';});
+ S.regrasCaixaReserva=S.regrasCaixaReserva||{};S.regrasCaixaReserva.variavelPixPercentual=.40;
+ Object.assign(S.regrasCaixaReserva,{obrigacao:{meta:7000,aporteMensal:875,inicio:'2026-10',fim:'2027-05',vencimento:'2027-06'},carnaval:{meta:3500,passagem:1500,custos:2000,status:'planejado'},odontologia:{opcao:'ceramica',total:37056,gengivoplastia:2500,laboratorio:7700,parcelasPlanejadas:10,valorParcela:2685.60,statusParcelas:'sem_cobranca_ativa',condicao:'Gengivo paga separada; confirmar contrato antes de ativar parcelas.'}});
+ S.metasVariaveis46=[{n:'Supermercado',v:1000},{n:'Combustível',v:350},{n:'Cabelo/barba',v:450},{n:'Farmácia',v:400},{n:'Delivery/lazer',v:200},{n:'Pequenos extras',v:100}];
+ S.cxDef=S.cxDef||{};S.cxDef.fixas=S.cxDef.fixas||[];var defs=S.cxDef.fixas;var carnaval=defs.find(function(x){return x.id==='carnaval_2027';});if(!carnaval)defs.push({id:'carnaval_2027',n:'Carnaval 2027',m:3500,ap:0,r:'Passagem R$1.500 + custos R$2.000. Provisão planejada, não dinheiro já guardado.',tipo:'uso'});
+ defs.forEach(function(x){if(x.id==='odontologia_planejada')Object.assign(x,{ap:0,r:'Cerâmica escolhida; tratamento sem cobrança ativa. Laboratório R$7.700; gengivo separada R$2.500; restante condicional 10×R$2.685,60. Datas a confirmar.'});});
+ S.mig46AuditoriaBase1010=true;return true;
+}
+function getFaturaAuditada46(mes){
+ var nu=0,br=0;
+ Object.keys(S.parc||{}).forEach(function(k){var p=S.parc[k];if(!p||p.s==='quitada'||p.s==='antecipada'||!p.referenciaVencimento)return;var r=p.referenciaVencimento.split('-'),m=mes.split('-'),offset=(+m[0]-+r[0])*12+(+m[1]-+r[1]),atual=(+p.cp||0)+offset;if(atual<1||atual>+p.tp)return;if(p.b==='NU')nu+=+p.vp||0;else if(p.b==='BR')br+=+p.vp||0;});
+ var parcelas={NU:nu,BR:br},a=S.auditoria46||{},ass={NU:0,BR:0};
+ (S.fixosAss||[]).filter(function(x){return (a.assIds||[]).indexOf(x.id)>=0&&itemAtivoEmMes(x,addMes(mes,-1));}).forEach(function(x){if(ass[x.cartao]!==undefined)ass[x.cartao]+=+x.v||0;});
+ var localiza=(S.localizaCartao||{}).ativo===false?0:+(S.localizaCartao||{}).v||3118.32;
+ var avulsos=mes==='2026-11'?{BR:+a.avulsosNovBR||0,NU:+a.avulsosNovNU||0}:{BR:+(S.orcamentoRevisado||{}).variavelCartaoMensal||0,NU:0};
+ nu+=ass.NU+avulsos.NU;br+=ass.BR+localiza+avulsos.BR;
+ return {NU:Math.round(nu*100)/100,BR:Math.round(br*100)/100,total:Math.round((nu+br)*100)/100,assinaturas:ass,parcelas:parcelas,localiza:localiza,avulsos:avulsos,status:'estimativa_auditada_nao_fechada',fonte:'Parcelas conferidas + recorrentes atuais + Localiza + avulsos; sem repetir saldo anterior.'};
+}
 var _pendingResolvers=[];
 async function save(){
   if(_applyingRemoteState)return false; // nunca salvar por causa do próprio snapshot (evita loop onSnapshot→save→onSnapshot)
@@ -2067,6 +2112,7 @@ function getParcelasCartaoEmMesCobranca(mesCobranca){
   Object.keys(S.parc||{}).forEach(function(k){add(S.parc[k]);});(S.parcExtras||[]).forEach(add);return out;
 }
 function getProjecaoFaturaNoVencimento(mesVencimento){
+  if(S.mig46AuditoriaBase1010&&mesVencimento>='2026-11')return getFaturaAuditada46(mesVencimento);
   var manual=(S.projecoesFaturas||{})[mesVencimento];
   if(manual&&(+manual.total||0)>0){
     return {NU:+manual.nu||0,BR:+manual.br||0,total:+manual.total||0,assinaturas:{NU:0,BR:0},parcelas:{NU:0,BR:0},localiza:0,manual:true,status:manual.status||'',fonte:manual.fonte||''};
@@ -2232,10 +2278,11 @@ function getStrategiaMes(){
   // separadamente para provisão, não como saída já paga neste mês.
   var obrigacoes=pix+variaveis+faturas;
   var margem=renda-obrigacoes;
-  var livrePlanejado=margem-orcado;
+  var orcadoCaixa=S.mig46AuditoriaBase1010?orcado*.40:orcado;
+  var livrePlanejado=margem-orcadoCaixa;
   var dias=Math.max(1,getDaysInMonthSP(MES)-DIA+1);
   var prox=(S.fixosPix||[]).filter(function(x){return itemAtivoNoMes(x)&&(+x.dia||99)>=DIA;}).sort(function(a,b){return(+a.dia||99)-(+b.dia||99);})[0]||null;
-  return {renda:renda,pix:pix,pixPendente:pixPendente,assinaturas:assinaturas,variaveis:variaveis,variaveisPendentes:variaveisPendentes,faturas:faturas,faturasPendentes:faturasPendentes,obrigacoes:obrigacoes,obrigacoesPendentes:pixPendente+variaveisPendentes+faturasPendentes,orcado:orcado,usado:usado,restanteEnvelope:restanteEnvelope,margem:margem,livrePlanejado:livrePlanejado,dias:dias,referenciaDia:Math.max(0,Math.min(restanteEnvelope/dias,livrePlanejado/dias)),proxima:prox};
+  return {renda:renda,pix:pix,pixPendente:pixPendente,assinaturas:assinaturas,variaveis:variaveis,variaveisPendentes:variaveisPendentes,faturas:faturas,faturasPendentes:faturasPendentes,obrigacoes:obrigacoes,obrigacoesPendentes:pixPendente+variaveisPendentes+faturasPendentes,orcado:orcado,orcadoCaixa:orcadoCaixa,usado:usado,restanteEnvelope:restanteEnvelope,margem:margem,livrePlanejado:livrePlanejado,dias:dias,referenciaDia:Math.max(0,Math.min(restanteEnvelope/dias,livrePlanejado/dias)),proxima:prox};
 }
 function getPlanoCiclosSalarioHtml(){
   if(S.orcamentoRevisado)return getRevisaoCaixaHtml();
@@ -2273,7 +2320,7 @@ function calcularRevisaoCaixa(conservador){
     }else{
       add('Rose 2ª',pix('rose2',1000));add('Rafael',pix('personal',2720));
       add('Itaú 1 — dia 12 do mês seguinte',pix('itau1',510.23));add('Santander',pix('santander',972));
-      add('Consórcio dia 07',1452.40);add('Spotify',pix('spotify',14));
+      add('Consórcio dia 07',pix('ademicon',1452.50));add('Spotify',pix('spotify',14));
       add('Flash recorrente',pix('flash_recorrente',12.87));add('Provisão Axé junho/2027 (não é despesa)',875);
     }
     add('Variáveis do ciclo',i===0?+o.variavelOutubro||0:varNormal);
@@ -2281,7 +2328,7 @@ function calcularRevisaoCaixa(conservador){
     return {id:id,renda:renda,itens:itens,resultado:cent(renda-itens.reduce(function(a,x){return a+x.v;},0))};
   });
   // Mantém a sobra de outubro como referência, não como piso aprovado.
-  var referencia=Math.max(0,cent(caixa+resultados[0].resultado+(+o.resgatePlanejado||0)));
+  var referencia=o.versao===46?(+o.caixaProtegidoProposto||0):Math.max(0,cent(caixa+resultados[0].resultado+(+o.resgatePlanejado||0)));
   resultados.forEach(function(c,i){
     var inicial=caixa,resgate=i===0?+o.resgatePlanejado||0:0;
     var pre=cent(caixa+c.resultado+resgate),retencao=i+1<resultados.length?Math.max(0,-resultados[i+1].resultado):0;
@@ -2291,7 +2338,24 @@ function calcularRevisaoCaixa(conservador){
   });
   return rows;
 }
+function getAuditoriaBase46Html(){
+ var rows=calcularRevisaoCaixa(false),o=S.orcamentoRevisado||{},a=S.auditoria46||{},h='<div class="card plan-panel mb12"><div class="ctitle">Cenário-base auditado · 10/out/2026</div><p>Variáveis aprovadas: <strong>R$2.500/mês no total, cartão + PIX</strong>. Distribuição de trabalho: R$1.500 no cartão e R$1.000 no PIX. Sem compras de roupas novas. Axé e carnaval preservados.</p>';
+ h+='<p>Faturas de outubro fechadas: '+fmt((+S.faturas.nu||0)+(+S.faturas.br||0))+'. Dois Itaús de outubro pendentes; R$510,23 dia 12 é antes do salário. Cobertura mínima simulada '+fmt(o.resgatePlanejado)+', sem movimentação executada. R$2.000 de caixa protegido é proposta, formada com o excedente de 30/out, não novo resgate automático.</p>';
+ h+='<h3>Faturas estimadas — sem saldo anterior duplicado</h3><div style="overflow-x:auto"><table style="width:100%;font-size:.75rem"><tr><th>Vencimento</th><th>Parcelas</th><th>Recorrentes/provisões</th><th>Localiza</th><th>Avulsos</th><th>Total</th></tr>';
+ ['2026-11','2026-12','2027-01','2027-02','2027-03','2027-04','2027-05','2027-06'].forEach(function(m){var f=getFaturaAuditada46(m);h+='<tr><td>'+esc(m)+'</td>'+[f.parcelas.NU+f.parcelas.BR,f.assinaturas.NU+f.assinaturas.BR,f.localiza,f.avulsos.NU+f.avulsos.BR,f.total].map(function(v){return '<td>'+fmt(v)+'</td>';}).join('')+'</tr>';});
+ h+='</table></div><p>Novembro inclui gastos já conhecidos e Uber/AliExpress pendentes. Demais meses incluem R$1.500 de novos gastos no cartão. São estimativas, não faturas fechadas; novos gastos e IOF podem mudar os totais.</p><h3>Caixa por salário — cenário-base</h3><div style="overflow-x:auto"><table style="width:100%;font-size:.75rem"><tr><th>Ciclo</th><th>Salário</th><th>Saídas</th><th>Excedente</th><th>Resgate proposto</th><th>Varredura simulada</th><th>Conta</th><th>Reserva sem 13º</th></tr>';
+ rows.forEach(function(c,i){h+='<tr><td>'+(i===0?'10–30/out':c.id+' → próximo salário')+'</td>'+[c.renda,c.renda-c.resultado,c.resultado,c.resgate,c.varredura,c.caixa,c.reserva].map(function(v){return '<td>'+fmt(v)+'</td>';}).join('')+'</tr>';});
+ h+='</table></div><details><summary>Contas detalhadas de cada ciclo</summary>';
+ rows.forEach(function(c){h+='<h4>'+esc(c.id)+'</h4>'+c.itens.map(function(x){return '<div class="plan-row"><span>'+esc(x.n)+'</span><strong>'+fmt(x.v)+'</strong></div>';}).join('');});
+ h+='</details><p>Valores ao final da janela são anteriores ao salário seguinte. Última linha termina antes da fatura de 15/jan. Varreduras dependem de fechar as contas e proteger vencimentos; este caixa proposto não equivale à provisão integral da próxima fatura sem salário futuro. Nenhum pagamento ou aporte real foi criado.</p>';
+ h+='<h3>Metas que permanecem no plano</h3><div class="plan-row"><span>Obrigação/Axé — junho/2027</span><strong>R$7.000 · R$875/mês out–mai</strong></div><div class="plan-row"><span>Carnaval — passagem R$1.500 + custos R$2.000</span><strong>R$3.500</strong></div><p>Fundo Axé já abatido de cada ciclo do fechamento; não integra a reserva. Mensalidade da associação R$100 é separada. Airbnb Afropunk 6×R$242,84 nov–abr está nas parcelas, não no carnaval.</p>';
+ h+='<h3>13º estimado R$26.488 — proposta, não decisão</h3>';
+ [['Reserva',10000],['Carnaval',3500],['Laboratório cerâmica',7700],['Gengivoplastia',2500],['Margem sem compromisso',2788]].forEach(function(p){h+='<div class="plan-row"><span>'+esc(p[0])+'</span><strong>'+fmt(p[1])+'</strong></div>';});
+ h+='<p>Sem iPhone ou quitação de Itaú nesta proposta. R$15 mil à reserva, mantendo os demais fundos, deixariam falta de R$2.212. Recursos ainda não recebidos; referências do 13º 30/nov e 20/dez. Não chamar todos os recursos fora da reserva de dinheiro livre.</p><h3>Dentista — sem cobrança ativa</h3><p>Cerâmica total R$37.056. Laboratório R$7.700 e gengivo R$2.500 separados deixam R$26.856, ou 10×R$2.685,60. Se a gengivo estiver dentro do parcelamento, seriam 10×R$2.935,60 e não se paga R$2.500 outra vez. Confirmar contrato e datas; primeiro reserva de R$40 mil e fundo dental separado.</p><p>MacPaw e Grammarly confirmados anuais: não repetidos mensalmente. Netflix retirada; Folha mantida. Apple identificadas: Lightroom R$9,90, iCloud R$19,90 e ChatGPT R$99,90. Renovação anual futura deve ser provisionada quando o custo/data forem confirmados.</p><p>Itaú 2: seis restantes incluindo outubro, até março/2027. Itaú 1 permanece em orçamento; contagem e cotação de quitação divergentes não viram decisão automática. Sabesp R$108 e ENEL R$13,20 são estimativas futuras; valores reais prevalecem.</p></div>';
+ return h;
+}
 function getRevisaoCaixaHtml(){
+  if((S.orcamentoRevisado||{}).versao===46)return getAuditoriaBase46Html();
   var o=S.orcamentoRevisado||{},base=calcularRevisaoCaixa(false),consRows=calcularRevisaoCaixa(true);
   var primeiro=base[0],itauAntes=(primeiro.itens.find(function(x){return x.n.indexOf('12/out')>=0;})||{}).v||0;
   var minimo=Math.max(0,-(primeiro.inicial+primeiro.resultado));
@@ -3140,7 +3204,7 @@ function rAgora(){
     {n:'PIX e boletos do mês',d:'Inclui pagos e pendentes; é orçamento, não saldo de hoje',v:estrategia.pix,cor:'tr',s:'−'},
     {n:'Contas variáveis do mês',d:'Luz, água, gás e demais valores cadastrados',v:estrategia.variaveis,cor:'tr',s:'−'},
     {n:'Faturas do mês',d:'Valor completo informado; pago ou pendente não muda o orçamento',v:estrategia.faturas,cor:'tr',s:'−'},
-    {n:'Orçamento de categorias',d:'Limite mensal integral; não só o saldo restante',v:estrategia.orcado,cor:'tr',s:'−'}
+    {n:S.mig46AuditoriaBase1010?'Variáveis PIX planejadas':'Orçamento de categorias',d:S.mig46AuditoriaBase1010?'40% do teto total; compras no cartão saem no pagamento da fatura, sem duplicar':'Limite mensal integral; não só o saldo restante',v:estrategia.orcadoCaixa,cor:'tr',s:'−'}
   ];
   var contaHtml=linhasConta.map(function(x){return '<div class="plan-ledger-row"><div><strong>'+x.n+'</strong><small>'+x.d+'</small></div><span class="val vsm '+x.cor+'">'+x.s+fmt(x.v)+'</span></div>';}).join('');
   contaHtml='<div class="card plan-panel plan-ledger mb12"><div class="plan-ledger-head"><div><div class="ctitle">Orçamento mensal</div><div class="plan-card-title" style="margin-top:4px">Resultado planejado do mês inteiro</div></div><span class="plan-auto-badge">recalcula sozinho</span></div><div class="plan-ledger-note">Aqui entram todos os salários e todos os compromissos de '+ml(MES)+', inclusive os já pagos. Para saber o dinheiro utilizável hoje, veja “Dinheiro livre agora” acima. A próxima fatura é uma provisão separada.</div>'+contaHtml+'<div class="plan-ledger-total"><div><strong>Margem do orçamento mensal</strong><small>Depois de todos os compromissos e do limite integral das categorias.</small></div><b class="'+(margem>=0?'tg':'tr')+'">'+fmt(margem)+'</b></div></div>';
